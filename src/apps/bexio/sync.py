@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# ------------------------------------------------------------------
+# Konten
+# ------------------------------------------------------------------
+
 
 def sync_konten() -> int:
     """
@@ -61,6 +65,11 @@ def full_sync_konten() -> int:
 
     logger.info("bexio full sync: alle Konten gelöscht")
     return sync_konten()
+
+
+# ------------------------------------------------------------------
+# Lieferantenrechnungen
+# ------------------------------------------------------------------
 
 
 def _resolve_konto(bexio_konto_id: int) -> Konto | None:
