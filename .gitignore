@@ -11,9 +11,6 @@ htmlcov/
 staticfiles/
 .claude/
 
-# VS Code
-.vscode/
-
 # Frontend
 node_modules/
 frontend/node_modules/
