@@ -1,0 +1,35 @@
+.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+.coverage
+htmlcov/
+*.sqlite3
+staticfiles/
+.claude/
+
+# VS Code
+.vscode/
+
+# Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+frontend/.eslintcache
+frontend/public/compressed_logo_jane.webp
+
+# Interne Projektdoku
+CLAUDE.md
+CONTEXT.md
+
+# Secrets
+.env
+
+# Docker
+postgres-data/
+meilisearch-data/
