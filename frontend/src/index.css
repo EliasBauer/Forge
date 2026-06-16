@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root {
+  --forge-dark: #1E1E1E;
+  --forge-blue: #4A6CF7;
+  --forge-red: #D93036;
+  --forge-blue-soft: #E8ECFE;
+  --forge-blue-hover: #3B5CE5;
+  --forge-red-soft: #FDE8E9;
+  --forge-nav-text: #FFFFFF;
+  --forge-nav-muted: #A8A8A8;
+  --forge-nav-active: #7B93FF;
+  --forge-bg: #F8F9FB;
+}

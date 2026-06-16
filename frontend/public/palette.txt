@@ -1,0 +1,14 @@
+Image: (2935, 595) mode=RGBA
+Transparency: transparent=74.67% opaque=24.11% near_white(opaque)=0.00%
+Background estimate (most common opaque): #2B2A29 rgb=(43, 42, 41)
+#000000	share=79.53%	rgb=(0, 0, 0)
+#2B2A29	share=8.53%	rgb=(43, 42, 41)
+#6D82F7	share=3.83%	rgb=(109, 130, 247)
+#E42127	share=3.38%	rgb=(228, 33, 39)
+#2C2B2A	share=2.68%	rgb=(44, 43, 42)
+#2D2C2B	share=1.38%	rgb=(45, 44, 43)
+#EA2228	share=0.45%	rgb=(234, 34, 40)
+#2B2A28	share=0.12%	rgb=(43, 42, 40)
+#2C2A29	share=0.09%	rgb=(44, 42, 41)
+#2A2A29	share=0.00%	rgb=(42, 42, 41)
+#2B2A2A	share=0.00%	rgb=(43, 42, 42)

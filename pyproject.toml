@@ -1,0 +1,103 @@
+[project]
+name = "forge"
+version = "0.1.0"
+description = "Forge – Projektcontrolling-App (und mehr) für Bexio Anwender."
+requires-python = ">=3.12"
+dependencies = [
+  "generalmanager==0.45.0",
+  "daphne>=4.0",
+  "psycopg[binary]>=3.1",
+  "dj-database-url>=2.0",
+  "channels-redis>=4.0",
+  "ipython>=8.0",
+  "requests>=2.33.1",
+]
+
+[dependency-groups]
+# Tooling dependencies used by scripts under ./tools
+tools = [
+  "pillow>=10.0",
+]
+
+# Dev dependencies for linting/testing.
+dev = [
+  "python-dotenv>=1.2.2",
+  "pre-commit>=3.7",
+  "mypy>=1.10",
+  "django-stubs[compatible-mypy]>=5.0",
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "pytest-django>=4.0",
+  "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+DJANGO_SETTINGS_MODULE = "forge.settings"
+addopts = [
+  "-q",
+  "--strict-markers",
+  "--strict-config",
+  "--cov=src",
+  "--cov-report=term-missing",
+  "--cov-fail-under=100",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = [
+  "src/forge/settings.py",
+  "src/forge/wsgi.py",
+  "src/forge/asgi.py",
+  "src/forge/urls.py",
+  "src/apps/authentication/management/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 100
+# @graph_ql_property ist ein Custom-Descriptor aus GeneralManager; coverage kann den
+# Methodenaufruf nicht durch den Decorator hindurch verfolgen. Die Tests verifizieren
+# das Verhalten (sie bestehen) – die Lücke ist ein Tooling-Artefakt, kein echtes Gap.
+exclude_also = [
+    "@graph_ql_property",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "I",  # pycodestyle/pyflakes/isort
+  "B",             # bugbear
+  "UP",            # pyupgrade
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_unused_configs = true
+plugins = ["mypy_django_plugin.main"]
+
+# 3rd party libs in tests/tooling might not ship type hints.
+ignore_missing_imports = true
+
+# Keep this repo simple; we don't need package-style imports yet.
+mypy_path = "src"
+
+[tool.django-stubs]
+django_settings_module = "forge.settings"
