@@ -1,6 +1,6 @@
 # Architektur – Forge
 
-> Stand: 2026-05-28
+> Stand: 2026-06-16
 
 ## Überblick
 
@@ -46,8 +46,14 @@ forge/
 │   ├── forge/                       # Django-Projekt (settings, urls, asgi, wsgi)
 │   └── apps/
 │       ├── authentication/          # Login, Gruppen, Berechtigungen
+│       │   ├── management/commands/ # create_groups.py, setup_dev_data.py
+│       │   └── tests/
 │       ├── bexio/                   # Bexio-Spiegel (Konten, Lieferantenrechnungen)
-│       │   ├── models/              # Konto, Lieferantenrechnung (je 1 Datei)
+│       │   ├── models/              # konto.py, lieferantenrechnung.py
+│       │   ├── calculation_manager/ # IstWert, ProjektKennzahlen
+│       │   │   ├── ist_wert.py      # Bexio-Kosten je Kostenart
+│       │   │   └── projekt_kennzahlen.py
+│       │   ├── tests/
 │       │   ├── admin.py
 │       │   ├── migrations/
 │       │   ├── services.py          # API-Client
@@ -55,24 +61,32 @@ forge/
 │       │   └── tasks.py
 │       ├── projekt/                 # Kern-Domain: Projekt, Kostenart, KostenPosition
 │       │   ├── models/              # projekt.py, kostenart.py, kosten_position.py
+│       │   ├── manager/
+│       │   ├── tests/
 │       │   ├── admin.py
 │       │   ├── migrations/
 │       │   └── signals.py
-│       ├── stunden/                 # Stundensatz pro Jahr
-│       │   ├── models/              # stundesatz.py
-│       │   ├── calculation_manager/ # AufgabenStundensatz (fehlende Jahre)
-│       │   ├── admin.py
-│       │   └── migrations/
-│       └── calculation_manager/     # App-übergreifende Berechnungen
-│           └── ist_wert.py          # IstWert (Bexio-Kosten je Kostenart)
+│       └── stunden/                 # Stundensatz pro Jahr
+│           ├── models/              # stundensatz.py
+│           ├── calculation_manager/ # AufgabenStundensatz (fehlende Jahre)
+│           │   └── aufgaben_stundensatz.py
+│           ├── tests/
+│           ├── admin.py
+│           └── migrations/
 ├── frontend/
 │   └── public/                      # Logo, Farbpalette
 │   └── src/
 │       ├── App.tsx
+│       ├── components/              # Layout.tsx, ProtectedRoute.tsx
+│       ├── contexts/                # AuthContext.tsx
+│       ├── graphql/                 # queries.ts, mutations.ts, subscriptions.ts
 │       ├── lib/apolloClient.ts
-│       ├── components/
-│       └── pages/
-├── tests/              # pytest-Tests (Backend)
+│       ├── pages/                   # AufgabenPage, LoginPage, ProjektListePage,
+│       │                            # ProjektDetailPage, ProjektNeuPage, StundensaetzePage
+│       └── utils/                   # format.ts, deviation.ts, permissions.ts
+├── docker/             # Dockerfile + docker-compose.yml
+├── nginx/              # nginx.conf (Reverse Proxy)
+├── tests/              # Integrations- und System-Tests (cross-cutting)
 ├── docs/               # Dokumentation
 ├── specs/              # Feature-Specs und Todo
 ├── pyproject.toml
@@ -94,12 +108,15 @@ Wenn nicht: LocMemCache + InMemoryChannelLayer (nur für lokale Tests ohne Redis
 
 ## Frontend-Routing
 
-| Pfad                        | Seite                  |
-| --------------------------- | ---------------------- |
-| `/projekte`                 | Projektliste           |
-| `/projekte/neu`             | Neues Projekt anlegen  |
-| `/projekte/:auftragsnummer` | Projektdetail          |
-| `/stundensaetze`            | Stundensätze verwalten |
+| Pfad              | Seite                   | Zugriff                      |
+| ----------------- | ----------------------- | ---------------------------- |
+| `/login`          | Login                   | öffentlich                   |
+| `/`               | — Redirect →            | `/projekte`                  |
+| `/aufgaben`       | Aufgaben / Onboarding   | alle authentifizierten User  |
+| `/projekte`       | Projektliste            | alle authentifizierten User  |
+| `/projekte/neu`   | Neues Projekt anlegen   | Admin, Projektleiter         |
+| `/projekte/:id`   | Projektdetail           | alle authentifizierten User  |
+| `/stundensaetze`  | Stundensätze verwalten  | Admin, Projektleiter         |
 
 ## Corporate Design
 
@@ -119,11 +136,12 @@ Ziel-Setup via Docker Compose:
 | Container       | Rolle                                 |
 | --------------- | ------------------------------------- |
 | `web`           | Django / Daphne (ASGI)                |
+| `frontend`      | React Build (Vite / nginx)            |
+| `nginx`         | Reverse Proxy + Static Files          |
 | `db`            | PostgreSQL 16                         |
 | `redis`         | Cache + Channel Layer + Celery Broker |
 | `celery-worker` | Async Task Execution                  |
 | `celery-beat`   | Scheduled Tasks (Bexio Sync)          |
-| `nginx`         | Reverse Proxy + Static Files          |
 | `meilisearch`   | Volltextsuche                         |
 
-> Docker Compose ist noch nicht implementiert (Phase 2).
+Docker Compose liegt in `docker/docker-compose.yml`.

@@ -33,7 +33,7 @@ dev = [
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["tests"]
+testpaths = ["tests", "src/apps"]
 pythonpath = ["src"]
 DJANGO_SETTINGS_MODULE = "forge.settings"
 addopts = [
@@ -54,6 +54,7 @@ omit = [
   "src/forge/asgi.py",
   "src/forge/urls.py",
   "src/apps/authentication/management/*",
+  "src/apps/*/tests/*",
 ]
 
 [tool.coverage.report]

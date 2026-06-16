@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from .stundesatz import Stundensatz
+from .stundensatz import Stundensatz
 
 __all__ = ["Stundensatz"]
