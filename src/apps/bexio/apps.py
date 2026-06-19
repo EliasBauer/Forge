@@ -8,4 +8,3 @@ class BexioConfig(AppConfig):
 
     def ready(self) -> None:
         importlib.import_module("apps.bexio.models")
-        importlib.import_module("apps.bexio.calculation_manager")
