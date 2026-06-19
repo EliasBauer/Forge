@@ -1,4 +1,4 @@
-"""Tests für apps/bexio/calculation_manager/projekt_kennzahlen.py."""
+"""Tests für apps/projekt/calculation_manager/projekt_kennzahlen.py."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.bexio.calculation_manager import ProjektKennzahlen
 from apps.bexio.models import Lieferantenrechnung
+from apps.projekt.calculation_manager import ProjektKennzahlen
 from apps.projekt.models import Kostenart, KostenPosition, Projekt
 from apps.stunden.models import Stundensatz
 
