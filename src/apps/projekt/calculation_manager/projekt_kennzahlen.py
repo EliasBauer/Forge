@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from general_manager import GeneralManager, Input
 from general_manager.api.property import graph_ql_property
+from general_manager.cache.cache_decorator import cached
 from general_manager.interface import CalculationInterface
 from general_manager.measurement import Measurement
 
@@ -20,6 +21,7 @@ class ProjektKennzahlen(GeneralManager):
 
     Permission = CalculationPermission
 
+    @cached
     def _summe_ist(self) -> Decimal:
         rechnungen = list(
             Lieferantenrechnung.filter(richtiger_titel=self.projekt.auftragsnummer)
@@ -30,6 +32,7 @@ class ProjektKennzahlen(GeneralManager):
             (r.betrag - r.steuer_berechnet for r in rechnungen), Decimal("0")
         ).quantize(Decimal("0.01"))
 
+    @cached
     def _summe_offerte(self) -> Decimal:
         summe = Decimal("0")
         for pos in KostenPosition.filter(projekt=self.projekt):
@@ -39,6 +42,7 @@ class ProjektKennzahlen(GeneralManager):
                 summe += Decimal(pos.offerte_kosten_wert.magnitude)
         return summe.quantize(Decimal("0.01"))
 
+    @cached
     def _summe_wv(self) -> Decimal:
         summe = Decimal("0")
         for pos in KostenPosition.filter(projekt=self.projekt):

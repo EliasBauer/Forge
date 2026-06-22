@@ -783,7 +783,7 @@ requires-dist = [
     { name = "channels-redis", specifier = ">=4.0" },
     { name = "daphne", specifier = ">=4.0" },
     { name = "dj-database-url", specifier = ">=2.0" },
-    { name = "generalmanager", specifier = "==0.45.0" },
+    { name = "generalmanager", specifier = "==0.56.0" },
     { name = "ipython", specifier = ">=8.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
     { name = "requests", specifier = ">=2.33.1" },
@@ -804,7 +804,7 @@ tools = [{ name = "pillow", specifier = ">=10.0" }]
 
 [[package]]
 name = "generalmanager"
-version = "0.45.0"
+version = "0.56.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref" },
@@ -835,9 +835,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/3b/53c6d6dcb18fcbdfaa9cd5c09bc13ef25479ba51a3832b448285afbc83e5/generalmanager-0.45.0.tar.gz", hash = "sha256:00d1bc59041124134a00db2935fbaf52614010bf3502381a28154291f23a2899", size = 324523, upload-time = "2026-06-13T16:35:45.525Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/33/a69ee0f15ed1a8ac4cab364fe6c713fbbabbef1e691e0ec6e99ee81e65f3/generalmanager-0.56.0.tar.gz", hash = "sha256:2af4a19f94260ca0cb136b624d523854740fbe6d5db69761cf87745bb547c90c", size = 357479, upload-time = "2026-06-19T21:29:14.464Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f6/6f/31899a19027302084caa62ff51f836b6a01cddbbb16068ff863927e41a27/generalmanager-0.45.0-py3-none-any.whl", hash = "sha256:a11979e11e39d46014b035e6f5a24a7e67f8c1fa7be444f4bcb1150921cd04a7", size = 407174, upload-time = "2026-06-13T16:35:44.07Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/35/5506080fa0708daaa6514fdb2521e189cf95bd391d2f1b64d567c8d428de/generalmanager-0.56.0-py3-none-any.whl", hash = "sha256:134cd6a3ac1edc67d3e454f093145ab9b6328670edf6defe3f22317e7bd5ea78", size = 449573, upload-time = "2026-06-19T21:29:12.976Z" },
 ]
 
 [[package]]

@@ -5,7 +5,11 @@
 >
 > Upstream-Doku: https://timkleindick.github.io/general_manager/
 > Repo: https://github.com/TimKleindick/general_manager
-> Aktuelle Version: 0.45.0
+> Aktuelle Version: 0.56.0
+>
+> Diese Doku wurde gegen den v0.56.0-Quellcode verifiziert (nicht nur gegen die Doku-Site).
+> Versionshinweise im Text (z. B. „ab 0.50.0") markieren, in welchem Release sich ein
+> Verhalten geändert hat.
 
 ---
 
@@ -22,7 +26,7 @@
 9. [GraphQL-Integration](#9-graphql-integration)
 10. [GraphQL Subscriptions](#10-graphql-subscriptions)
 11. [Search](#11-search)
-12. [Caching](#12-caching)
+12. [Caching & Warm-up](#12-caching--warm-up)
 13. [History / Audit Trail](#13-history--audit-trail)
 14. [Observability / Logging](#14-observability--logging)
 15. [RequestInterface](#15-requestinterface)
@@ -114,22 +118,23 @@ class Projekt(GeneralManager):
         ...
 ```
 
-**Cache-Modus** (Default ist `run` — historisch: der frühere `auto`-Modus wurde in
-0.42.0 entfernt):
+**Cache-Modus** (Default ist `run`; historisch wurde der frühere `auto`-Modus in 0.42.0
+entfernt). `@graph_ql_property` und der eigenständige `@cached`-Decorator nutzen seit
+0.50.0 dasselbe `cache=`-Keyword und dieselben vier Modi:
 
-| Decorator                                | Verhalten                                                                    |
-| ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `@graph_ql_property`                     | `cache="run"` (Default) — Ergebnis wird innerhalb eines GraphQL-Runs gecacht |
-| `@graph_ql_property(cache="dependency")` | Persistent gecacht, invalidiert wenn abhängige Manager sich ändern           |
-| `@graph_ql_property(cache="none")`       | Kein Caching, bei sehr einfachen/billigen Properties                         |
+| Decorator                                          | Verhalten                                                               |
+| -------------------------------------------------- | ----------------------------------------------------------------------- |
+| `@graph_ql_property`                               | `cache="run"` (Default) — Ergebnis innerhalb eines GraphQL-Runs gecacht |
+| `@graph_ql_property(cache="dependency")`           | Persistent gecacht, invalidiert wenn abhängige Manager sich ändern      |
+| `@graph_ql_property(cache="timeout", timeout=300)` | Persistent mit TTL (Sekunden); `timeout` ist hier Pflicht (ab 0.50.0)   |
+| `@graph_ql_property(cache="none")`                 | Kein Caching, bei sehr einfachen/billigen Properties                    |
 
-Gültige Cache-Modi für `@graph_ql_property`: `run | dependency | none`. (Den vierten
-`cached`-Scope `timeout` gibt es nur beim eigenständigen `@cached`-Decorator, nicht
-für GraphQL-Properties — siehe Abschnitt 12.)
+Gültige Modi für `@graph_ql_property`: `run | dependency | timeout | none` (Default `run`).
+Details zu den Modi und zum proaktiven `warm_up` in Abschnitt 12.
 
 Für CalculationInterface-Properties mit DB-Zugriffen ist `cache="run"` (Default)
 ausreichend — für teure Berechnungen, die Request-übergreifend gecacht werden sollen,
-`cache="dependency"` verwenden.
+`cache="dependency"` (optional mit `warm_up=True`) verwenden.
 
 ### Beziehungen zwischen Managern
 
@@ -212,7 +217,8 @@ class Kostenart(GeneralManager):
 
 `ReadOnlyInterface` synchronisiert `_data` beim Start (create/update/soft-delete);
 intern liest die Sync-Logik das Attribut via `getattr(<Manager-Klasse>, "_data")`.
-Write-Versuche zur Laufzeit werfen Exceptions.
+Unveränderte Daten werden beim Sync übersprungen (ab 0.54.1). Write-Versuche zur
+Laufzeit werfen Exceptions.
 
 ### CalculationInterface
 
@@ -280,6 +286,10 @@ quartal = Input(str, depends_on=["jahr"])
 > # GUT – Filter wird als .filter(id=1) auf den Bucket angewendet
 > projekt = Input(Projekt, possible_values=lambda: Projekt.all())
 > ```
+>
+> **Ab 0.54.0:** `possible_values`-Callables werden pro Run gecacht (einmal ausgewertet
+> und innerhalb des Runs wiederverwendet). Das Callable darf also ruhig etwas kosten —
+> es läuft pro Enumeration nur einmal, nicht pro Kombination.
 
 ### Many-to-Many
 
@@ -412,12 +422,41 @@ exists = 42 in bucket
 
 > `Manager.get(**kwargs)` (Abschnitt 3) ist der Shortcut für `Manager.filter(**kwargs).get()`.
 
+### Run-gecachte Indizes: `index_by` / `index_many` (ab 0.51.0)
+
+Für rechenintensiven Code, der wiederholt nach einem Schlüssel in derselben Collection
+sucht (z. B. Kennzahlen-Berechnungen, die pro Position/Rechnung nachschlagen), baut der
+Bucket einen **run-gecachten** In-Memory-Index. Statt N-mal `filter(...)` aufzurufen,
+einmal indexieren und dann per Dict-Lookup zugreifen:
+
+```python
+# Unique-Index: schluessel -> genau ein Manager (wirft bei Duplikat-Keys)
+nach_konto = Lieferantenrechnung.filter(richtiger_titel=auftragsnummer).index_by("buchungskonto")
+rechnung = nach_konto.get(konto)          # dict-Lookup, kein DB-Query
+
+# Multi-Index: schluessel -> tuple[Manager, ...]
+positionen_je_art = KostenPosition.filter(projekt=projekt).index_many("art")
+for pos in positionen_je_art.get(art, ()):
+    ...
+```
+
+- `index_by(key_spec, *, max_rows=1000)` → `dict[key, Manager]` (Unique; Duplikat-Key wirft `DuplicateBucketIndexKeyError`)
+- `index_many(key_spec, *, max_rows=...)` → `dict[key, tuple[Manager, ...]]` (Mehrfach)
+- Beide Ergebnisse werden **nur für den aktiven Calculation-Run** gecacht und mit
+  Dependency-Tracking versehen (Invalidierung wie bei anderen Run-Caches).
+- `max_rows` ist ein Guardrail; zu große Buckets werfen `BucketIndexTooLargeError`.
+
 ### Bucket-Dependency-Semantik (wichtig für Caching)
 
 Dependency-Tracking erfolgt **lazy**: erst beim tatsächlichen Auswerten
 (Iteration, `count()`, `first()`, `get()`, `bucket[0]`, `len()`, `in`),
 nicht beim Konstruieren des Buckets. Verkettete `filter()`-Aufrufe werden
 zu einem einzigen Dependency-Eintrag zusammengeführt.
+
+> **Ab 0.48.0:** Innerhalb eines Runs werden Ergebnisse äquivalenter Bucket-Iterationen
+> wiederverwendet — derselbe `filter(...)` zweimal im selben Run trifft beim zweiten Mal
+> den Run-Cache statt erneut die DB. Für wiederholte _Lookups_ (nicht nur Iteration) ist
+> `index_by`/`index_many` trotzdem die bessere Wahl.
 
 ---
 
@@ -524,7 +563,7 @@ def _permission_is_project_leader(instance, user, config) -> bool:
 Modul muss beim Django-Start importiert sein — am besten in `AppConfig.ready()` oder
 als Import in `permission.py`, das von `apps.py` geladen wird.
 
-### `CalculationPermission` (Forge-Pattern — in 0.45.0 noch nötig)
+### `CalculationPermission` (Forge-Pattern)
 
 ```python
 class CalculationPermission(AdditiveManagerPermission):
@@ -541,9 +580,13 @@ ruft intern `queryset.filter(id__in=...)` auf, was für CalculationBuckets fehls
 `projektKennzahlenList`, `istWertList` etc. bei normalen Nutzern den Fehler
 `Unknown input field 'id' in filter`.
 
-**Verifiziert in 0.45.0:** Workaround ist weiterhin nötig. Jeder neue
-`CalculationInterface`-GM muss `Permission = CalculationPermission` setzen
-(oder eine eigene Subklasse, die `requires_instance_check=False` setzt).
+> **Versionsstand:** In 0.45.0 als weiterhin nötig verifiziert. Die 0.42.2-Änderung
+> (`manager_id__in`-Filter im `filter_parser`) betrifft einen anderen Pfad als den
+> Permission-Instance-Check (plain `id__in`), daher bleibt der Workaround auch in
+> 0.45.0+ erforderlich. **Nach dem Upgrade auf 0.56.0 kurz gegenprüfen** (an _einem_
+> Calculation-Manager `CalculationPermission` weglassen, List-Query mit aktiver
+> Permission als normaler User ausführen) — dies ist Forge-Code, kein Framework-Code,
+> und lässt sich nur am laufenden System sicher bestätigen.
 
 ---
 
@@ -690,9 +733,13 @@ class MeinManager(GeneralManager):
 ### Measurement-Objekte (Python)
 
 ```python
+# Konstruktor: Wert + Einheit (Wert wird zu Decimal koerziert)
 m = Measurement(100, "CHF")
 m.magnitude   # Decimal('100')
 m.unit        # 'CHF'
+
+# Einzel-String parsen → from_string (NICHT Measurement("50 cm"))
+w = Measurement.from_string("50 cm")
 
 # Einheitenumrechnung (physikalisch)
 Measurement(500, "cm").to("m")   # → Measurement(5, 'm')
@@ -700,6 +747,10 @@ Measurement(500, "cm").to("m")   # → Measurement(5, 'm')
 # Arithmetik (gleiche Einheit)
 Measurement(100, "CHF") + Measurement(50, "CHF")   # → Measurement(150, 'CHF')
 ```
+
+> **Achtung:** Für eine kombinierte „Wert+Einheit"-Zeichenkette `Measurement.from_string("50 cm")`
+> verwenden. Der Zwei-Argument-Konstruktor `Measurement(50, "cm")` erwartet Wert und
+> Einheit getrennt.
 
 ### GraphQL – Output
 
@@ -949,11 +1000,29 @@ class Projekt(GeneralManager):
         ]
 ```
 
+### Indexierung & Reconciliation (umgebaut in 0.55.0)
+
+> **Wichtige Änderung:** Das frühere **request-getriggerte Auto-Reindex wurde entfernt**.
+> Datenänderungen markieren betroffene Such-Indizes nur noch als **„dirty"**; das
+> tatsächliche Reindexieren übernimmt ein **Reconciliation-Sweep**. Das hält Requests
+> schnell und entkoppelt das Indexieren vom Write-Pfad.
+
 ```bash
-python manage.py search_index --reindex          # Neuindizierung
+# Voller / manueller (Neu-)Aufbau der Indizes:
+python manage.py search_index --reindex          # alles neu indizieren
 python manage.py search_index --index global      # nur einen Index
 python manage.py search_index --manager Projekt   # nur einen Manager
+
+# Reconciliation: nur die als "dirty" markierten Indizes abgleichen
+python manage.py search_reconcile --once                 # ein Sweep, dann Ende
+python manage.py search_reconcile --watch --interval 30  # Daemon-Modus, alle 30s
+python manage.py search_reconcile --all                  # vorher ALLE States dirty markieren
+python manage.py search_reconcile --limit 100            # max. States pro Sweep
 ```
+
+In Produktion wird `search_reconcile` typischerweise per **Celery Beat** geplant
+(periodischer Sweep), statt im Request-Pfad zu laufen. `search_index --reindex` bleibt
+für vollständige Neuaufbauten (z. B. nach Schema-Änderung am Index).
 
 ```graphql
 query {
@@ -966,7 +1035,7 @@ query {
 
 ---
 
-## 12) Caching
+## 12) Caching & Warm-up
 
 ### `@graph_ql_property` und Run-Cache
 
@@ -974,34 +1043,58 @@ query {
 der Cache wird für die Dauer eines GraphQL-Runs geteilt. Das verhindert doppelte
 Berechnungen, wenn dasselbe Objekt mehrfach in einer Query auftaucht.
 
-| Cache-Modus     | Decorator                                | Wann verwenden                                                  |
-| --------------- | ---------------------------------------- | --------------------------------------------------------------- |
-| `run` (Default) | `@graph_ql_property`                     | Alle Properties (ausreichend für DB-Zugriffe)                   |
-| `dependency`    | `@graph_ql_property(cache="dependency")` | Request-übergreifend gecacht; invalidiert via DependencyTracker |
-| `none`          | `@graph_ql_property(cache="none")`       | Sehr einfache/billige Properties                                |
+| Cache-Modus     | Decorator                                          | Wann verwenden                                                  |
+| --------------- | -------------------------------------------------- | --------------------------------------------------------------- |
+| `run` (Default) | `@graph_ql_property`                               | Alle Properties (ausreichend für DB-Zugriffe)                   |
+| `dependency`    | `@graph_ql_property(cache="dependency")`           | Request-übergreifend gecacht; invalidiert via DependencyTracker |
+| `timeout`       | `@graph_ql_property(cache="timeout", timeout=300)` | Persistent mit TTL; `timeout` ist Pflicht (ab 0.50.0)           |
+| `none`          | `@graph_ql_property(cache="none")`                 | Sehr einfache/billige Properties                                |
 
-> **Hinweis:** Gültige Modi für `@graph_ql_property` sind nur `run | dependency | none`.
-> Der frühere `auto`-Modus existiert seit 0.42.0 nicht mehr. Den vierten Scope `timeout`
-> gibt es ausschließlich beim eigenständigen `@cached`-Decorator (siehe unten).
+> **Hinweis:** Gültige Modi für `@graph_ql_property` sind `run | dependency | timeout | none`
+> (Default `run`). Der frühere `auto`-Modus existiert seit 0.42.0 nicht mehr.
+
+### Proaktiver Warm-up (ab 0.56.0)
+
+Teure `dependency`- oder `timeout`-gecachte Properties können **proaktiv vorberechnet**
+werden, statt erst lazy beim nächsten Request. Mit `warm_up=True` wird die Property nach
+einer Invalidierung in eine Warm-up-Queue eingereiht und im Hintergrund neu berechnet —
+der nächste echte Request trifft dann bereits einen warmen Cache.
+
+```python
+@graph_ql_property(cache="dependency", warm_up=True)
+def teure_kennzahl(self) -> Measurement | None:
+    ...
+```
+
+- `warm_up=True` erfordert `cache="dependency"` oder `cache="timeout"`
+  (mit `cache="run"`/`"none"` → Fehler `warm_up=True requires cache="dependency" or cache="timeout"`).
+- Die Warm-up-Tasks werden nach Invalidierung enqueued und über Celery abgearbeitet.
+
+Management-Commands für den Warm-up:
+
+```bash
+python manage.py graphql_warmup                # ausstehende Warm-up-Rezepte abarbeiten
+python manage.py graphql_warmup_refresh_due    # fällige timeout-gecachte Rezepte erneuern
+```
+
+In Produktion per Celery Beat planen (analog zu `search_reconcile`).
 
 ### `@cached` Decorator (für eigene Funktionen)
 
-> **Immer mit Klammern aufrufen: `@cached()`, nicht `@cached`.** Der erste
-> Positionsparameter von `cached(...)` ist `timeout`, nicht die Funktion — bare `@cached`
-> würde die Funktion fälschlich als `timeout` interpretieren und scheitert
-> (in 0.45.0 mit `CacheTimeoutConfigurationError`, weil ein Nicht-None-`timeout` nur mit
-> `scope="timeout"` erlaubt ist).
+Signatur (sinngemäß): `cached(func=None, timeout=None, *, cache="run")`. Gültige
+`cache`-Modi: `run | dependency | timeout | none`. Default ist `run`.
 
-Signatur (sinngemäß): `cached(timeout=None, *, scope="run")`. Gültige Scopes:
-`run | dependency | timeout | none`. Default ist `run`.
+> **Ab 0.50.0:** Das Keyword heißt `cache=` (vorher `scope=`) — angeglichen an
+> `@graph_ql_property`. Und **bare `@cached` (ohne Klammern) funktioniert jetzt**
+> (vorher nötig: `@cached()`). Beide Schreibweisen sind gültig.
 
 ```python
 from general_manager.cache.cache_decorator import cached
 
 
 # Run-Scope (Default): memoiziert innerhalb des aktiven Run-Contexts,
-# wird am Ende des Runs verworfen.
-@cached()
+# wird am Ende des Runs verworfen. Bare-Form ist ok:
+@cached
 def projekt_run_cache(projekt_id: int) -> dict:
     projekt = Projekt(id=projekt_id)
     return {"budget": projekt.offerte_summe.magnitude}
@@ -1009,37 +1102,38 @@ def projekt_run_cache(projekt_id: int) -> dict:
 
 # Dependency-Scope: persistent im Cache-Backend, automatisch invalidiert,
 # wenn ein gelesener Datensatz sich ändert (DependencyTracker). KEIN timeout erlaubt.
-@cached(scope="dependency")
+@cached(cache="dependency")
 def projekt_forecast(projekt_id: int) -> dict:
     ...
 
 
 # Timeout-Scope: TTL-basiert im Cache-Backend. timeout ist hier PFLICHT
 # (und nur in diesem Scope erlaubt). Kein Dependency-Tracking.
-@cached(scope="timeout", timeout=300)
+@cached(cache="timeout", timeout=300)
 def expensive_calc(projekt_id: int) -> float:
     ...
 
 
 # Caching abschalten:
-@cached(scope="none")
+@cached(cache="none")
 def always_fresh(projekt_id: int) -> float:
     ...
 ```
 
-**Scope-Regeln (ab 0.43.0 strikt validiert):**
+**Scope-Regeln (strikt validiert):**
 
-| Scope        | `timeout`        | Verhalten                                                        |
+| `cache`      | `timeout`        | Verhalten                                                        |
 | ------------ | ---------------- | ---------------------------------------------------------------- |
 | `run`        | nicht erlaubt    | Memoization im aktiven Run-Context, am Run-Ende verworfen        |
 | `dependency` | nicht erlaubt    | Cache-Backend + Dependency-Tracking → automatische Invalidierung |
 | `timeout`    | **erforderlich** | Cache-Backend mit TTL (Sekunden); kein Dependency-Tracking       |
 | `none`       | nicht erlaubt    | Kein Caching                                                     |
 
-> **Falsch (häufiger Irrtum):** `@cached(timeout=300)` ohne `scope="timeout"` wirft in
-> 0.45.0 einen Fehler, weil `timeout` nur mit `scope="timeout"` kombinierbar ist.
+> **Falsch (häufiger Irrtum):** `@cached(timeout=300)` ohne `cache="timeout"` wirft einen
+> Fehler, weil `timeout` nur mit `cache="timeout"` kombinierbar ist
+> (`timeout is only supported with cache="timeout"`).
 > Ein eigenständiges `scoped_cache` gibt es **nicht** — "scoped caching" ist der
-> `scope="run"`-Default von `@cached()`.
+> `cache="run"`-Default von `@cached`.
 
 ### DependencyTracker
 
@@ -1054,11 +1148,13 @@ with DependencyTracker() as dependencies:
 ### Automatische Invalidierung
 
 `create()`, `update()`, `delete()` emittieren Cache-Invalidierungssignale.
-Alle mit `scope="dependency"` gecachten Funktionen, die den betreffenden Datensatz
-gelesen haben, werden invalidiert.
+Alle mit `cache="dependency"` gecachten Funktionen, die den betreffenden Datensatz
+gelesen haben, werden invalidiert. (Properties mit `warm_up=True` werden danach
+proaktiv neu berechnet — siehe oben.)
 
 **Produktion:** Geteiltes Cache-Backend (Redis) konfigurieren — der Dependency-Index
-muss prozessübergreifend synchron sein.
+muss prozessübergreifend synchron sein. (Intern ist der Dependency-Index ab 0.52.0
+geshardet und die Invalidierung koordiniert; das ist für die Nutzung transparent.)
 
 ---
 
@@ -1183,6 +1279,9 @@ python manage.py workflow_drain_outbox          # ausstehende Events abarbeiten
 python manage.py workflow_replay_dead_letters   # fehlgeschlagene nochmal versuchen
 ```
 
+> **Verwandte periodische Commands (Celery Beat):** `search_reconcile` (Abschnitt 11)
+> und `graphql_warmup` / `graphql_warmup_refresh_due` (Abschnitt 12).
+
 ---
 
 ## 17) INSTALLED_APPS-Reihenfolge
@@ -1246,26 +1345,29 @@ server: { proxy: { "/graphql": "http://localhost:8000" } }
 
 ## 19) Häufige Gotchas
 
-| Problem                                                 | Ursache                                                           | Lösung                                                                                                   |
-| ------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/admin/` → `NoReverseMatch: app_list`                  | `general_manager` vor `django.contrib.admin`                      | Django-Builtins zuerst (Abschnitt 17)                                                                    |
-| `Bitte höchstens 2 Dezimalstellen`                      | GM gibt `float` ans Model; `DecimalField` → IEEE-754-Präzision    | `full_clean()` in Interface überschreiben (siehe unten)                                                  |
-| `super()` in Interface-Methode schlägt fehl             | GM kopiert Methoden als plain functions; `__class__`-Cell falsch  | MRO manuell: `for cls in type(self).__mro__[1:]: if 'full_clean' in cls.__dict__: cls.full_clean(...)`   |
-| `Unknown type 'Decimal'`                                | GM kennt keinen `Decimal`-Scalar                                  | `Float!` für DecimalField-Variablen, `String!` für MeasurementField                                      |
-| `Cannot query field 'projekt'` auf Mutation             | Rückgabefeld = Klassenname (Grossbuchstabe)                       | `Projekt { ... }` statt `projekt { ... }`                                                                |
-| `projektList` statt `projekt_list`                      | GM erzeugt camelCase                                              | Immer camelCase in GraphQL-Queries                                                                       |
-| Mehrwort-Klasse → falsch geschriebenes Root-Feld        | Vor 0.42.1 wurden Root-Felder kleingeschrieben                    | camelCase nutzen: `IstWert` → `istWertList`, `ChangeRequestFeasibility` → `changeRequestFeasibilityList` |
-| `items` statt `results` in Paginierung                  | GM nennt das Feld `items`                                         | `{ items { ... } pageInfo { totalCount } }`                                                              |
-| `projektleiter { username }` schlägt fehl               | ForeignKey → `String` in GraphQL                                  | Kein Sub-Selection; direkt als String abfragen                                                           |
-| CalculationInterface-Liste zeigt alle Daten             | `possible_values` gibt list() statt Bucket zurück                 | `possible_values=lambda: Manager.all()` — Bucket, kein `list(...)`                                       |
-| `Input.monthly_date(year=...)` → `TypeError`            | Helfer nehmen `start`/`end` (date), kein `year`/`start_year`      | `Input.monthly_date(start=date(...), end=date(...))` (keyword-only)                                      |
-| `@cached` ohne Klammern → Fehler                        | Erster Param ist `timeout`, nicht die Funktion                    | Immer `@cached()` schreiben                                                                              |
-| `@cached(timeout=N)` → `CacheTimeoutConfigurationError` | `timeout` ist nur mit `scope="timeout"` erlaubt                   | `@cached(scope="timeout", timeout=N)`                                                                    |
-| `scoped_cache` nicht importierbar                       | Es gibt kein `scoped_cache`                                       | `@cached(scope="run")` verwenden                                                                         |
-| Property wird mehrfach berechnet                        | Private Methoden (`_helper()`) werden nicht vom run-cache erfasst | `@graph_ql_property` oder `@cached(scope="run")` auf Hilfsmethoden anwenden                              |
-| `cache="auto"` Fehler                                   | Modus wurde in 0.42.0 entfernt                                    | Auf `cache="run"` (Default) oder `cache="dependency"` umstellen                                          |
-| `Float cannot represent non numeric value`              | Frontend schickt String statt Zahl                                | `parseFloat(val.replace(",", "."))`                                                                      |
-| Vite zeigt nichts im Container                          | Vite lauscht nur auf localhost                                    | `npm run dev -- --host`                                                                                  |
+| Problem                                                 | Ursache                                                           | Lösung                                                                                                                                                 |
+| ------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/admin/` → `NoReverseMatch: app_list`                  | `general_manager` vor `django.contrib.admin`                      | Django-Builtins zuerst (Abschnitt 17)                                                                                                                  |
+| `Bitte höchstens 2 Dezimalstellen`                      | GM gibt `float` ans Model; `DecimalField` → IEEE-754-Präzision    | `full_clean()` in Interface überschreiben (siehe unten)                                                                                                |
+| `super()` in Interface-Methode schlägt fehl             | GM kopiert Methoden als plain functions; `__class__`-Cell falsch  | MRO manuell: `for cls in type(self).__mro__[1:]: if 'full_clean' in cls.__dict__: cls.full_clean(...)`                                                 |
+| `Unknown type 'Decimal'`                                | GM kennt keinen `Decimal`-Scalar                                  | `Float!` für DecimalField-Variablen, `String!` für MeasurementField                                                                                    |
+| `Cannot query field 'projekt'` auf Mutation             | Rückgabefeld = Klassenname (Grossbuchstabe)                       | `Projekt { ... }` statt `projekt { ... }`                                                                                                              |
+| `projektList` statt `projekt_list`                      | GM erzeugt camelCase                                              | Immer camelCase in GraphQL-Queries                                                                                                                     |
+| Mehrwort-Klasse → falsch geschriebenes Root-Feld        | Vor 0.42.1 wurden Root-Felder kleingeschrieben                    | camelCase nutzen: `IstWert` → `istWertList`, `ChangeRequestFeasibility` → `changeRequestFeasibilityList`                                               |
+| `items` statt `results` in Paginierung                  | GM nennt das Feld `items`                                         | `{ items { ... } pageInfo { totalCount } }`                                                                                                            |
+| `projektleiter { username }` schlägt fehl               | ForeignKey → `String` in GraphQL                                  | Kein Sub-Selection; direkt als String abfragen                                                                                                         |
+| CalculationInterface-Liste zeigt alle Daten             | `possible_values` gibt list() statt Bucket zurück                 | `possible_values=lambda: Manager.all()` — Bucket, kein `list(...)`                                                                                     |
+| `Input.monthly_date(year=...)` → `TypeError`            | Helfer nehmen `start`/`end` (date), kein `year`/`start_year`      | `Input.monthly_date(start=date(...), end=date(...))` (keyword-only)                                                                                    |
+| `@cached(scope="run")` → `TypeError`                    | Keyword heißt seit 0.50.0 `cache=`, nicht `scope=`                | `@cached(cache="run")`                                                                                                                                 |
+| `@cached(timeout=N)` → `CacheTimeoutConfigurationError` | `timeout` ist nur mit `cache="timeout"` erlaubt                   | `@cached(cache="timeout", timeout=N)`                                                                                                                  |
+| `scoped_cache` nicht importierbar                       | Es gibt kein `scoped_cache`                                       | `@cached(cache="run")` verwenden                                                                                                                       |
+| `warm_up=True requires cache=...`                       | `warm_up` braucht `dependency` oder `timeout`                     | `@graph_ql_property(cache="dependency", warm_up=True)`                                                                                                 |
+| Property/Hilfsmethode wird mehrfach berechnet           | Private Methoden (`_helper()`) werden nicht vom run-cache erfasst | Abgeleitete `@graph_ql_property` _andere Properties_ lesen lassen, oder `@cached(cache="run")` auf Helfer; für wiederholte Lookups `bucket.index_by()` |
+| `Measurement("50 cm")` liefert nicht das Erwartete      | Einzel-String → `from_string`, Konstruktor will Wert+Einheit      | `Measurement.from_string("50 cm")` bzw. `Measurement(50, "cm")`                                                                                        |
+| Suche aktualisiert sich nicht nach Datenänderung        | Auto-Reindex wurde in 0.55.0 entfernt; Index ist nur "dirty"      | `search_reconcile` laufen lassen (manuell `--once` oder per Celery Beat)                                                                               |
+| `cache="auto"` Fehler                                   | Modus wurde in 0.42.0 entfernt                                    | Auf `cache="run"` (Default) oder `cache="dependency"` umstellen                                                                                        |
+| `Float cannot represent non numeric value`              | Frontend schickt String statt Zahl                                | `parseFloat(val.replace(",", "."))`                                                                                                                    |
+| Vite zeigt nichts im Container                          | Vite lauscht nur auf localhost                                    | `npm run dev -- --host`                                                                                                                                |
 
 ### Decimal-Float-Fix in Interface
 
