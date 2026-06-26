@@ -38,13 +38,11 @@ class KostenPosition(GeneralManager):
             "projekt.Projekt",
             on_delete=models.CASCADE,
             related_name="kosten_positionen",
-            editable=False,
         )
         art = models.ForeignKey(
             "projekt.Kostenart",
             on_delete=models.PROTECT,
             related_name="kosten_positionen",
-            editable=False,
         )
         offerte_kosten_wert = MeasurementField(
             base_unit="CHF", null=True, blank=True, default="0 CHF"
