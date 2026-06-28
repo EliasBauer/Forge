@@ -1,6 +1,7 @@
 {
   "name": "Forge Dev",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "runArgs": ["--name", "forge-dev"],
 
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" }
@@ -10,7 +11,8 @@
     "FORGE_ENV": "dev"
   },
 
-  "postCreateCommand": "pip install uv && uv sync --group dev && npm --prefix frontend install && uv run pre-commit install && npm install -g @anthropic-ai/claude-code",
+  "onCreateCommand": "pip install uv && uv sync --group dev",
+  "postCreateCommand": "npm --prefix frontend install && uv run pre-commit install && npm install -g @anthropic-ai/claude-code",
 
   "forwardPorts": [8000, 5173],
   "portsAttributes": {
@@ -30,14 +32,7 @@
         "codezombiech.gitignore",
         "eamodio.gitlens",
         "mhutchie.git-graph"
-      ],
-      "settings": {
-        "python.defaultInterpreterPath": "/workspaces/Forge/.venv/bin/python",
-        "editor.formatOnSave": true,
-        "[python]": {
-          "editor.defaultFormatter": "charliermarsh.ruff"
-        }
-      }
+      ]
     }
   }
 }
