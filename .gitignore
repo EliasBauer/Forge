@@ -9,7 +9,10 @@ __pycache__/
 htmlcov/
 *.sqlite3
 staticfiles/
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/settings.json
+!.claude/statusline.sh
 
 # Frontend
 node_modules/
