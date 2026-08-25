@@ -152,6 +152,11 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# --- Suche ---
+# Kein MEILISEARCH_URL gesetzt (z. B. im Devcontainer) => GM faellt automatisch auf
+# den in-memory DevSearchBackend zurueck (general_manager/search/backend_registry.py).
+MEILISEARCH_URL = os.environ.get("MEILISEARCH_URL", "")
+
 GENERAL_MANAGER = {
     "AUTOCREATE_GRAPHQL": True,
     "GRAPHQL_URL": "graphql/",
@@ -161,4 +166,18 @@ GENERAL_MANAGER = {
         "UPDATE": ["isAuthenticated"],
         "DELETE": ["isAuthenticated"],
     },
+    "SEARCH_AUTO_REINDEX": True,
+    "SEARCH_RECONCILE_ENABLED": True,
+    "SEARCH_RECONCILE_INTERVAL_SECONDS": 30,
+    "SEARCH_BACKEND": (
+        {
+            "class": "general_manager.search.backends.meilisearch.MeilisearchBackend",
+            "options": {
+                "url": MEILISEARCH_URL,
+                "api_key": os.environ.get("MEILISEARCH_MASTER_KEY") or None,
+            },
+        }
+        if MEILISEARCH_URL
+        else None
+    ),
 }
