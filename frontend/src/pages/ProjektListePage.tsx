@@ -1,9 +1,9 @@
 import { useQuery, useSubscription } from "@apollo/client/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronsUpDown, ChevronUp, ChevronDown, Plus, Search, UserRound } from "lucide-react";
 import Layout from "../components/Layout";
-import { GET_PROJEKTE } from "../graphql/queries";
+import { GET_PROJEKTE, SEARCH_PROJEKTE } from "../graphql/queries";
 import { PROJEKT_LISTE_SUBSCRIPTION } from "../graphql/subscriptions";
 import { chf, type GQLMeasurement } from "../utils/format";
 import { getDeviation, DEV_STYLES } from "../utils/deviation";
@@ -23,6 +23,10 @@ type Projekt = {
 
 type QueryData = {
   projektList: { items: Projekt[]; pageInfo: { totalCount: number } };
+};
+
+type SearchData = {
+  search: { results: Projekt[]; total: number };
 };
 
 type SortKey = "auftragsnummer" | "name" | "projektleiter" | "offerteSumme" | "summeWvPlus";
@@ -160,6 +164,14 @@ export default function ProjektListePage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [hoveredHeader, setHoveredHeader] = useState<SortKey | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
+  const isSearching = debouncedQuery.length > 0;
 
   const { data, loading, error, refetch } = useQuery<QueryData>(GET_PROJEKTE, {
     fetchPolicy: "network-only",
@@ -167,6 +179,16 @@ export default function ProjektListePage() {
 
   useSubscription(PROJEKT_LISTE_SUBSCRIPTION, {
     onData: () => refetch(),
+  });
+
+  const {
+    data: searchData,
+    loading: searchLoading,
+    error: searchError,
+  } = useQuery<SearchData>(SEARCH_PROJEKTE, {
+    variables: { query: debouncedQuery },
+    skip: !isSearching,
+    fetchPolicy: "network-only",
   });
 
   function handleSort(key: SortKey) {
@@ -178,17 +200,15 @@ export default function ProjektListePage() {
     }
   }
 
-  const q = searchQuery.trim().toLowerCase();
-  const filtered = (data?.projektList.items ?? []).filter((p) => {
-    if (!q) return true;
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.auftragsnummer.toLowerCase().includes(q) ||
-      (p.projektleiter ?? "").toLowerCase().includes(q)
-    );
-  });
-  const items = sortProjekte(filtered, sortKey, sortDir);
-  const total = data?.projektList.pageInfo.totalCount ?? 0;
+  const sourceItems = isSearching
+    ? (searchData?.search.results ?? [])
+    : (data?.projektList.items ?? []);
+  const items = sortProjekte(sourceItems, sortKey, sortDir);
+  const total = isSearching
+    ? (searchData?.search.total ?? 0)
+    : (data?.projektList.pageInfo.totalCount ?? 0);
+  const isLoading = isSearching ? searchLoading : loading;
+  const displayError = isSearching ? searchError : error;
 
   const thBase = (key: SortKey) =>
     `px-4 py-3 text-[11px] uppercase tracking-wider font-semibold select-none cursor-pointer transition-colors whitespace-nowrap ${
@@ -203,7 +223,7 @@ export default function ProjektListePage() {
           <h1 className="text-[22px] font-semibold text-gray-900">Projekte</h1>
           {data && (
             <p className="text-[12px] text-gray-500 mt-0.5">
-            {q ? `${items.length} von ${total} Projekten` : `${total} Projekte`}
+            {isSearching ? `${items.length} von ${total} Projekten` : `${total} Projekte`}
           </p>
           )}
         </div>
@@ -220,14 +240,14 @@ export default function ProjektListePage() {
         )}
       </div>
 
-      {loading &&<p className="text-sm text-gray-500">Lade Projekte…</p>}
+      {isLoading &&<p className="text-sm text-gray-500">Lade Projekte…</p>}
 
-      {error && (
+      {displayError && (
         <p
           className="rounded-lg p-4 border text-sm"
           style={{ color: "var(--forge-red)", borderColor: "var(--forge-red)", backgroundColor: "var(--forge-red-soft)" }}
         >
-          Fehler: {error.message}
+          Fehler: {displayError.message}
         </p>
       )}
 
@@ -273,7 +293,7 @@ export default function ProjektListePage() {
                 <line x1="28" y1="50" x2="52" y2="50" />
                 <line x1="28" y1="58" x2="44" y2="58" />
               </svg>
-              {q ? (
+              {isSearching ? (
                 <>
                   <p className="text-[15px] font-semibold text-gray-900 mb-1">Keine Treffer</p>
                   <p className="text-sm text-gray-500 max-w-xs mb-4">
