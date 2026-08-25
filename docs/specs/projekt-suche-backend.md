@@ -125,7 +125,7 @@ In [ProjektListePage.tsx](../../frontend/src/pages/ProjektListePage.tsx):
   query SearchProjekte($query: String!) {
     search(query: $query, index: "global", types: ["Projekt"], pageSize: 20) {
       results {
-        ... on Projekt {
+        ... on ProjektType {
           id
           auftragsnummer
           name
@@ -140,8 +140,9 @@ In [ProjektListePage.tsx](../../frontend/src/pages/ProjektListePage.tsx):
     }
   }
   ```
-  (exakter GraphQL-Typname für das `... on`-Fragment bei Implementierung gegen das laufende Schema
-  verifizieren, z. B. via GraphQL-Playground-Introspection unter `/graphql/`.)
+  (GraphQL-Typname `ProjektType` verifiziert gegen `general_manager/api/graphql.py:791`:
+  `graphene_type_name = f"{generalManagerClass.__name__}Type"` — GM hängt an jeden Manager-Namen
+  im autogenerierten Schema `Type` an.)
 - Eingabe wird debounced (~300ms).
 - Leeres Suchfeld → unverändertes Verhalten: `GET_PROJEKTE` mit Live-Subscription
   (`PROJEKT_LISTE_SUBSCRIPTION`), volle Liste.
