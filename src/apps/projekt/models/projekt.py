@@ -8,7 +8,9 @@ from django.db.models import Manager, QuerySet
 from general_manager import (
     AdditiveManagerPermission,
     DatabaseInterface,
+    FieldConfig,
     GeneralManager,
+    IndexConfig,
 )
 from general_manager.bucket import Bucket
 from general_manager.measurement import Measurement, MeasurementField
@@ -71,6 +73,18 @@ class Projekt(GeneralManager):
         __delete__ = ["isAdminGroup", "isProjektleiter"]
 
         # auftragsnummer = {"update": ["isAdmin"]}
+
+    class SearchConfig:
+        indexes = [
+            IndexConfig(
+                name="global",
+                fields=[
+                    "name",
+                    "auftragsnummer",
+                    FieldConfig(name="projektleiter__username", boost=1.5),
+                ],
+            )
+        ]
 
     @classmethod
     def create(
