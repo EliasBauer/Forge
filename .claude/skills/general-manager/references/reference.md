@@ -1,15 +1,16 @@
 # GeneralManager – Patterns & Konventionen für Forge
 
-> Zweck: Lokale Referenz für Claude Code und Entwickler. Beschreibt die Patterns,
-> Konventionen und Gotchas des GeneralManager-Frameworks, wie wir sie in Forge verwenden.
+> Zweck: Lokale Referenz für Claude Code / Claude CLI und Entwickler. Beschreibt die
+> Patterns, Konventionen und Gotchas des GeneralManager-Frameworks, wie wir sie in Forge
+> verwenden.
 >
 > Upstream-Doku: https://timkleindick.github.io/general_manager/
 > Repo: https://github.com/TimKleindick/general_manager
-> Aktuelle Version: 0.56.0
+> Aktuelle Version: 0.76.0
 >
-> Diese Doku wurde gegen den v0.56.0-Quellcode verifiziert (nicht nur gegen die Doku-Site).
-> Versionshinweise im Text (z. B. „ab 0.50.0") markieren, in welchem Release sich ein
-> Verhalten geändert hat.
+> Diese Doku wurde gegen den v0.76.0-Quellcode verifiziert (nicht nur gegen die Doku-Site).
+> Versionshinweise im Text (z. B. „ab 0.68.0") markieren, in welchem Release sich ein
+> Verhalten geändert oder ein Feature Einzug gehalten hat.
 
 ---
 
@@ -22,19 +23,21 @@
 5. [Permissions (ABAC)](#5-permissions-abac)
 6. [Validators / Rules](#6-validators--rules)
 7. [Factories & Seeding](#7-factories--seeding)
-8. [MeasurementField](#8-measurementfield)
+8. [MeasurementField & DataFrames](#8-measurementfield--dataframes)
 9. [GraphQL-Integration](#9-graphql-integration)
 10. [GraphQL Subscriptions](#10-graphql-subscriptions)
 11. [Search](#11-search)
 12. [Caching & Warm-up](#12-caching--warm-up)
-13. [History / Audit Trail](#13-history--audit-trail)
+13. [History, Audit & Temporale Abfragen (As-of)](#13-history-audit--temporale-abfragen-as-of)
 14. [Observability / Logging](#14-observability--logging)
 15. [RequestInterface](#15-requestinterface)
 16. [Workflow-Automation](#16-workflow-automation)
-17. [INSTALLED_APPS-Reihenfolge](#17-installed_apps-reihenfolge)
-18. [CSRF & Frontend-Anbindung](#18-csrf--frontend-anbindung)
-19. [Häufige Gotchas](#19-häufige-gotchas)
-20. [Weiterführende Upstream-Doku](#20-weiterführende-upstream-doku)
+17. [File-Uploads](#17-file-uploads)
+18. [Chat / NLI-Subsystem](#18-chat--nli-subsystem)
+19. [INSTALLED_APPS-Reihenfolge](#19-installed_apps-reihenfolge)
+20. [CSRF & Frontend-Anbindung](#20-csrf--frontend-anbindung)
+21. [Häufige Gotchas](#21-häufige-gotchas)
+22. [Weiterführende Upstream-Doku](#22-weiterführende-upstream-doku)
 
 ---
 
@@ -54,7 +57,8 @@ GeneralManager erweitert Django um eine deklarative Schicht aus vier Kernkompone
   - `RequestInterface` – Daten von externen HTTP-Services
 
 - **Bucket** – Typisierte Collection von Managern (ähnlich Queryset).
-  Unterstützt `filter()`, `exclude()`, `sort()`, `group_by()`, Union (`|`). Lazy.
+  Unterstützt `filter()`, `exclude()`, `sort()`, `group_by()`, Union (`|`),
+  Projektionen (`values()`/`values_list()`) und run-gecachte Indizes (`index_by()`). Lazy.
   Konkrete Subtypen: `DatabaseBucket`, `RequestBucket`, `CalculationBucket`, `GroupBucket`.
 
 - **Dependency Tracker** – Jede Datenänderung emittiert Signale. Der Tracker mappt
@@ -98,6 +102,12 @@ class Projekt(GeneralManager):
 
 ### Computed Properties (GraphQL-exponiert)
 
+> **Wichtig (ab 0.68.0): `@graph_ql_property` verlangt eine Return-Annotation.**
+> Ohne `-> Typ` wirft der Decorator `GraphQLPropertyReturnAnnotationError`. Die Annotation
+> steuert den generierten GraphQL-Ausgabetyp — inklusive **strukturierter Ausgabe-Objekttypen**
+> (nicht nur Scalars/Measurement): Gibt eine Property z. B. eine annotierte Struktur zurück,
+> generiert GM daraus einen GraphQL-Objekttyp (`GraphQLType`).
+
 ```python
 from general_manager.api.property import graph_ql_property
 
@@ -107,7 +117,7 @@ class Projekt(GeneralManager):
     enddatum: date | None
 
     @graph_ql_property
-    def dauer_tage(self) -> int | None:
+    def dauer_tage(self) -> int | None:          # Return-Annotation PFLICHT
         if not self.startdatum or not self.enddatum:
             return None
         return (self.enddatum - self.startdatum).days
@@ -122,19 +132,16 @@ class Projekt(GeneralManager):
 entfernt). `@graph_ql_property` und der eigenständige `@cached`-Decorator nutzen seit
 0.50.0 dasselbe `cache=`-Keyword und dieselben vier Modi:
 
-| Decorator                                          | Verhalten                                                               |
-| -------------------------------------------------- | ----------------------------------------------------------------------- |
-| `@graph_ql_property`                               | `cache="run"` (Default) — Ergebnis innerhalb eines GraphQL-Runs gecacht |
-| `@graph_ql_property(cache="dependency")`           | Persistent gecacht, invalidiert wenn abhängige Manager sich ändern      |
-| `@graph_ql_property(cache="timeout", timeout=300)` | Persistent mit TTL (Sekunden); `timeout` ist hier Pflicht (ab 0.50.0)   |
-| `@graph_ql_property(cache="none")`                 | Kein Caching, bei sehr einfachen/billigen Properties                    |
+| Decorator                                            | Verhalten                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| `@graph_ql_property`                                 | `cache="run"` (Default) — Ergebnis innerhalb eines GraphQL-Runs gecacht  |
+| `@graph_ql_property(cache="dependency")`             | Persistent gecacht, invalidiert wenn abhängige Manager sich ändern       |
+| `@graph_ql_property(cache="timeout", timeout=300)`   | Persistent mit TTL (Sekunden); `timeout` ist hier Pflicht (ab 0.50.0)    |
+| `@graph_ql_property(cache="none")`                   | Kein Caching, bei sehr einfachen/billigen Properties                     |
 
-Gültige Modi für `@graph_ql_property`: `run | dependency | timeout | none` (Default `run`).
-Details zu den Modi und zum proaktiven `warm_up` in Abschnitt 12.
-
-Für CalculationInterface-Properties mit DB-Zugriffen ist `cache="run"` (Default)
-ausreichend — für teure Berechnungen, die Request-übergreifend gecacht werden sollen,
-`cache="dependency"` (optional mit `warm_up=True`) verwenden.
+Gültige Modi: `run | dependency | timeout | none` (Default `run`). Für teure Properties
+zusätzlich `warm_up=True` (proaktiver Warm-up nach Invalidierung; braucht `cache="dependency"`
+oder `"timeout"`) — Details in Abschnitt 12.
 
 ### Beziehungen zwischen Managern
 
@@ -273,23 +280,18 @@ quartal = Input(str, depends_on=["jahr"])
 `possible_values` steuert, welche Kombinationen im GraphQL-Schema aufgelistet werden.
 
 > **Empfehlung: `possible_values` sollte einen Bucket liefern, keine reine Python-Liste.**
->
-> Technisch akzeptiert `Input` zwar auch ein Iterable, aber ein Bucket ist das, was du
-> in der Praxis willst: Beim Auflisten/Filtern im GraphQL-Schema wird die Auswahl per
-> `.filter(id=...)` eingegrenzt. Eine reine Liste hat kein `.filter()`, daher kann sie
-> nicht eingegrenzt werden — die Query liefert dann effektiv alle Werte.
+> Eine reine Liste hat kein `.filter()` und kann beim Auflisten nicht per `.filter(id=...)`
+> eingegrenzt werden — die Query liefert dann alle Werte.
 >
 > ```python
-> # SCHLECHT – list() kann nicht gefiltert werden, Query liefert alle Projekte
+> # SCHLECHT – list() kann nicht gefiltert werden
 > projekt = Input(Projekt, possible_values=lambda: list(Projekt.all()))
->
-> # GUT – Filter wird als .filter(id=1) auf den Bucket angewendet
+> # GUT – Filter wird als .filter(id=1) angewendet
 > projekt = Input(Projekt, possible_values=lambda: Projekt.all())
 > ```
 >
-> **Ab 0.54.0:** `possible_values`-Callables werden pro Run gecacht (einmal ausgewertet
-> und innerhalb des Runs wiederverwendet). Das Callable darf also ruhig etwas kosten —
-> es läuft pro Enumeration nur einmal, nicht pro Kombination.
+> **Ab 0.54.0:** `possible_values`-Callables werden pro Run gecacht (einmal ausgewertet,
+> innerhalb des Runs wiederverwendet).
 
 ### Many-to-Many
 
@@ -318,23 +320,16 @@ projekt = Projekt.create(
 )
 
 # Aktualisieren (in-place, gibt dieselbe Instanz zurück)
-projekt.update(
-    creator_id=request.user.id,
-    bezeichnung="Lüftung Rohbau – Phase 2",
-)
+projekt.update(creator_id=request.user.id, bezeichnung="Lüftung Rohbau – Phase 2")
 # projekt.bezeichnung ist danach sofort aktuell
 
 # Löschen (invalidiert die Instanz für weitere Attributzugriffe)
-projekt.delete(
-    creator_id=request.user.id,
-    history_comment="Projekt storniert",
-)
+projekt.delete(creator_id=request.user.id, history_comment="Projekt storniert")
 ```
 
 ### Lesen: `get`-Shortcut (ab 0.44.0)
 
-`Manager.get(**kwargs)` ist ein Convenience-Wrapper für `filter(**kwargs).get()` und
-liefert genau eine Instanz (mit dem Einzeltreffer-Exception-Verhalten des Buckets):
+`Manager.get(**kwargs)` ist ein Convenience-Wrapper für `filter(**kwargs).get()`:
 
 ```python
 projekt = Projekt.get(id=42)
@@ -373,21 +368,13 @@ Unterstützt Django ORM-Lookups: `__exact`, `__icontains`, `__gte`, `__lte`,
 `__in`, `__range`, `__isnull`, `__startswith`, …
 
 ```python
-bucket.filter(
-    name__icontains="test",
-    startdatum__gte=date(2026, 1, 1),
-    status__in=["active", "pending"],
-)
+bucket.filter(name__icontains="test", startdatum__gte=date(2026, 1, 1),
+              status__in=["active", "pending"])
 bucket.exclude(deleted=True)
-# Chaining
-bucket.filter(...).filter(...).exclude(...)
+bucket.filter(...).filter(...).exclude(...)     # Chaining
 ```
 
-Historische Abfragen (Point-in-time):
-
-```python
-stand = Projekt.filter(search_date=datetime(2026, 1, 1))
-```
+Historische (Point-in-time) Abfragen: siehe Abschnitt 13 (As-of).
 
 ### Sortieren
 
@@ -395,13 +382,16 @@ stand = Projekt.filter(search_date=datetime(2026, 1, 1))
 bucket.sort("name")              # aufsteigend
 bucket.sort("-startdatum")       # absteigend
 bucket.sort(("-datum", "name"))  # mehrere Felder
+bucket.sort("projekt__name")     # Relation-Pfad (ab 0.7x) — über FK sortieren
 ```
+
+> **Ab 0.7x:** Sortierung über Relation-Pfade (`relation__feld`) wird unterstützt, auch
+> für In-Memory-Buckets; zusammengesetzte GraphQL-Sort-Keys werden normalisiert.
 
 ### Gruppieren
 
 ```python
 grouped = Projekt.filter().group_by("kunde", "status")
-
 for group_manager in grouped:
     print(group_manager.group_key)   # {"kunde": "X", "status": "Y"}
     for projekt in group_manager:
@@ -420,19 +410,36 @@ count  = bucket.count()         # lazy DB-count
 exists = 42 in bucket
 ```
 
-> `Manager.get(**kwargs)` (Abschnitt 3) ist der Shortcut für `Manager.filter(**kwargs).get()`.
+### Projektionen: `values()` / `values_list()` (ab 0.7x)
+
+Django-QuerySet-artige Projektionen — geben losgelöste Werte statt Manager-Instanzen
+zurück (praktisch für Reports/Exporte). Pro Run gecacht.
+
+```python
+# Liste von Dicts für ausgewählte öffentliche Felder
+rows = Projekt.all().values("auftragsnummer", "bezeichnung")
+# → ({"auftragsnummer": "2026-001", "bezeichnung": "..."}, ...)
+
+# Tupel-Zeilen
+tuples = Projekt.all().values_list("auftragsnummer", "bezeichnung")
+# Flache Tupel bei genau einem Feld:
+nummern = Projekt.all().values_list("auftragsnummer", flat=True)
+```
+
+Unbekannte/duplizierte Felder werfen `UnknownProjectionFieldError` /
+`DuplicateProjectionFieldError`; `flat=True` mit mehr als einem Feld wirft
+`FlatProjectionFieldCountError`.
 
 ### Run-gecachte Indizes: `index_by` / `index_many` (ab 0.51.0)
 
 Für rechenintensiven Code, der wiederholt nach einem Schlüssel in derselben Collection
-sucht (z. B. Kennzahlen-Berechnungen, die pro Position/Rechnung nachschlagen), baut der
-Bucket einen **run-gecachten** In-Memory-Index. Statt N-mal `filter(...)` aufzurufen,
-einmal indexieren und dann per Dict-Lookup zugreifen:
+sucht (z. B. Kennzahlen, die pro Position/Rechnung nachschlagen). Statt N-mal `filter(...)`
+einmal indexieren, dann per Dict-Lookup zugreifen:
 
 ```python
 # Unique-Index: schluessel -> genau ein Manager (wirft bei Duplikat-Keys)
-nach_konto = Lieferantenrechnung.filter(richtiger_titel=auftragsnummer).index_by("buchungskonto")
-rechnung = nach_konto.get(konto)          # dict-Lookup, kein DB-Query
+nach_konto = Lieferantenrechnung.filter(richtiger_titel=nr).index_by("buchungskonto")
+rechnung = nach_konto.get(konto)          # Dict-Lookup, kein DB-Query
 
 # Multi-Index: schluessel -> tuple[Manager, ...]
 positionen_je_art = KostenPosition.filter(projekt=projekt).index_many("art")
@@ -440,23 +447,21 @@ for pos in positionen_je_art.get(art, ()):
     ...
 ```
 
-- `index_by(key_spec, *, max_rows=1000)` → `dict[key, Manager]` (Unique; Duplikat-Key wirft `DuplicateBucketIndexKeyError`)
-- `index_many(key_spec, *, max_rows=...)` → `dict[key, tuple[Manager, ...]]` (Mehrfach)
-- Beide Ergebnisse werden **nur für den aktiven Calculation-Run** gecacht und mit
-  Dependency-Tracking versehen (Invalidierung wie bei anderen Run-Caches).
+- `index_by(key_spec, *, max_rows=1000)` → `dict[key, Manager]` (Unique; Duplikat wirft `DuplicateBucketIndexKeyError`)
+- `index_many(key_spec, *, max_rows=...)` → `dict[key, tuple[Manager, ...]]`
+- Beide Ergebnisse werden **nur für den aktiven Calculation-Run** gecacht (mit Dependency-Tracking).
 - `max_rows` ist ein Guardrail; zu große Buckets werfen `BucketIndexTooLargeError`.
 
 ### Bucket-Dependency-Semantik (wichtig für Caching)
 
 Dependency-Tracking erfolgt **lazy**: erst beim tatsächlichen Auswerten
-(Iteration, `count()`, `first()`, `get()`, `bucket[0]`, `len()`, `in`),
-nicht beim Konstruieren des Buckets. Verkettete `filter()`-Aufrufe werden
-zu einem einzigen Dependency-Eintrag zusammengeführt.
+(Iteration, `count()`, `first()`, `get()`, `bucket[0]`, `len()`, `in`, `values()`),
+nicht beim Konstruieren. Verkettete `filter()` werden zu einem Dependency-Eintrag
+zusammengeführt.
 
 > **Ab 0.48.0:** Innerhalb eines Runs werden Ergebnisse äquivalenter Bucket-Iterationen
-> wiederverwendet — derselbe `filter(...)` zweimal im selben Run trifft beim zweiten Mal
-> den Run-Cache statt erneut die DB. Für wiederholte _Lookups_ (nicht nur Iteration) ist
-> `index_by`/`index_many` trotzdem die bessere Wahl.
+> wiederverwendet (derselbe `filter(...)` zweimal → zweiter Zugriff trifft den Run-Cache).
+> Für wiederholte *Lookups* ist `index_by`/`index_many` trotzdem die bessere Wahl.
 
 ---
 
@@ -476,25 +481,22 @@ class Projekt(GeneralManager):
         __delete__ = ["isAdmin"]
 ```
 
-**`AdditiveManagerPermission`** vs **`OverrideManagerPermission`**:
+- `AdditiveManagerPermission`: Attribut-Regel wird **zusätzlich** zur Klassen-Regel geprüft (AND).
+- `OverrideManagerPermission`: Attribut-Regel **ersetzt** die Klassen-Regel für dieses Feld.
+- `ManagerBasedPermission` ist ein veralteter, abwärtskompatibler Alias von `AdditiveManagerPermission` — nicht mehr verwenden.
 
-- `AdditiveManagerPermission`: Attribut-spezifische Regel wird **zusätzlich** zur Klassen-Regel geprüft (AND).
-- `OverrideManagerPermission`: Attribut-spezifische Regel **ersetzt** die Klassen-Regel für dieses Feld.
-- `ManagerBasedPermission` ist ein veralteter, abwärtskompatibler Alias (Subklasse) von `AdditiveManagerPermission` — nicht mehr verwenden.
+> **Ab 0.7x:** Statische Permission-Pläne (Regeln ohne Instance-Bezug wie `public`,
+> `isAuthenticated`) werden für List-/Search-Queries kurzgeschlossen (Performance). Für die
+> Nutzung ändert sich nichts — die Regeln bleiben identisch.
 
 ### Defaults aus Settings
-
-Nicht explizit definierte `__read__` / `__create__` / `__update__` / `__delete__`
-werden aus `GENERAL_MANAGER["DEFAULT_PERMISSIONS"]` befüllt:
 
 ```python
 # Forge settings.py — alle Aktionen erfordern Login
 GENERAL_MANAGER = {
     "DEFAULT_PERMISSIONS": {
-        "READ":   ["isAuthenticated"],
-        "CREATE": ["isAuthenticated"],
-        "UPDATE": ["isAuthenticated"],
-        "DELETE": ["isAuthenticated"],
+        "READ": ["isAuthenticated"], "CREATE": ["isAuthenticated"],
+        "UPDATE": ["isAuthenticated"], "DELETE": ["isAuthenticated"],
     }
 }
 ```
@@ -514,25 +516,14 @@ GENERAL_MANAGER = {
 | `manyToManyContainsUser:<feld>` | User in M2M-Feld           | `{feld}__id={user.id}` |
 | `matches:<attr>:<wert>`         | `instance.<attr> == wert`  | `{attr}={wert}`        |
 
-Superuser (`is_superuser=True`) umgehen alle Prüfungen.
-
-### AND-Kombination
-
-```python
-__create__ = ["isAdmin&isActive"]   # beide müssen true sein
-```
+Superuser (`is_superuser=True`) umgehen alle Prüfungen. AND-Kombination: `["isAdmin&isActive"]`.
 
 ### Attribut-Level-Overrides
 
 ```python
 class Permission(AdditiveManagerPermission):
     __read__ = ["public"]
-
-    geheimes_feld = {
-        "read":   ["isAdmin"],
-        "update": ["isAdmin"],
-        "delete": [],           # niemand darf löschen
-    }
+    geheimes_feld = {"read": ["isAdmin"], "update": ["isAdmin"], "delete": []}
 ```
 
 ### Delegation via `__based_on__`
@@ -540,28 +531,26 @@ class Permission(AdditiveManagerPermission):
 ```python
 class Position(GeneralManager):
     projekt: Projekt
-
     class Permission(AdditiveManagerPermission):
-        __based_on__ = "projekt"   # delegiert Prüfung an Projekt-Permission
+        __based_on__ = "projekt"            # delegiert an Projekt-Permission
         __create__   = ["isAuthenticated"]  # zusätzliche Einschränkung
 ```
 
-Wenn `__based_on__` gesetzt: **beide** Permissions (Basis + lokale) müssen True sein.
-Ist das delegierte Objekt zur Laufzeit `None`, greift der globale Default.
+Wenn `__based_on__` gesetzt: **beide** Permissions müssen True sein. Ist das delegierte
+Objekt zur Laufzeit `None`, greift der globale Default.
 
 ### Custom Permissions registrieren (Forge-spezifisch)
 
 ```python
 from general_manager.permission import register_permission
 
-
 @register_permission("isProjektleiter")
 def _permission_is_project_leader(instance, user, config) -> bool:
     return user.groups.filter(name="Projektleiter").exists()
 ```
 
-Modul muss beim Django-Start importiert sein — am besten in `AppConfig.ready()` oder
-als Import in `permission.py`, das von `apps.py` geladen wird.
+Modul muss beim Django-Start importiert sein — am besten in `AppConfig.ready()` oder als
+Import in `permission.py`, das von `apps.py` geladen wird.
 
 ### `CalculationPermission` (Forge-Pattern)
 
@@ -574,18 +563,16 @@ class CalculationPermission(AdditiveManagerPermission):
         )
 ```
 
-Pflicht für jeden `CalculationInterface`-Manager: Der Instance-Check des Frameworks
-ruft intern `queryset.filter(id__in=...)` auf, was für CalculationBuckets fehlschlägt
-(`id` ist kein gültiges Filter-Feld). Ohne `CalculationPermission` liefern
-`projektKennzahlenList`, `istWertList` etc. bei normalen Nutzern den Fehler
-`Unknown input field 'id' in filter`.
+Pflicht für jeden `CalculationInterface`-Manager: Der Instance-Check ruft intern
+`queryset.filter(id__in=...)` auf, was für CalculationBuckets fehlschlägt (`id` ist kein
+gültiges Filter-Feld). Ohne `CalculationPermission` liefern `projektKennzahlenList`,
+`istWertList` etc. bei normalen Nutzern `Unknown input field 'id' in filter`.
 
-> **Versionsstand:** In 0.45.0 als weiterhin nötig verifiziert. Die 0.42.2-Änderung
-> (`manager_id__in`-Filter im `filter_parser`) betrifft einen anderen Pfad als den
-> Permission-Instance-Check (plain `id__in`), daher bleibt der Workaround auch in
-> 0.45.0+ erforderlich. **Nach dem Upgrade auf 0.56.0 kurz gegenprüfen** (an _einem_
-> Calculation-Manager `CalculationPermission` weglassen, List-Query mit aktiver
-> Permission als normaler User ausführen) — dies ist Forge-Code, kein Framework-Code,
+> **Versionsstand:** In 0.45.0 als weiterhin nötig verifiziert. Die statischen
+> Permission-Optimierungen ab 0.7x betreffen den Kurzschluss-Pfad, nicht den
+> id-Instance-Check auf Calculation-Buckets. **Nach dem Upgrade auf 0.76.0 kurz
+> gegenprüfen** (an *einem* Calculation-Manager `CalculationPermission` weglassen,
+> List-Query als normaler User ausführen) — dies ist Forge-Code, kein Framework-Code,
 > und lässt sich nur am laufenden System sicher bestätigen.
 
 ---
@@ -620,6 +607,11 @@ class Interface(DatabaseInterface):
 Rules ignorieren `None`-Werte per Default (`ignore_if_none=True`). `ignore_if_none=False`
 erzwingt Prüfung auch bei `None`.
 
+> **Custom-Message-Templates (ab 0.7x):** `custom_error_message` unterstützt **dotted
+> Placeholders** (z. B. `{order.kunde.name}`) und wird **beim Start validiert** — ungültige
+> Placeholder-Pfade werfen früh statt zur Laufzeit. Die frühere Pflicht, *alle* Variablen des
+> Prädikats zu referenzieren, wurde gelockert; du kannst also gezielt einzelne Werte einsetzen.
+
 Manuelle Evaluation (für Tests):
 
 ```python
@@ -628,8 +620,8 @@ if not result:
     print(my_rule.get_error_message())
 ```
 
-Eingebaute AST-Handler: `len()`, `sum()`, `max()`, `min()` – erzeugen sprechende Fehlermeldungen.
-Eigene Handler: `RULE_HANDLERS = ["myapp.rules.CustomHandler"]` in settings.py.
+Eingebaute AST-Handler: `len()`, `sum()`, `max()`, `min()`. Eigene Handler:
+`RULE_HANDLERS = ["myapp.rules.CustomHandler"]` in settings.py.
 
 ---
 
@@ -652,9 +644,6 @@ class ProjektFactory(AutoFactory):
     auftragsnummer = factory.Sequence(lambda n: f"2026-{n:03d}")
 ```
 
-> `AutoFactory` wird für jeden Manager automatisch erstellt.
-> Eigene Factories erben davon und überschreiben nur was nötig.
-
 ### Factory-Methoden
 
 | Methode                      | Speichert in DB | Rückgabe      |
@@ -669,7 +658,6 @@ class ProjektFactory(AutoFactory):
 ```python
 import pytest
 
-
 @pytest.fixture
 def projekt(db):
     return ProjektFactory.create()
@@ -678,41 +666,35 @@ def projekt(db):
 ### Seeding (Entwicklungs-/Demo-Daten)
 
 > **Command-Name:** Das Management-Command heißt **`seed_manager_landscape`**, nicht `seed`.
-> (`python manage.py seed` wirft „Unknown command: 'seed'".)
 
 ```bash
 python manage.py seed_manager_landscape                         # Standard-Counts
-python manage.py seed_manager_landscape --all                   # alle Manager mit Factory.create_batch
-python manage.py seed_manager_landscape --manager Projekt       # einzelner Manager (wiederholbar)
-python manage.py seed_manager_landscape --target Projekt=20     # 20 Projekte sicherstellen (NAME=COUNT)
-python manage.py seed_manager_landscape --count 10              # Default-Mindest-Count pro Manager
+python manage.py seed_manager_landscape --all                   # alle Manager
+python manage.py seed_manager_landscape --manager Projekt       # einzelner Manager
+python manage.py seed_manager_landscape --target Projekt=20     # NAME=COUNT sicherstellen
+python manage.py seed_manager_landscape --count 10              # Default-Mindest-Count
 python manage.py seed_manager_landscape --batch-size 50         # Zeilen pro Transaktion
-python manage.py seed_manager_landscape --continue-on-error     # Weiter auch bei Fehlern
-python manage.py seed_manager_landscape --dry-run               # Was würde erstellt werden?
+python manage.py seed_manager_landscape --continue-on-error     # Weiter bei Fehlern
+python manage.py seed_manager_landscape --dry-run               # Was würde erstellt?
 python manage.py seed_manager_landscape --output-format json    # Dry-run-Ausgabeformat
 ```
 
-Seeding erzeugt nur **fehlende** Zeilen (min. target count). Wenn bereits genug
-existieren, wird nichts erstellt. Abhängige Manager (ForeignKeys) müssen explizit
-mit aufgeführt werden.
+Seeding erzeugt nur **fehlende** Zeilen (min. target count). Abhängige Manager
+(ForeignKeys) müssen explizit mit aufgeführt werden.
 
 ---
 
-## 8) MeasurementField
+## 8) MeasurementField & DataFrames
 
 `MeasurementField` speichert Messgrössen (physikalische Einheiten oder Währungen) typsicher.
 Intern legt es **zwei gepaarte Datenbankspalten** an: ein DecimalField für den Wert
 (`{feld}_value`) und ein CharField für die Einheit (`{feld}_unit`).
 
-### Import
+### Import & Felddefinition
 
 ```python
 from general_manager.measurement import Measurement, MeasurementField
-```
 
-### Felddefinition
-
-```python
 class Interface(DatabaseInterface):
     offerte_summe = MeasurementField(base_unit="CHF")
     gewicht       = MeasurementField(base_unit="kg", null=True, blank=True)
@@ -720,15 +702,9 @@ class Interface(DatabaseInterface):
 ```
 
 > `base_unit` muss multiplikativ sein (keine Offset-Einheiten wie °C); andernfalls
-> wirft das Feld einen `InvalidMeasurementFieldBaseUnitError`.
+> `InvalidMeasurementFieldBaseUnitError`.
 
-Typ-Annotationen auf der Manager-Klasse:
-
-```python
-class MeinManager(GeneralManager):
-    offerte_summe:  Measurement
-    gewicht:        Measurement | None
-```
+Typ-Annotationen auf der Manager-Klasse: `offerte_summe: Measurement`, `gewicht: Measurement | None`.
 
 ### Measurement-Objekte (Python)
 
@@ -741,47 +717,46 @@ m.unit        # 'CHF'
 # Einzel-String parsen → from_string (NICHT Measurement("50 cm"))
 w = Measurement.from_string("50 cm")
 
-# Einheitenumrechnung (physikalisch)
-Measurement(500, "cm").to("m")   # → Measurement(5, 'm')
-
-# Arithmetik (gleiche Einheit)
-Measurement(100, "CHF") + Measurement(50, "CHF")   # → Measurement(150, 'CHF')
+Measurement(500, "cm").to("m")                     # Umrechnung → Measurement(5, 'm')
+Measurement(100, "CHF") + Measurement(50, "CHF")   # Arithmetik → Measurement(150, 'CHF')
 ```
 
 > **Achtung:** Für eine kombinierte „Wert+Einheit"-Zeichenkette `Measurement.from_string("50 cm")`
-> verwenden. Der Zwei-Argument-Konstruktor `Measurement(50, "cm")` erwartet Wert und
-> Einheit getrennt.
+> verwenden. Der Zwei-Argument-Konstruktor `Measurement(50, "cm")` erwartet Wert und Einheit getrennt.
 
-### GraphQL – Output
-
-```graphql
-query {
-  projekt(id: 1) {
-    offerteSumme {
-      value
-      unit
-    }
-    gewicht(targetUnit: "g") {
-      value
-      unit
-    }
-  }
-}
-```
-
-### GraphQL – Mutation (Input)
-
-Measurement-Argumente werden als **String** `"<wert> <einheit>"` übergeben:
+### GraphQL – Output / Mutation
 
 ```graphql
-mutation {
-  createProjekt(offerteSumme: "50000 CHF") {
-    success
-  }
-}
+query   { projekt(id: 1) { offerteSumme { value unit } gewicht(targetUnit: "g") { value unit } } }
+mutation { createProjekt(offerteSumme: "50000 CHF") { success } }   # Input als String
 ```
 
 Im Frontend (TypeScript): `offerteSumme: \`${val.toFixed(2)} CHF\``
+
+### Pandas-DataFrame-Export (ab 0.7x)
+
+GM bringt optionale Helfer, um Zeilen mit Measurement-Feldern in eine **pandas DataFrame**
+zu expandieren und zurück. Für dich als Data Analyst der direkte Weg von GM-Daten in die
+Analyse. **`pandas` ist eine optionale Dependency** — ist es nicht installiert, werfen die
+Helfer beim Aufruf.
+
+```python
+from general_manager.dataframes import to_dataframe, from_dataframe
+
+# Zeilen (Mappings/Dicts) → DataFrame; Measurement-Felder werden in
+# value/unit-Spalten expandiert (z. B. offerte_summe_value / offerte_summe_unit):
+rows = Projekt.all().values("auftragsnummer", "offerte_summe")   # Projektion (Abschnitt 4)
+df = to_dataframe(rows, measurement_fields=["offerte_summe"])
+
+# Zurück: value/unit-Spalten wieder zu Measurement kollabieren
+records = from_dataframe(df, measurement_fields=["offerte_summe"])
+```
+
+- `to_dataframe(rows, *, measurement_fields=None, **dataframe_kwargs)` → `pandas.DataFrame`
+- `from_dataframe(dataframe, *, measurement_fields)` → `list[dict]`
+- Für den Round-Trip in beiden Richtungen dieselben `measurement_fields` angeben. Kollision
+  mit bestehenden Spaltennamen wirft `MeasurementDataFrameColumnCollisionError`; fehlende
+  erwartete Spalten `MissingMeasurementDataFrameColumnError`.
 
 ---
 
@@ -789,26 +764,19 @@ Im Frontend (TypeScript): `offerteSumme: \`${val.toFixed(2)} CHF\``
 
 ### Settings
 
-Bevorzugt werden GM-Settings im `GENERAL_MANAGER`-Dict konfiguriert. Top-level-Settings
-(`AUTOCREATE_GRAPHQL`, `GRAPHQL_URL`) funktionieren weiterhin als Legacy-Fallback — der
-Lookup (`general_manager.conf.get_setting`) prüft in dieser Reihenfolge:
+Bevorzugt im `GENERAL_MANAGER`-Dict. Top-level `AUTOCREATE_GRAPHQL`/`GRAPHQL_URL` funktionieren
+als Legacy-Fallback — Lookup-Reihenfolge (`general_manager.conf.get_setting`):
 `GENERAL_MANAGER[<KEY>]` → `GENERAL_MANAGER_<KEY>` → top-level `<KEY>`.
 
 ```python
-# Kanonische (bevorzugte) Form:
 GENERAL_MANAGER = {
     "AUTOCREATE_GRAPHQL": True,
     "GRAPHQL_URL": "graphql/",
-    "GRAPHQL_FILTER_RELATION_DEPTH": 1,   # Standard; Tiefe für Relation-Filter
-    # Optional: eigene Directives
-    "GRAPHQL_DIRECTIVES": [
+    "GRAPHQL_FILTER_RELATION_DEPTH": 1,     # Standard; Tiefe für Relation-Filter
+    "GRAPHQL_DIRECTIVES": [                  # optional eigene Directives
         GraphQLDirective(name="scenario", locations=[DirectiveLocation.FIELD])
     ],
 }
-
-# Legacy (funktioniert ebenfalls, aber nicht die bevorzugte Stelle):
-# AUTOCREATE_GRAPHQL = True
-# GRAPHQL_URL = "graphql/"
 ```
 
 Die `urls.py` braucht **keinen** manuellen GraphQL-Eintrag.
@@ -817,6 +785,9 @@ Die `urls.py` braucht **keinen** manuellen GraphQL-Eintrag.
 
 - Pro GM-Klasse: `projekt(id: ...)` und `projektList(...)` Queries
 - `@graph_ql_property`-Methoden → eigene Felder (sortable/filterable wenn deklariert)
+- **Strukturierte Ausgabetypen (ab 0.68.0):** Gibt eine Property einen annotierten
+  strukturierten Typ zurück, generiert GM daraus einen GraphQL-Objekttyp (`GraphQLType`) —
+  nicht nur Scalars. Deshalb ist die Return-Annotation Pflicht (Abschnitt 2).
 - CRUD-Mutations: `createProjekt`, `updateProjekt`, `deleteProjekt`
 - Subscription-Felder: `onProjektChange`, `onProjektClassChange`
 
@@ -831,66 +802,32 @@ Die `urls.py` braucht **keinen** manuellen GraphQL-Eintrag.
 | `MeasurementField` | `MeasurementType { value unit }`                          |
 | `BigAutoField`     | `BigIntScalar` via `graphql_scalar="bigint"` am Feld      |
 
-> **Root-Felder sind camelCase (ab 0.42.1).** Auch mehrwortige Klassennamen werden
-> konsistent camelCase exponiert: `IstWert` → `istWert` / `istWertList`,
-> `ChangeRequestFeasibility` → `changeRequestFeasibility` / `changeRequestFeasibilityList`
-> (nicht alles klein wie früher `changerequestfeasibilityList`).
+> **Root-Felder sind camelCase (ab 0.42.1).** Auch mehrwortige Klassennamen:
+> `IstWert` → `istWert` / `istWertList`, `ChangeRequestFeasibility` → `changeRequestFeasibilityList`.
 
 ### Query-Patterns
 
-**Paginierte Liste:**
-
 ```graphql
+# Paginierte Liste
 query {
   projektList(
     page: 1
-    pageSize: 20 # pageSize: 0 → nur pageInfo, keine Items
-    orderBy: "-name" # "-" für absteigend
-    includeInactive: true # nur bei use_soft_delete = True
+    pageSize: 20            # pageSize: 0 → nur pageInfo, keine Items
+    orderBy: "-name"        # "-" für absteigend
+    includeInactive: true   # nur bei use_soft_delete = True
   ) {
-    items {
-      id
-      auftragsnummer
-      offerteSumme {
-        value
-        unit
-      }
-    }
-    pageInfo {
-      totalCount
-      totalPages
-      currentPage
-      pageSize
-    }
+    items { id auftragsnummer offerteSumme { value unit } }
+    pageInfo { totalCount totalPages currentPage pageSize }
   }
 }
-```
 
-**Einzelnes Objekt:**
+# Einzelnes Objekt
+query { projekt(id: 42) { auftragsnummer offerteSumme { value unit } } }
 
-```graphql
-query {
-  projekt(id: 42) {
-    auftragsnummer
-    offerteSumme {
-      value
-      unit
-    }
-  }
-}
-```
-
-**Mutation:**
-
-```graphql
+# Mutation — Rückgabefeld = Klassenname (Grossbuchstabe!)
 mutation {
   createProjekt(auftragsnummer: "2026-002", offerteSumme: "50000 CHF") {
-    success
-    errors
-    Projekt {
-      id
-      auftragsnummer
-    } # Klassenname mit Grossbuchstabe!
+    success errors Projekt { id auftragsnummer }
   }
 }
 ```
@@ -899,23 +836,17 @@ mutation {
 
 ```graphql
 # Direct-Relation (FK)
-query {
-  positionList(filter: { projekt: { auftragsnummer: "2026-001" } }) {
-    items {
-      id
-    }
-  }
-}
-
+query { positionList(filter: { projekt: { auftragsnummer: "2026-001" } }) { items { id } } }
 # Collection (reverse FK / M2M) — any / none
-query {
-  projektList(filter: { positionen: { any: { status: "offen" } } }) {
-    items {
-      id
-    }
-  }
-}
+query { projektList(filter: { positionen: { any: { status: "offen" } } }) { items { id } } }
 ```
+
+### Fehler-Contract (ab 0.7x)
+
+GM hat einen **expliziten öffentlichen GraphQL-Fehler-Contract**: erwartbare Fehler werden
+als `PublicGraphQLError` mit strukturierten Validierungsfehlern zurückgegeben (statt roher
+Interna). `ValidationError` / `ValueError` in Resolvern/Mutations → `BAD_USER_INPUT`.
+Im Frontend die strukturierten `errors` auswerten statt Strings zu parsen.
 
 ### Custom Mutations via `@graph_ql_mutation`
 
@@ -931,28 +862,21 @@ class PublishPermission(MutationPermission):
 
 @graph_ql_mutation(PublishPermission)
 def publish_projekt(info, projekt_id: int, notiz: str | None = None) -> Projekt:
-    # Erster Parameter 'info' = GraphQL ResolveInfo, wird NICHT als Argument exponiert
+    # 'info' (erster Parameter) = GraphQL ResolveInfo, wird NICHT als Argument exponiert
     projekt = Projekt(id=projekt_id)
-    return projekt.update(
-        status="published",
-        notiz=notiz,
-        creator_id=getattr(info.context.user, "id", None),
-    )
+    return projekt.update(status="published", notiz=notiz,
+                          creator_id=getattr(info.context.user, "id", None))
 ```
 
 - `info` als erster Parameter → kein GraphQL-Argument, nur Resolver-Context
-- `str | None` → optionales Argument
-- Rückgabe-Feld heisst `projekt` (Kleinbuchstabe aus Typ-Name)
+- `str | None` → optionales Argument; Rückgabe-Feld = Kleinbuchstabe des Typnamens (`projekt`)
 - Tuple-Return für mehrere Payload-Felder: `-> tuple[PublishedProject, StatusMessage]`
-- `ValidationError` und `ValueError` → `BAD_USER_INPUT` GraphQL-Fehler
 
 ---
 
 ## 10) GraphQL Subscriptions
 
 Requires Django Channels mit konfiguriertem `CHANNEL_LAYERS`.
-
-### Automatisch generierte Subscription-Felder
 
 | Feld                   | Trigger                            |
 | ---------------------- | ---------------------------------- |
@@ -962,30 +886,28 @@ Requires Django Channels mit konfiguriertem `CHANNEL_LAYERS`.
 ```graphql
 subscription {
   onProjektChange(id: 42) {
-    action # "snapshot" | "update" | "delete"
-    item {
-      id
-      bezeichnung
-    }
+    action          # "snapshot" | "update" | "delete"
+    item { id bezeichnung }
   }
 }
 ```
 
-- `snapshot` → Initialzustand beim Aufbau
-- `update` → nach create/update
-- `delete` → nach delete; `item` ist null bei Hard-Delete
+- `snapshot` (Initialzustand), `update` (nach create/update), `delete` (`item` null bei Hard-Delete)
 - Class-wide: kein initialer Snapshot; Permission-Check pro Event
+
+> **Batching (ab 0.7x):** Datenänderungen können als gebündelte Refresh-Events geliefert
+> werden; Bulk-Operationen fassen Benachrichtigungen in einem Batch-Kontext zusammen
+> (`bulk_data_change_notifications`), statt pro Zeile ein Event zu feuern.
 
 ---
 
 ## 11) Search
 
 Volltext-Suche. Standard-Backend: `DevSearch` (in-memory). Produktiv: Meilisearch.
-(Weitere Backends im Paket: Typesense, OpenSearch.)
+(Weitere Backends: Typesense, OpenSearch.)
 
 ```python
 from general_manager import FieldConfig, IndexConfig
-
 
 class Projekt(GeneralManager):
     class SearchConfig:
@@ -1002,35 +924,31 @@ class Projekt(GeneralManager):
 
 ### Indexierung & Reconciliation (umgebaut in 0.55.0)
 
-> **Wichtige Änderung:** Das frühere **request-getriggerte Auto-Reindex wurde entfernt**.
-> Datenänderungen markieren betroffene Such-Indizes nur noch als **„dirty"**; das
-> tatsächliche Reindexieren übernimmt ein **Reconciliation-Sweep**. Das hält Requests
-> schnell und entkoppelt das Indexieren vom Write-Pfad.
+> **Wichtig:** Das request-getriggerte Auto-Reindex wurde entfernt. Datenänderungen
+> markieren Indizes nur noch als **„dirty"**; ein **Reconciliation-Sweep** reindexiert sie.
 
 ```bash
-# Voller / manueller (Neu-)Aufbau der Indizes:
-python manage.py search_index --reindex          # alles neu indizieren
-python manage.py search_index --index global      # nur einen Index
-python manage.py search_index --manager Projekt   # nur einen Manager
-
-# Reconciliation: nur die als "dirty" markierten Indizes abgleichen
+python manage.py search_index --reindex          # voller / manueller (Neu-)Aufbau
+python manage.py search_index --manager Projekt   # nur ein Manager
 python manage.py search_reconcile --once                 # ein Sweep, dann Ende
-python manage.py search_reconcile --watch --interval 30  # Daemon-Modus, alle 30s
+python manage.py search_reconcile --watch --interval 30  # Daemon, alle 30s
 python manage.py search_reconcile --all                  # vorher ALLE States dirty markieren
 python manage.py search_reconcile --limit 100            # max. States pro Sweep
 ```
 
-In Produktion wird `search_reconcile` typischerweise per **Celery Beat** geplant
-(periodischer Sweep), statt im Request-Pfad zu laufen. `search_index --reindex` bleibt
-für vollständige Neuaufbauten (z. B. nach Schema-Änderung am Index).
+In Produktion `search_reconcile` per **Celery Beat** planen. `search_index --reindex` bleibt
+für vollständige Neuaufbauten.
+
+### Deklarative Invalidierungs-Regeln (ab 0.7x)
+
+Zusätzlich zu Feldern lässt sich deklarativ steuern, **welche Datenänderungen** einen Index
+dirty machen — inkl. verwandter Objekte und M2M-Beziehungen (`SearchInvalidationRule`,
+`SearchChange` aus `general_manager.search.config`). Damit werden auch Änderungen an
+referenzierten Managern korrekt als Reindex-Anlass erkannt, gebündelt in beschränkten Batches.
 
 ```graphql
-query {
-  search(query: "Lüftung" index: "global" types: ["Projekt"]) {
-    items { ... }
-    pageInfo { totalCount }
-  }
-}
+query { search(query: "Lüftung", index: "global", types: ["Projekt"]) {
+  items { ... } pageInfo { totalCount } } }
 ```
 
 ---
@@ -1039,26 +957,20 @@ query {
 
 ### `@graph_ql_property` und Run-Cache
 
-`@graph_ql_property` cached Ergebnisse standardmässig im **Run-Cache** (`cache="run"`):
-der Cache wird für die Dauer eines GraphQL-Runs geteilt. Das verhindert doppelte
-Berechnungen, wenn dasselbe Objekt mehrfach in einer Query auftaucht.
+Default `cache="run"`: geteilt für die Dauer eines GraphQL-Runs (verhindert Doppel-Berechnung
+desselben Objekts in einer Query).
 
 | Cache-Modus     | Decorator                                          | Wann verwenden                                                  |
 | --------------- | -------------------------------------------------- | --------------------------------------------------------------- |
 | `run` (Default) | `@graph_ql_property`                               | Alle Properties (ausreichend für DB-Zugriffe)                   |
 | `dependency`    | `@graph_ql_property(cache="dependency")`           | Request-übergreifend gecacht; invalidiert via DependencyTracker |
-| `timeout`       | `@graph_ql_property(cache="timeout", timeout=300)` | Persistent mit TTL; `timeout` ist Pflicht (ab 0.50.0)           |
+| `timeout`       | `@graph_ql_property(cache="timeout", timeout=300)` | Persistent mit TTL; `timeout` ist Pflicht                       |
 | `none`          | `@graph_ql_property(cache="none")`                 | Sehr einfache/billige Properties                                |
-
-> **Hinweis:** Gültige Modi für `@graph_ql_property` sind `run | dependency | timeout | none`
-> (Default `run`). Der frühere `auto`-Modus existiert seit 0.42.0 nicht mehr.
 
 ### Proaktiver Warm-up (ab 0.56.0)
 
-Teure `dependency`- oder `timeout`-gecachte Properties können **proaktiv vorberechnet**
-werden, statt erst lazy beim nächsten Request. Mit `warm_up=True` wird die Property nach
-einer Invalidierung in eine Warm-up-Queue eingereiht und im Hintergrund neu berechnet —
-der nächste echte Request trifft dann bereits einen warmen Cache.
+Teure `dependency`-/`timeout`-Properties per `warm_up=True` proaktiv vorberechnen (statt lazy
+beim nächsten Request):
 
 ```python
 @graph_ql_property(cache="dependency", warm_up=True)
@@ -1066,61 +978,37 @@ def teure_kennzahl(self) -> Measurement | None:
     ...
 ```
 
-- `warm_up=True` erfordert `cache="dependency"` oder `cache="timeout"`
-  (mit `cache="run"`/`"none"` → Fehler `warm_up=True requires cache="dependency" or cache="timeout"`).
-- Die Warm-up-Tasks werden nach Invalidierung enqueued und über Celery abgearbeitet.
-
-Management-Commands für den Warm-up:
+- `warm_up=True` erfordert `cache="dependency"` oder `"timeout"` (sonst `GraphQLPropertyWarmUpConfigurationError`).
+- Warm-up-Tasks werden nach Invalidierung enqueued und über Celery abgearbeitet:
 
 ```bash
 python manage.py graphql_warmup                # ausstehende Warm-up-Rezepte abarbeiten
 python manage.py graphql_warmup_refresh_due    # fällige timeout-gecachte Rezepte erneuern
 ```
 
-In Produktion per Celery Beat planen (analog zu `search_reconcile`).
-
 ### `@cached` Decorator (für eigene Funktionen)
 
-Signatur (sinngemäß): `cached(func=None, timeout=None, *, cache="run")`. Gültige
-`cache`-Modi: `run | dependency | timeout | none`. Default ist `run`.
+Signatur (sinngemäß): `cached(func=None, timeout=None, *, cache="run")`. Modi:
+`run | dependency | timeout | none` (Default `run`).
 
-> **Ab 0.50.0:** Das Keyword heißt `cache=` (vorher `scope=`) — angeglichen an
-> `@graph_ql_property`. Und **bare `@cached` (ohne Klammern) funktioniert jetzt**
-> (vorher nötig: `@cached()`). Beide Schreibweisen sind gültig.
+> **Ab 0.50.0:** Keyword heißt `cache=` (vorher `scope=`), und **bare `@cached` funktioniert**
+> (vorher `@cached()` nötig). Beide Schreibweisen gültig.
 
 ```python
 from general_manager.cache.cache_decorator import cached
 
+@cached                                  # Run-Scope (Default), bare-Form ok
+def a(projekt_id: int) -> dict: ...
 
-# Run-Scope (Default): memoiziert innerhalb des aktiven Run-Contexts,
-# wird am Ende des Runs verworfen. Bare-Form ist ok:
-@cached
-def projekt_run_cache(projekt_id: int) -> dict:
-    projekt = Projekt(id=projekt_id)
-    return {"budget": projekt.offerte_summe.magnitude}
+@cached(cache="dependency")              # persistent + Dependency-Invalidierung; KEIN timeout
+def b(projekt_id: int) -> dict: ...
 
+@cached(cache="timeout", timeout=300)    # TTL; timeout PFLICHT und nur hier erlaubt
+def c(projekt_id: int) -> float: ...
 
-# Dependency-Scope: persistent im Cache-Backend, automatisch invalidiert,
-# wenn ein gelesener Datensatz sich ändert (DependencyTracker). KEIN timeout erlaubt.
-@cached(cache="dependency")
-def projekt_forecast(projekt_id: int) -> dict:
-    ...
-
-
-# Timeout-Scope: TTL-basiert im Cache-Backend. timeout ist hier PFLICHT
-# (und nur in diesem Scope erlaubt). Kein Dependency-Tracking.
-@cached(cache="timeout", timeout=300)
-def expensive_calc(projekt_id: int) -> float:
-    ...
-
-
-# Caching abschalten:
-@cached(cache="none")
-def always_fresh(projekt_id: int) -> float:
-    ...
+@cached(cache="none")                    # kein Caching
+def d(projekt_id: int) -> float: ...
 ```
-
-**Scope-Regeln (strikt validiert):**
 
 | `cache`      | `timeout`        | Verhalten                                                        |
 | ------------ | ---------------- | ---------------------------------------------------------------- |
@@ -1129,38 +1017,32 @@ def always_fresh(projekt_id: int) -> float:
 | `timeout`    | **erforderlich** | Cache-Backend mit TTL (Sekunden); kein Dependency-Tracking       |
 | `none`       | nicht erlaubt    | Kein Caching                                                     |
 
-> **Falsch (häufiger Irrtum):** `@cached(timeout=300)` ohne `cache="timeout"` wirft einen
-> Fehler, weil `timeout` nur mit `cache="timeout"` kombinierbar ist
-> (`timeout is only supported with cache="timeout"`).
-> Ein eigenständiges `scoped_cache` gibt es **nicht** — "scoped caching" ist der
-> `cache="run"`-Default von `@cached`.
+> **Falsch:** `@cached(timeout=300)` ohne `cache="timeout"` wirft
+> (`timeout is only supported with cache="timeout"`). Ein `scoped_cache` gibt es **nicht** —
+> "scoped caching" ist der `cache="run"`-Default.
 
-### DependencyTracker
+### DependencyTracker & Invalidierung
 
 ```python
 from general_manager.cache import DependencyTracker
-
 with DependencyTracker() as dependencies:
-    result = expensive_fn()
-    # dependencies: Set[Dependency]
+    result = expensive_fn()   # dependencies: Set[Dependency]
 ```
 
-### Automatische Invalidierung
+`create()/update()/delete()` emittieren Invalidierungssignale; alle `cache="dependency"`-Funktionen,
+die den Datensatz gelesen haben, werden invalidiert (`warm_up`-Properties danach proaktiv neu berechnet).
 
-`create()`, `update()`, `delete()` emittieren Cache-Invalidierungssignale.
-Alle mit `cache="dependency"` gecachten Funktionen, die den betreffenden Datensatz
-gelesen haben, werden invalidiert. (Properties mit `warm_up=True` werden danach
-proaktiv neu berechnet — siehe oben.)
-
-**Produktion:** Geteiltes Cache-Backend (Redis) konfigurieren — der Dependency-Index
-muss prozessübergreifend synchron sein. (Intern ist der Dependency-Index ab 0.52.0
-geshardet und die Invalidierung koordiniert; das ist für die Nutzung transparent.)
+**Produktion:** Geteiltes Cache-Backend (Redis). Der Dependency-Index ist ab 0.52.0 geshardet
+und die Invalidierung koordiniert; der Run-Cache-Speicher wird ab 0.69.x beschränkt/prozessweit
+evakuiert (transparent für die Nutzung).
 
 ---
 
-## 13) History / Audit Trail
+## 13) History, Audit & Temporale Abfragen (As-of)
 
-GeneralManager integriert `django-simple-history`. Automatisch hinzugefügte Felder:
+### Audit Trail
+
+GM integriert `django-simple-history`. Automatisch hinzugefügte Felder:
 
 | Feld                    | Bedeutung                                |
 | ----------------------- | ---------------------------------------- |
@@ -1170,33 +1052,60 @@ GeneralManager integriert `django-simple-history`. Automatisch hinzugefügte Fel
 | `history_type`          | `+` (create), `~` (update), `-` (delete) |
 
 ```python
-# Audit-Trail einer Instanz abfragen
 projekt.history.all()
 projekt.history.filter(history_change_reason__icontains="import")
 projekt.history.order_by("-history_date").first()
-
-# Point-in-time Bucket
-stand = Projekt.filter(search_date=datetime(2026, 1, 1))
 ```
+
+### Temporale Abfragen (As-of, ab 0.7x)
+
+Reads „wie zu einem bestimmten Zeitpunkt" — inkl. historischem M2M-Tracking. Zwei Wege:
+
+**Python — Context-Manager `as_of`:**
+
+```python
+from general_manager import as_of, current_as_of_date
+
+with as_of(datetime(2026, 1, 1)):
+    stand = Projekt.all()                 # liefert den Stand zum Stichtag
+    kennzahl = ProjektKennzahlen(projekt=p).summe_ist_kosten  # auch Berechnungen as-of
+    # current_as_of_date() -> datetime(2026, 1, 1)
+```
+
+- Der Stichtag wird über ORM-Reads **und** Calculation-Queries propagiert.
+- Verschachtelte `as_of` mit *abweichendem* Zeitpunkt → `HistoricalContextConflictError`.
+- **Mutations in einem As-of-Kontext sind verboten** → `HistoricalMutationError`.
+
+**GraphQL — `@asOf`-Directive (query-only):**
+
+```graphql
+query ($stichtag: DateTime!) @asOf(date: $stichtag) {
+  projektList { items { id auftragsnummer offerteSumme { value unit } } }
+}
+```
+
+- Genau **eine** `@asOf`-Directive pro Operation, nur auf Query-Operationen, Argument `date`.
+- Auf Mutations/Subscriptions nicht erlaubt.
+
+> Der ältere Weg `Projekt.filter(search_date=datetime(...))` existiert weiterhin für einfache
+> Point-in-time-Filter; für ganze Read-Szenarien (mehrere Manager/Berechnungen konsistent zum
+> selben Stichtag) ist der `as_of`-Kontext bzw. `@asOf` der robustere Weg.
 
 ---
 
 ## 14) Observability / Logging
 
 ```python
-# In settings.py aktivieren:
 GENERAL_MANAGER = {
     "PERMISSION_AUDIT": True,
     # Logt: Akteur, Action-Typ, betroffene Attribute, Authorization-Outcome
     # Inkl. candidate/authorized/denied rows pro GraphQL-List-Query
 }
-
-LOGGING = {
-    "loggers": {
-        "general_manager": {"handlers": ["json_handler"], "level": "INFO"},
-    }
-}
+LOGGING = {"loggers": {"general_manager": {"handlers": ["json_handler"], "level": "INFO"}}}
 ```
+
+> **Ab 0.7x:** Mutation-Phasen-Latenzen werden als Observability-Signale attributiert
+> (Data-Change-Transaction-Lifecycle) — nützlich, um teure Mutationen/Invalidierungen zu messen.
 
 Cache- und Mutation-Signale für eigene Pipelines:
 
@@ -1226,18 +1135,15 @@ class RemoteProjekt(GeneralManager):
         status = RequestField(str, source="state")
 
         class Meta:
-            filters = {
-                "status": RequestFilter(remote_name="state", value_type=str),
-            }
+            filters = {"status": RequestFilter(remote_name="state", value_type=str)}
             query_operations = {
                 "list":   RequestQueryOperation(method="GET", path="/projects"),
                 "detail": RequestQueryOperation(method="GET", path="/projects/{id}"),
             }
             transport        = UrllibRequestTransport()
             transport_config = RequestTransportConfig(
-                base_url="https://service.example.com/api", timeout=10
-            )
-            auth_provider = BearerTokenAuthProvider(token=lambda: "token-here")
+                base_url="https://service.example.com/api", timeout=10)
+            auth_provider    = BearerTokenAuthProvider(token=lambda: "token-here")
 ```
 
 Nicht als generischen HTTP-Client verwenden — `RequestInterface` ist ressourcen-orientiert.
@@ -1246,18 +1152,12 @@ Nicht als generischen HTTP-Client verwenden — `RequestInterface` ist ressource
 
 ## 16) Workflow-Automation
 
-Verbindet Manager-Events mit dauerhafter Automation.
-
 ```python
-# settings.py
 GENERAL_MANAGER = {
-    # CRUD-Signale automatisch als Workflow-Events publizieren
-    "WORKFLOW_SIGNAL_BRIDGE": True,
+    "WORKFLOW_SIGNAL_BRIDGE": True,   # CRUD-Signale als Workflow-Events publizieren
     # "WORKFLOW_ENGINE": "LocalWorkflowEngine"  # oder CeleryWorkflowEngine
 }
 ```
-
-Event-Routing via Registry:
 
 ```python
 from general_manager.workflow import get_event_registry, manager_updated_event
@@ -1272,19 +1172,75 @@ registry.register(
 
 Execution-States: `pending → running → completed/failed/cancelled` (+ `waiting` für async).
 
-Management-Commands:
-
 ```bash
 python manage.py workflow_drain_outbox          # ausstehende Events abarbeiten
 python manage.py workflow_replay_dead_letters   # fehlgeschlagene nochmal versuchen
 ```
 
-> **Verwandte periodische Commands (Celery Beat):** `search_reconcile` (Abschnitt 11)
-> und `graphql_warmup` / `graphql_warmup_refresh_due` (Abschnitt 12).
+> **Verwandte periodische Commands (Celery Beat):** `search_reconcile` (Abschnitt 11),
+> `graphql_warmup` / `graphql_warmup_refresh_due` (Abschnitt 12), `chat_cleanup` (Abschnitt 18).
 
 ---
 
-## 17) INSTALLED_APPS-Reihenfolge
+## 17) File-Uploads
+
+Ab 0.7x bringt GM eine **File-Upload-Pipeline** für Django `FileField`/`ImageField`, exponiert
+über typisierte GraphQL-Felder. Modell: Der Client fordert eine **Upload-Intent** an (Token),
+lädt die Datei hoch und die Datei wird **nach dem Commit finalisiert** — Permissions werden vor
+dem Token geprüft (preflight).
+
+```python
+from general_manager import FileUploadPolicy   # top-level importierbar
+
+class Interface(DatabaseInterface):
+    dokument = models.FileField(upload_to="dokumente/")
+    # Upload-Regeln über eine FileUploadPolicy (Größe, Typen, Sichtbarkeit, Inspektion)
+
+policy = FileUploadPolicy(
+    max_bytes=10 * 1024 * 1024,                     # optionales Größenlimit
+    allowed_content_types=["application/pdf"],       # optionale MIME-Whitelist
+    allowed_extensions=[".pdf"],                     # optionale Extension-Whitelist
+    public=False,                                    # öffentlich zugreifbar?
+    # content_inspector=<callable>                   # optionale Inhaltsprüfung
+)
+```
+
+Relevante Bausteine (alle top-level aus `general_manager` importierbar):
+
+- **Policy/Config:** `FileUploadPolicy`, `FileInspection`, `FileContentInspector`, `FileUploadConfigurationError`
+- **GraphQL-Typen:** `UploadToken` (Intent/Token), `StoredFile`, `StoredImage` (typisierte Felder)
+- **Adapter:** `register_upload_adapter`, `UploadAdapter`, `UploadFinalizationAdapter`,
+  `ExactPublicDownloadAdapter`, `ProxyUploadSink`, `UploadInstructions`
+- **Fehler:** `UploadError`, `UploadExpiredError`, `UploadTokenInvalidError`, `UploadIncompleteError`
+
+Ablauf (vereinfacht): typisiertes GraphQL-Upload-Feld wird für das `FileField` generiert →
+Client holt eine **feldgebundene, einmalig nutzbare** Upload-Intent (Token, Permission-Preflight)
+→ Datei wird über den Transport/Adapter hochgeladen (auch Proxy-Streaming möglich) → nach
+DB-Commit finalisiert; sichere Downloads über den Download-Adapter. Für den vollständigen Flow
+inkl. Storage-Adapter siehe Upstream-Doku.
+
+> Da dies mehrere bewegliche Teile hat (Storage-Adapter, Tokens, Finalisierung), vor
+> Produktiv-Einsatz gegen die Upstream-Doku und die konkrete Storage-Backend-Konfiguration abgleichen.
+
+---
+
+## 18) Chat / NLI-Subsystem
+
+Ab 0.7x enthält GM ein optionales **Chat-/Natural-Language-Interface-Subsystem** (Paket
+`general_manager.chat`) mit Persistenz-Modellen (eigene Migrations) und Provider-Anbindung
+(u. a. OpenAI). Zweck: natürlich-sprachliche Interaktion mit den GM-Daten, inkl.
+Pending-Confirmation-Flow für Aktionen und einem Eval-Runner für Prompt-Zuverlässigkeit.
+
+- Wird beim App-Start verdrahtet und über die Public-Exports zugänglich gemacht.
+- Aufräum-Command: `python manage.py chat_cleanup`.
+
+> **Scope-Hinweis:** Forge nutzt dieses Subsystem aktuell nicht. Es ist hier nur der
+> Vollständigkeit halber erwähnt — für Details zur Konfiguration (Provider, Persistenz,
+> Confirmation-Flow) die Upstream-Doku heranziehen, bevor man es aktiviert.
+
+---
+
+## 19) INSTALLED_APPS-Reihenfolge
 
 > **Kritisch:** `django.contrib.admin` muss **vor** `general_manager` stehen.
 
@@ -1303,16 +1259,12 @@ INSTALLED_APPS = [
     # ... eigene Apps ...
 ]
 
-# GM-Settings bevorzugt im GENERAL_MANAGER-Dict (siehe Abschnitt 9):
-GENERAL_MANAGER = {
-    "AUTOCREATE_GRAPHQL": True,
-    "GRAPHQL_URL": "graphql/",
-}
+GENERAL_MANAGER = {"AUTOCREATE_GRAPHQL": True, "GRAPHQL_URL": "graphql/"}
 ```
 
 ---
 
-## 18) CSRF & Frontend-Anbindung
+## 20) CSRF & Frontend-Anbindung
 
 ```python
 # forge/middleware.py
@@ -1326,48 +1278,47 @@ MIDDLEWARE = ["forge.middleware.DisableCSRFForGraphQL", ...]
 CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 ```
 
-Apollo Client (TypeScript):
-
 ```typescript
+// Apollo Client
 const apolloClient = new ApolloClient({
   link: new HttpLink({ uri: "/graphql/" }),
   cache: new InMemoryCache(),
 });
-```
-
-Vite-Proxy:
-
-```typescript
+// Vite-Proxy
 server: { proxy: { "/graphql": "http://localhost:8000" } }
 ```
 
 ---
 
-## 19) Häufige Gotchas
+## 21) Häufige Gotchas
 
-| Problem                                                 | Ursache                                                           | Lösung                                                                                                                                                 |
-| ------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/admin/` → `NoReverseMatch: app_list`                  | `general_manager` vor `django.contrib.admin`                      | Django-Builtins zuerst (Abschnitt 17)                                                                                                                  |
-| `Bitte höchstens 2 Dezimalstellen`                      | GM gibt `float` ans Model; `DecimalField` → IEEE-754-Präzision    | `full_clean()` in Interface überschreiben (siehe unten)                                                                                                |
-| `super()` in Interface-Methode schlägt fehl             | GM kopiert Methoden als plain functions; `__class__`-Cell falsch  | MRO manuell: `for cls in type(self).__mro__[1:]: if 'full_clean' in cls.__dict__: cls.full_clean(...)`                                                 |
-| `Unknown type 'Decimal'`                                | GM kennt keinen `Decimal`-Scalar                                  | `Float!` für DecimalField-Variablen, `String!` für MeasurementField                                                                                    |
-| `Cannot query field 'projekt'` auf Mutation             | Rückgabefeld = Klassenname (Grossbuchstabe)                       | `Projekt { ... }` statt `projekt { ... }`                                                                                                              |
-| `projektList` statt `projekt_list`                      | GM erzeugt camelCase                                              | Immer camelCase in GraphQL-Queries                                                                                                                     |
-| Mehrwort-Klasse → falsch geschriebenes Root-Feld        | Vor 0.42.1 wurden Root-Felder kleingeschrieben                    | camelCase nutzen: `IstWert` → `istWertList`, `ChangeRequestFeasibility` → `changeRequestFeasibilityList`                                               |
-| `items` statt `results` in Paginierung                  | GM nennt das Feld `items`                                         | `{ items { ... } pageInfo { totalCount } }`                                                                                                            |
-| `projektleiter { username }` schlägt fehl               | ForeignKey → `String` in GraphQL                                  | Kein Sub-Selection; direkt als String abfragen                                                                                                         |
-| CalculationInterface-Liste zeigt alle Daten             | `possible_values` gibt list() statt Bucket zurück                 | `possible_values=lambda: Manager.all()` — Bucket, kein `list(...)`                                                                                     |
-| `Input.monthly_date(year=...)` → `TypeError`            | Helfer nehmen `start`/`end` (date), kein `year`/`start_year`      | `Input.monthly_date(start=date(...), end=date(...))` (keyword-only)                                                                                    |
-| `@cached(scope="run")` → `TypeError`                    | Keyword heißt seit 0.50.0 `cache=`, nicht `scope=`                | `@cached(cache="run")`                                                                                                                                 |
-| `@cached(timeout=N)` → `CacheTimeoutConfigurationError` | `timeout` ist nur mit `cache="timeout"` erlaubt                   | `@cached(cache="timeout", timeout=N)`                                                                                                                  |
-| `scoped_cache` nicht importierbar                       | Es gibt kein `scoped_cache`                                       | `@cached(cache="run")` verwenden                                                                                                                       |
-| `warm_up=True requires cache=...`                       | `warm_up` braucht `dependency` oder `timeout`                     | `@graph_ql_property(cache="dependency", warm_up=True)`                                                                                                 |
-| Property/Hilfsmethode wird mehrfach berechnet           | Private Methoden (`_helper()`) werden nicht vom run-cache erfasst | Abgeleitete `@graph_ql_property` _andere Properties_ lesen lassen, oder `@cached(cache="run")` auf Helfer; für wiederholte Lookups `bucket.index_by()` |
-| `Measurement("50 cm")` liefert nicht das Erwartete      | Einzel-String → `from_string`, Konstruktor will Wert+Einheit      | `Measurement.from_string("50 cm")` bzw. `Measurement(50, "cm")`                                                                                        |
-| Suche aktualisiert sich nicht nach Datenänderung        | Auto-Reindex wurde in 0.55.0 entfernt; Index ist nur "dirty"      | `search_reconcile` laufen lassen (manuell `--once` oder per Celery Beat)                                                                               |
-| `cache="auto"` Fehler                                   | Modus wurde in 0.42.0 entfernt                                    | Auf `cache="run"` (Default) oder `cache="dependency"` umstellen                                                                                        |
-| `Float cannot represent non numeric value`              | Frontend schickt String statt Zahl                                | `parseFloat(val.replace(",", "."))`                                                                                                                    |
-| Vite zeigt nichts im Container                          | Vite lauscht nur auf localhost                                    | `npm run dev -- --host`                                                                                                                                |
+| Problem                                                  | Ursache                                                           | Lösung                                                                                                   |
+| -------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/admin/` → `NoReverseMatch: app_list`                   | `general_manager` vor `django.contrib.admin`                      | Django-Builtins zuerst (Abschnitt 19)                                                                    |
+| `GraphQLPropertyReturnAnnotationError`                   | `@graph_ql_property` ohne `-> Typ` (ab 0.68.0 Pflicht)            | Return-Annotation ergänzen; sie treibt den GraphQL-Ausgabetyp                                            |
+| `Bitte höchstens 2 Dezimalstellen`                       | GM gibt `float` ans Model; `DecimalField` → IEEE-754-Präzision    | `full_clean()` in Interface überschreiben (siehe unten)                                                  |
+| `super()` in Interface-Methode schlägt fehl             | GM kopiert Methoden als plain functions; `__class__`-Cell falsch  | MRO manuell durchlaufen (siehe Decimal-Float-Fix)                                                        |
+| `Unknown type 'Decimal'`                                 | GM kennt keinen `Decimal`-Scalar                                  | `Float!` für DecimalField, `String!` für MeasurementField                                                |
+| `Cannot query field 'projekt'` auf Mutation              | Rückgabefeld = Klassenname (Grossbuchstabe)                       | `Projekt { ... }` statt `projekt { ... }`                                                                |
+| `projektList` statt `projekt_list`                       | GM erzeugt camelCase                                              | Immer camelCase in GraphQL-Queries                                                                       |
+| Mehrwort-Klasse → falsch geschriebenes Root-Feld         | Vor 0.42.1 kleingeschrieben                                       | camelCase: `IstWert` → `istWertList`                                                                     |
+| `items` statt `results` in Paginierung                   | GM nennt das Feld `items`                                         | `{ items { ... } pageInfo { totalCount } }`                                                              |
+| `projektleiter { username }` schlägt fehl                | ForeignKey → `String` in GraphQL                                  | Kein Sub-Selection; direkt als String abfragen                                                           |
+| CalculationInterface-Liste zeigt alle Daten              | `possible_values` gibt list() statt Bucket                       | `possible_values=lambda: Manager.all()` — Bucket, kein `list(...)`                                       |
+| `Input.monthly_date(year=...)` → `TypeError`             | Helfer nehmen `start`/`end` (date)                               | `Input.monthly_date(start=date(...), end=date(...))` (keyword-only)                                      |
+| `@cached(scope="run")` → `TypeError`                     | Keyword heißt seit 0.50.0 `cache=`                               | `@cached(cache="run")`                                                                                   |
+| `@cached(timeout=N)` → `CacheTimeoutConfigurationError`  | `timeout` nur mit `cache="timeout"` erlaubt                      | `@cached(cache="timeout", timeout=N)`                                                                    |
+| `scoped_cache` nicht importierbar                        | Es gibt kein `scoped_cache`                                       | `@cached(cache="run")`                                                                                   |
+| `warm_up=True requires cache=...`                        | `warm_up` braucht `dependency` oder `timeout`                     | `@graph_ql_property(cache="dependency", warm_up=True)`                                                   |
+| `HistoricalMutationError`                                | create/update/delete innerhalb `with as_of(...)` / `@asOf`        | Mutationen außerhalb des As-of-Kontexts ausführen (As-of ist read-only)                                  |
+| `HistoricalContextConflictError`                         | verschachtelte `as_of` mit abweichendem Stichtag                 | Nur einen Stichtag pro Read-Szenario verwenden                                                           |
+| Property/Hilfsmethode wird mehrfach berechnet            | Private Methoden werden nicht vom run-cache erfasst              | Abgeleitete `@graph_ql_property` andere Properties lesen lassen, `@cached(cache="run")` auf Helfer, oder `bucket.index_by()` |
+| `Measurement("50 cm")` liefert nicht das Erwartete       | Einzel-String → `from_string`                                    | `Measurement.from_string("50 cm")` bzw. `Measurement(50, "cm")`                                          |
+| `to_dataframe` wirft `ModuleNotFoundError`               | `pandas` ist optionale Dependency, nicht installiert            | `pandas` installieren (bzw. als Extra), dann DataFrame-Helfer nutzen                                     |
+| Suche aktualisiert sich nicht nach Datenänderung         | Auto-Reindex in 0.55.0 entfernt; Index nur "dirty"              | `search_reconcile` laufen lassen (`--once` oder Celery Beat)                                             |
+| `cache="auto"` Fehler                                    | Modus in 0.42.0 entfernt                                         | `cache="run"` (Default) oder `cache="dependency"`                                                        |
+| `Float cannot represent non numeric value`               | Frontend schickt String statt Zahl                              | `parseFloat(val.replace(",", "."))`                                                                      |
+| Vite zeigt nichts im Container                           | Vite lauscht nur auf localhost                                  | `npm run dev -- --host`                                                                                  |
 
 ### Decimal-Float-Fix in Interface
 
@@ -1406,7 +1357,7 @@ class MeinModel(GeneralManager):
 
 ---
 
-## 20) Weiterführende Upstream-Doku
+## 22) Weiterführende Upstream-Doku
 
 - Architecture: https://timkleindick.github.io/general_manager/concepts/architecture/
 - Database Interfaces: https://timkleindick.github.io/general_manager/concepts/interfaces/db_based_interface/
