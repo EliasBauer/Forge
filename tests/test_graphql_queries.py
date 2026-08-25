@@ -114,6 +114,21 @@ _QUERY_PROJEKT_DETAIL = """
     }
 """
 
+_QUERY_SEARCH_PROJEKTE = """
+    query SearchProjekte($query: String!) {
+      search(query: $query, index: "global", types: ["Projekt"], pageSize: 20) {
+        results {
+          ... on ProjektType {
+            id
+            name
+            auftragsnummer
+          }
+        }
+        total
+      }
+    }
+"""
+
 
 class _SharedSetup(TestCase):
     """Erstellt Testdaten einmalig, wird von allen Query-Tests geerbt."""
@@ -202,6 +217,29 @@ class GraphQLQueryShapeTest(_SharedSetup):
 
         # istWertList ist vorhanden (Bexio-Fehler in Testumgebung erwartet)
         self.assertIn("istWertList", p)
+
+    # ------------------------------------------------------------------
+    # search (Projekt-Suche über das Backend)
+    # ------------------------------------------------------------------
+
+    def test_search_findet_projekt_nach_name(self) -> None:
+        with self.captureOnCommitCallbacks(execute=True):
+            Projekt.create(
+                ignore_permission=True,
+                name="Lueftungsanlage Nord",
+                auftragsnummer="T-2026-042",
+                offerte_summe=Measurement(50_000, "CHF"),
+                wv_summe=Measurement(45_000, "CHF"),
+                jahr=2026,
+            )
+        result = _gql(
+            self.client,
+            _QUERY_SEARCH_PROJEKTE,
+            variables={"query": "Lueftungsanlage"},
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        namen = [r["name"] for r in result["data"]["search"]["results"]]
+        self.assertIn("Lueftungsanlage Nord", namen)
 
     # ------------------------------------------------------------------
     # GET_FEHLENDE_STUNDENSATZ_JAHRE

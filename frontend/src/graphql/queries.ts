@@ -37,6 +37,43 @@ export const GET_PROJEKTE = gql`
   }
 `;
 
+export const SEARCH_PROJEKTE = gql`
+  query SearchProjekte($query: String!) {
+    search(query: $query, index: "global", types: ["Projekt"], pageSize: 20) {
+      results {
+        ... on ProjektType {
+          id
+          auftragsnummer
+          name
+          offerteSumme {
+            value
+            unit
+          }
+          wvSumme {
+            value
+            unit
+          }
+          auftragFertig
+          projektleiter
+          projektKennzahlenList {
+            items {
+              summeWvPlus {
+                value
+                unit
+              }
+              summeIstKosten {
+                value
+                unit
+              }
+            }
+          }
+        }
+      }
+      total
+    }
+  }
+`;
+
 export const GET_PROJEKT = gql`
   query ProjektDetail($id: ID!) {
     projekt(id: $id) {
