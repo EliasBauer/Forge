@@ -11,7 +11,11 @@ Erkenne zu Beginn via `test -f /.dockerenv`:
 
 **Dev-Befehle** (Code/Tests/Linting) gehören in `forge-dev`: `uv`, `pytest`, `ruff`, `mypy`, `python manage.py`, `npm`, `pre-commit`.
 
-**Orchestrierung NIE wrappen:** `docker`, `docker compose`, `git`, `gh` laufen immer roh auf dem Host — niemals in `docker exec`. `docker exec … docker compose …` ist immer falsch.
+**Orchestrierung roh auf dem Host, nie wrappen:** `docker`, `docker compose`, `gh` und die hook-freien Git-Kommandos (`add`, `status`, `log`, `diff`, `push`, `fetch`) laufen immer roh auf dem Host. `docker exec … docker compose …` ist immer falsch.
+
+**Ausnahme `git commit`:** Der Commit triggert den pre-commit-Hook, der Dev-Tools (ruff/pytest/mypy/vitest) braucht — die gibt es nur im Container. Auf dem Host **im Container committen**:
+`docker exec -w /workspaces/Forge forge-dev git commit -m "…"`
+Niemals `--no-verify`, um den Hook zu umgehen — das verwirft genau die Prüfung, die grün sein soll.
 
 ## Schneller Test-Loop
 Gezielt: `uv run --group dev pytest tests/pfad/test_x.py` (Backend) · `npm --prefix frontend test` (Frontend).
