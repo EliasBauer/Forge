@@ -28,7 +28,8 @@ Der Compose-Stack ist eine ANDERE Umgebung als `forge-dev`: „läuft im DevCont
 Up/Down sind bewusste Aktionen, kein Teil des automatischen Task-Loops.
 
 ## Commit-Disziplin
-Committe nur, wenn ausdrücklich gesagt — das hat Vorrang vor dem automatischen Commit-Takt von Superpowers' TDD-Loop.
+Bei jedem Task-Commit die Plan-Datei mit in `git add` aufnehmen —
+sonst werden die abgehakten Boxen des Tasks nie mitcommittet.
 
 ## Code-Regeln
 
