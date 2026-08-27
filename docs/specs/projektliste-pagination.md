@@ -28,8 +28,9 @@ Cap dort unkritisch ist.
 - Initial-Load bleibt bewusst über `GET_PROJEKTE`, nicht `SEARCH_PROJEKTE` — das ist die
   einzige Query, die an `PROJEKT_LISTE_SUBSCRIPTION` hängt (Live-Update bei Änderungen durch
   Kolleg:innen). Diese Trennung ist unverändert korrekt und **nicht** Teil dieser Spec.
-- Der Suche-Index heißt aktuell `"global"` ([projekt.py:80](../../src/apps/projekt/models/projekt.py#L80))
-  — einzige Fundstelle im Repo (Backend-Config + Frontend-Query).
+- Der Suche-Index heißt aktuell `"global"` ([projekt.py:80](../../src/apps/projekt/models/projekt.py#L80)).
+  Referenziert an drei Stellen im Repo: Backend-Config (`projekt.py`), Frontend-Query
+  (`queries.ts`) und ein Backend-Test (`tests/test_graphql_queries.py:119`, `_QUERY_SEARCH_PROJEKTE`).
 
 ## Backend-Fähigkeiten (verifiziert gegen GM v0.76.0 Quellcode)
 
@@ -54,10 +55,8 @@ Cap dort unkritisch ist.
   ([backends/meilisearch.py](../../.venv/lib/python3.12/site-packages/general_manager/search/backends/meilisearch.py)).
   Eine Umbenennung ändert also den tatsächlichen Index, nicht nur ein Label — nach dem Deploy
   ist ein Reindex nötig (siehe unten).
-- Ein Test referenziert `index="global"` explizit: `tests/test_graphql_queries.py:119`
-  (`_QUERY_SEARCH_PROJEKTE`). Muss im selben Zug auf `"projekte"` mitgezogen werden, sonst
-  bricht ein bislang grüner Test (frühere Aussage in dieser Spec, dass kein Test betroffen
-  sei, war falsch — die Suche war auf `src/` beschränkt, `tests/` liegt aber auf Repo-Root-Ebene).
+- Der Backend-Test `tests/test_graphql_queries.py:119` (`_QUERY_SEARCH_PROJEKTE`) muss im
+  selben Zug auf `"projekte"` mitgezogen werden, sonst bricht ein bislang grüner Test.
 
 ## Entscheidung: Keine User-Sortierung mehr
 

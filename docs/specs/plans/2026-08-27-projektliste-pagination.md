@@ -1167,3 +1167,28 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"'
 **Platzhalter-Scan:** keine TBD/TODO, jeder Step trägt vollständigen Code oder einen exakten Befehl mit erwarteter Ausgabe.
 
 **Typ-Konsistenz:** `Projekt`/`QueryData`/`SearchData`-Typen unverändert aus der bestehenden Datei übernommen (keine neuen Typen nötig). `listItems`-State (Task 3) ersetzt die reine `items`-Konstante aus Task 2 für den Nicht-Such-Fall; `items` bleibt der nach außen sichtbare, im JSX verwendete Name in beiden Tasks. Testdatei-Helfer `projekt()` und `subscriptionMock` aus Task 2 werden in Task 3 unverändert weiterverwendet, `listeMock` aus Task 2 wird in Task 3 explizit durch `listePage1Mock` ersetzt (Namensänderung dokumentiert in Task 3 Step 2).
+
+## Nachtrag (Code-Review nach Task 3)
+
+Die PR-Review deckte zwei Lücken im `loadMore()`/Reset-Zusammenspiel aus Task 3 Step 4 auf, die
+in den obigen Code-Blöcken (Stand: Ausführung) noch nicht enthalten sind:
+
+- **Race Condition beim Reset:** Löst ein Live-Update (`onData` → `refetch({ page: 1 })`) einen
+  Reset aus, während ein `loadMore()`-`client.query()` für eine höhere Seite noch aussteht, hängt
+  dessen `.then()`-Callback die veraltete Seite unkontrolliert an die frisch zurückgesetzte Liste
+  an. Fix: ein `requestGenerationRef`-Zähler wird bei jedem Reset erhöht; `loadMore()` merkt sich
+  die Generation zum Startzeitpunkt und verwirft sein Ergebnis, falls sich die Generation bis zur
+  Antwort geändert hat.
+- **Fehlender Fehler-/Retry-Pfad:** `client.query()` hatte kein `.catch()` — ein Reject wurde zum
+  unhandled rejection, `displayError` blieb `null`, es gab keinen Retry außer zufälligem
+  Neu-Triggern durch den `IntersectionObserver`. Fix: neuer `loadMoreError`-State, gefüllt über
+  `.catch()`, fließt in `displayError` ein (`error ?? loadMoreError`); die Sentinel-Zeile zeigt bei
+  gesetztem Fehler statt "Lade weitere Projekte…" einen Retry-Button, der `loadMore()` erneut
+  aufruft; der `IntersectionObserver`-Effekt löst währenddessen kein automatisches Nachladen aus
+  (`!loadMoreError`-Guard).
+
+Beide Fixes plus zwei neue Tests (verspätete Seite-2-Antwort nach Live-Update; Retry nach
+Fehler) sind im tatsächlichen Code (`frontend/src/pages/ProjektListePage.tsx`,
+`ProjektListePage.test.tsx`) umgesetzt — die Code-Blöcke oben in Task 3 Step 4 spiegeln den
+Stand vor diesem Nachtrag und wurden nicht rückwirkend umgeschrieben, um den Ausführungsverlauf
+nicht zu verfälschen.
