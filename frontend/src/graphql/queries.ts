@@ -39,7 +39,7 @@ export const GET_PROJEKTE = gql`
 
 export const SEARCH_PROJEKTE = gql`
   query SearchProjekte($query: String!) {
-    search(query: $query, index: "global", types: ["Projekt"], pageSize: 20) {
+    search(query: $query, index: "projekte", types: ["Projekt"], pageSize: 20) {
       results {
         ... on ProjektType {
           id
