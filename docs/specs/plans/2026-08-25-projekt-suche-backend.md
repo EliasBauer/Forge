@@ -36,7 +36,7 @@
 **Interfaces:**
 - Produces: `GENERAL_MANAGER["SEARCH_BACKEND"]`, `GENERAL_MANAGER["SEARCH_AUTO_REINDEX"]`, `GENERAL_MANAGER["SEARCH_RECONCILE_ENABLED"]`, `GENERAL_MANAGER["SEARCH_RECONCILE_INTERVAL_SECONDS"]` in Django-Settings — Task 2 verlässt sich darauf, dass `get_search_backend()` ohne weiteres Zutun ein nutzbares Backend liefert (DevSearch im Devcontainer, da `MEILISEARCH_URL` dort nicht gesetzt ist).
 
-- [ ] **Step 1: Dependency hinzufügen**
+- [x] **Step 1: Dependency hinzufügen**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge forge-dev bash -lc "uv add meilisearch"
@@ -44,7 +44,7 @@ docker exec -u vscode -w /workspaces/Forge forge-dev bash -lc "uv add meilisearc
 
 Erwartet: `pyproject.toml` bekommt einen neuen Eintrag `"meilisearch>=...",` in `dependencies`, `uv.lock` wird aktualisiert.
 
-- [ ] **Step 2: Settings ändern**
+- [x] **Step 2: Settings ändern**
 
 In `src/forge/settings.py`, aktueller Block (Zeilen 138-165):
 
@@ -129,7 +129,7 @@ GENERAL_MANAGER = {
 }
 ```
 
-- [ ] **Step 3: Verifizieren, dass Django sauber bootet**
+- [x] **Step 3: Verifizieren, dass Django sauber bootet**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "uv run python manage.py check"
@@ -137,7 +137,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76
 
 Erwartet: `System check identified no issues (0 silenced).`
 
-- [ ] **Step 4: Volles Gate laufen lassen (Regressionscheck)**
+- [x] **Step 4: Volles Gate laufen lassen (Regressionscheck)**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "uv run pre-commit run --all-files"
@@ -145,7 +145,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76
 
 Erwartet: alle fünf Hooks `Passed` (settings.py ist von Coverage ausgenommen, `tool.coverage.run.omit` in `pyproject.toml`, daher keine neuen Coverage-Anforderungen durch diesen Task).
 
-- [ ] **Step 5: Commit** (nur nach expliziter Freigabe, s. Global Constraints)
+- [x] **Step 5: Commit** (nur nach expliziter Freigabe, s. Global Constraints)
 
 ```bash
 git add pyproject.toml uv.lock src/forge/settings.py
@@ -166,7 +166,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Consumes: `GENERAL_MANAGER["SEARCH_BACKEND"]` etc. aus Task 1 (indirekt, über `get_search_backend()`).
 - Produces: GraphQL-Root-Query `search(query: String!, index: String, types: [String], pageSize: Int) { results { ... } total }`, nutzbar von Task 3 im Frontend. Fragment-Typname für `Projekt`-Treffer: `ProjektType` (verifiziert in `general_manager/api/graphql.py:791`, Suffix `Type` an jeden Manager-Klassennamen).
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 In `tests/test_graphql_queries.py`, nach `_QUERY_PROJEKT_DETAIL` (vor `class _SharedSetup`) einfügen:
 
@@ -220,7 +220,7 @@ In `class GraphQLQueryShapeTest(_SharedSetup)`, nach `test_projekt_detail_shape`
 `SEARCH_ASYNC` nicht gesetzt ist (Task 1, bewusst ausgelassen laut Spec), läuft die Indexierung
 inline (kein Celery-Worker im Test nötig).
 
-- [ ] **Step 2: Test laufen lassen, erwartet FAIL**
+- [x] **Step 2: Test laufen lassen, erwartet FAIL**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "uv run pytest tests/test_graphql_queries.py::GraphQLQueryShapeTest::test_search_findet_projekt_nach_name -v"
@@ -230,7 +230,7 @@ Erwartet: FAIL — `search` ist als Root-Query-Feld vorhanden (GM registriert es
 Suche liefert keine Treffer, weil `Projekt` noch keine `SearchConfig` hat (`results` ist leer,
 `namen` enthält `"Lueftungsanlage Nord"` nicht → `AssertionError`).
 
-- [ ] **Step 3: `SearchConfig` implementieren**
+- [x] **Step 3: `SearchConfig` implementieren**
 
 In `src/apps/projekt/models/projekt.py`, Import-Block erweitern (nach der bestehenden
 `general_manager`-Import-Zeile):
@@ -261,7 +261,7 @@ Nach der `Permission`-Klasse (vor `@classmethod def create`) einfügen:
         ]
 ```
 
-- [ ] **Step 4: Test laufen lassen, erwartet PASS**
+- [x] **Step 4: Test laufen lassen, erwartet PASS**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "uv run pytest tests/test_graphql_queries.py::GraphQLQueryShapeTest::test_search_findet_projekt_nach_name -v"
@@ -269,7 +269,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76
 
 Erwartet: PASS
 
-- [ ] **Step 5: Volles Gate laufen lassen**
+- [x] **Step 5: Volles Gate laufen lassen**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "uv run pre-commit run --all-files"
@@ -278,7 +278,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76
 Erwartet: alle Hooks `Passed`, inkl. 100 % Coverage (die `SearchConfig`-Klasse selbst ist
 deklarativer Code, wird beim Modul-Import bereits ausgeführt — kein separater Coverage-Bedarf).
 
-- [ ] **Step 6: Commit** (nur nach expliziter Freigabe)
+- [x] **Step 6: Commit** (nur nach expliziter Freigabe)
 
 ```bash
 git add src/apps/projekt/models/projekt.py tests/test_graphql_queries.py
@@ -306,7 +306,7 @@ Logik-Tests ohne `MockedProvider`/`MemoryRouter`); `ProjektListePage` hängt zus
 GraphQL-Shape-Test aus Task 2 ab (Schema-Drift-Schutz). Verifikation hier erfolgt manuell im
 Dev-Server (Step 4). Neu aufsetzen, sobald eine zweite Page einen echten Component-Test braucht.
 
-- [ ] **Step 1: Query ergänzen**
+- [x] **Step 1: Query ergänzen**
 
 In `frontend/src/graphql/queries.ts`, nach `GET_PROJEKTE` (nach dessen schließendem Backtick)
 einfügen:
@@ -350,7 +350,7 @@ export const SEARCH_PROJEKTE = gql`
 `;
 ```
 
-- [ ] **Step 2: Page umbauen**
+- [x] **Step 2: Page umbauen**
 
 In `frontend/src/pages/ProjektListePage.tsx`:
 
@@ -471,7 +471,7 @@ Weiter unten im JSX:
 - Im Zähler-Text oben: `{q ? \`${items.length} von ${total} Projekten\` : \`${total} Projekte\`}` →
   `{isSearching ? \`${items.length} von ${total} Projekten\` : \`${total} Projekte\`}`
 
-- [ ] **Step 3: TypeScript/Lint/Vitest laufen lassen**
+- [x] **Step 3: TypeScript/Lint/Vitest laufen lassen**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "cd frontend && npx tsc --noEmit && npm run build && npm test"
@@ -481,7 +481,7 @@ Erwartet: `tsc --noEmit` ohne Fehler (Vite-Build selbst prüft Typen nicht, `vit
 esbuild), Vite-Build ohne Fehler, bestehende Vitest-Suite weiterhin grün (keine neuen Tests in
 diesem Task, s. Hinweis oben).
 
-- [ ] **Step 4: Manuell verifizieren**
+- [x] **Step 4: Manuell verifizieren**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "uv run python manage.py runserver 0.0.0.0:8000"
@@ -497,7 +497,7 @@ Im Browser `http://localhost:5173/projekte` öffnen, in der Suche einen bekannte
 eintippen: nach ~300ms erscheinen die Backend-Suchtreffer (Network-Tab zeigt eine
 `SearchProjekte`-Anfrage an `/graphql/`), leeres Suchfeld zeigt wieder die volle Liste.
 
-- [ ] **Step 5: Volles Gate laufen lassen**
+- [x] **Step 5: Volles Gate laufen lassen**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76-0-update-6899d6 forge-dev bash -lc "uv run pre-commit run --all-files"
@@ -505,7 +505,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/generalmanager-0-76
 
 Erwartet: alle Hooks `Passed`.
 
-- [ ] **Step 6: Commit** (nur nach expliziter Freigabe)
+- [x] **Step 6: Commit** (nur nach expliziter Freigabe)
 
 ```bash
 git add frontend/src/graphql/queries.ts frontend/src/pages/ProjektListePage.tsx
