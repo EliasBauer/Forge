@@ -714,7 +714,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"'
 - Consumes: `GET_PROJEKTE($page: Int!)` aus Task 2, jetzt mit `page`-Variable statt fixem `pageSize: 100`.
 - Produces: Endpunkt der Kette (UI) — nichts, das weitere Tasks konsumieren.
 
-- [ ] **Step 1: `GET_PROJEKTE` bekommt `$page` + `pageSize: 20`**
+- [x] **Step 1: `GET_PROJEKTE` bekommt `$page` + `pageSize: 20`**
 
 In `frontend/src/graphql/queries.ts`, `GET_PROJEKTE`, die ersten zwei Zeilen:
 
@@ -726,7 +726,7 @@ export const GET_PROJEKTE = gql`
 
 (Rest von `GET_PROJEKTE` — die `items { ... } pageInfo { totalCount }`-Felder — unverändert aus Task 2 übernehmen.)
 
-- [ ] **Step 2: Failing Tests schreiben — bestehende Mocks + zwei neue Tests**
+- [x] **Step 2: Failing Tests schreiben — bestehende Mocks + zwei neue Tests**
 
 In `frontend/src/pages/ProjektListePage.test.tsx`: Import-Block und Hilfsfunktionen erweitern.
 
@@ -915,7 +915,7 @@ describe("ProjektListePage – Infinite Scroll", () => {
 });
 ```
 
-- [ ] **Step 3: Tests laufen lassen, erwartet FAIL**
+- [x] **Step 3: Tests laufen lassen, erwartet FAIL**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373/frontend forge-dev bash -lc "npx vitest run src/pages/ProjektListePage.test.tsx"
@@ -923,7 +923,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphq
 
 Erwartet: die beiden Task-2-Tests FAIL (Mock erwartet jetzt `variables: { page: 1 }`, Komponente fragt noch ohne `page`-Variable an), die beiden neuen Infinite-Scroll-Tests FAIL (Komponente hat noch keinen Sentinel/kein Nachladen).
 
-- [ ] **Step 4: `ProjektListePage.tsx` — Infinite Scroll implementieren**
+- [x] **Step 4: `ProjektListePage.tsx` — Infinite Scroll implementieren**
 
 Import-Zeile:
 
@@ -1047,14 +1047,16 @@ ersetzen durch:
         fetchPolicy: "network-only",
       })
       .then((res) => {
-        setListItems((prev) => [...prev, ...res.data.projektList.items]);
+        if (!res.data) return; // Apollo-v4-Typing: client.query() liefert data als optional
+        const newItems = res.data.projektList.items;
+        setListItems((prev) => [...prev, ...newItems]);
         setLoadedPage(nextPage);
       })
       .finally(() => setLoadingMore(false));
   }
 ```
 
-- [ ] **Step 5: Sentinel-Zeile in der Tabelle ergänzen**
+- [x] **Step 5: Sentinel-Zeile in der Tabelle ergänzen**
 
 Den Block (Ende von `<tbody>`, direkt nach `{items.map((p) => (...))}`):
 
@@ -1087,7 +1089,7 @@ ersetzen durch:
               </tbody>
 ```
 
-- [ ] **Step 6: Tests laufen lassen, erwartet PASS**
+- [x] **Step 6: Tests laufen lassen, erwartet PASS**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373/frontend forge-dev bash -lc "npx vitest run src/pages/ProjektListePage.test.tsx"
@@ -1095,7 +1097,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphq
 
 Erwartet: alle vier Tests PASS.
 
-- [ ] **Step 7: TypeScript/Build prüfen**
+- [x] **Step 7: TypeScript/Build prüfen**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373/frontend forge-dev bash -lc "npx tsc --noEmit && npm run build"
@@ -1103,7 +1105,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphq
 
 Erwartet: keine Typfehler, Build erfolgreich.
 
-- [ ] **Step 8: Manuell verifizieren**
+- [x] **Step 8: Manuell verifizieren**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 forge-dev bash -lc "uv run python manage.py runserver 0.0.0.0:8000"
@@ -1117,7 +1119,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphq
 
 Im Browser `http://localhost:5173/projekte` öffnen: Liste zeigt max. 20 Zeilen, sortiert nach Auftragsnr. absteigend, Summe steht neben dem Suchfeld; runterscrollen lädt weitere 20 nach (Network-Tab zeigt eine zweite `ProjektListe`-Anfrage mit `page: 2`); Klick auf einen Spalten-Header ändert nichts.
 
-- [ ] **Step 9: Volles Gate laufen lassen**
+- [x] **Step 9: Volles Gate laufen lassen**
 
 ```bash
 docker exec -u vscode \
@@ -1129,7 +1131,7 @@ docker exec -u vscode \
 
 Erwartet: alle fünf Hooks `Passed`.
 
-- [ ] **Step 10: Boxen abhaken + Commit**
+- [x] **Step 10: Boxen abhaken + Commit**
 
 Alle Boxen in Task 3 oben in dieser Datei auf `- [x]` setzen, dann:
 

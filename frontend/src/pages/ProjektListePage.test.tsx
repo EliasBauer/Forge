@@ -1,6 +1,9 @@
 import { MemoryRouter } from "react-router-dom";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing/react";
+import { ApolloLink } from "@apollo/client/link";
+import { getMainDefinition } from "@apollo/client/utilities";
+import { MockLink, MockSubscriptionLink } from "@apollo/client/testing";
 import { describe, expect, it, vi } from "vitest";
 
 import ProjektListePage from "./ProjektListePage";
@@ -32,8 +35,8 @@ function projekt(overrides: Record<string, unknown> = {}) {
   };
 }
 
-const listeMock = {
-  request: { query: GET_PROJEKTE },
+const listePage1Mock = {
+  request: { query: GET_PROJEKTE, variables: { page: 1 } },
   result: {
     data: {
       projektList: {
@@ -53,14 +56,53 @@ const subscriptionMock = {
   delay: 1000 * 60 * 60,
 };
 
+let intersectionCallback: (entries: Pick<IntersectionObserverEntry, "isIntersecting">[]) => void = () => {};
+
+class FakeIntersectionObserver {
+  constructor(callback: typeof intersectionCallback) {
+    intersectionCallback = callback;
+  }
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+  takeRecords = () => [];
+  root = null;
+  rootMargin = "";
+  thresholds: number[] = [];
+}
+
+// @ts-expect-error -- jsdom kennt IntersectionObserver nicht, Fake reicht für die Tests
+global.IntersectionObserver = FakeIntersectionObserver;
+
 function renderPage() {
   return render(
     <MemoryRouter>
-      <MockedProvider mocks={[listeMock, subscriptionMock]}>
+      <MockedProvider mocks={[listePage1Mock, subscriptionMock]}>
         <ProjektListePage />
       </MockedProvider>
     </MemoryRouter>,
   );
+}
+
+function renderWithControlledSubscription(mocks: MockLink.MockedResponse[]) {
+  const subscriptionLink = new MockSubscriptionLink();
+  const queryLink = new MockLink(mocks, { showWarnings: false });
+  const link = ApolloLink.split(
+    ({ query }) => {
+      const def = getMainDefinition(query);
+      return def.kind === "OperationDefinition" && def.operation === "subscription";
+    },
+    subscriptionLink,
+    queryLink,
+  );
+  const utils = render(
+    <MemoryRouter>
+      <MockedProvider link={link}>
+        <ProjektListePage />
+      </MockedProvider>
+    </MemoryRouter>,
+  );
+  return { ...utils, subscriptionLink };
 }
 
 describe("ProjektListePage – keine Client-Sortierung mehr", () => {
@@ -87,5 +129,102 @@ describe("ProjektListePage – keine Client-Sortierung mehr", () => {
     expect(
       total.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_PRECEDING,
     ).toBeTruthy();
+  });
+});
+
+describe("ProjektListePage – Infinite Scroll", () => {
+  it("lädt beim Erreichen des Sentinels die nächste Seite nach und hängt sie an", async () => {
+    const page1 = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [
+              projekt({ id: "1", auftragsnummer: "T-2026-003", name: "Projekt Eins" }),
+              projekt({ id: "2", auftragsnummer: "T-2026-002", name: "Projekt Zwei" }),
+            ],
+            pageInfo: { totalCount: 3 },
+          },
+        },
+      },
+    };
+    const page2 = {
+      request: { query: GET_PROJEKTE, variables: { page: 2 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "3", auftragsnummer: "T-2026-001", name: "Projekt Drei" })],
+            pageInfo: { totalCount: 3 },
+          },
+        },
+      },
+    };
+
+    render(
+      <MemoryRouter>
+        <MockedProvider mocks={[page1, page2, subscriptionMock]}>
+          <ProjektListePage />
+        </MockedProvider>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Projekt Eins");
+    expect(screen.queryByText("Projekt Drei")).not.toBeInTheDocument();
+
+    intersectionCallback([{ isIntersecting: true }]);
+
+    await screen.findByText("Projekt Drei");
+    expect(screen.getByText("Projekt Eins")).toBeInTheDocument();
+    expect(screen.getByText("Projekt Zwei")).toBeInTheDocument();
+  });
+
+  it("setzt bei einem Live-Update auf Seite 1 zurück und verwirft nachgeladene Seiten", async () => {
+    const page1 = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "1", auftragsnummer: "T-2026-002", name: "Vor Update" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+    };
+    const page2 = {
+      request: { query: GET_PROJEKTE, variables: { page: 2 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "2", auftragsnummer: "T-2026-001", name: "Seite Zwei" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+    };
+    const page1NachUpdate = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "3", auftragsnummer: "T-2026-003", name: "Nach Update" })],
+            pageInfo: { totalCount: 1 },
+          },
+        },
+      },
+    };
+
+    const { subscriptionLink } = renderWithControlledSubscription([page1, page2, page1NachUpdate]);
+
+    await screen.findByText("Vor Update");
+    intersectionCallback([{ isIntersecting: true }]);
+    await screen.findByText("Seite Zwei");
+
+    subscriptionLink.simulateResult({
+      result: { data: { onProjektClassChange: { action: "updated" } } },
+    });
+
+    await screen.findByText("Nach Update");
+    expect(screen.queryByText("Vor Update")).not.toBeInTheDocument();
+    expect(screen.queryByText("Seite Zwei")).not.toBeInTheDocument();
   });
 });
