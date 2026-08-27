@@ -1,5 +1,5 @@
-import { useQuery, useSubscription } from "@apollo/client/react";
-import { useEffect, useState } from "react";
+import { useApolloClient, useQuery, useSubscription } from "@apollo/client/react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Plus, Search, UserRound } from "lucide-react";
 import Layout from "../components/Layout";
@@ -123,8 +123,13 @@ export default function ProjektListePage() {
   const showFinancials = canViewFinancials(user);
   const showCreateButton = canCreateProject(user);
 
+  const client = useApolloClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [listItems, setListItems] = useState<Projekt[]>([]);
+  const [loadedPage, setLoadedPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLTableRowElement | null>(null);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
@@ -134,11 +139,19 @@ export default function ProjektListePage() {
   const isSearching = debouncedQuery.length > 0;
 
   const { data, loading, error, refetch } = useQuery<QueryData>(GET_PROJEKTE, {
+    variables: { page: 1 },
     fetchPolicy: "network-only",
   });
 
+  useEffect(() => {
+    if (data) {
+      setListItems(data.projektList.items);
+      setLoadedPage(1);
+    }
+  }, [data]);
+
   useSubscription(PROJEKT_LISTE_SUBSCRIPTION, {
-    onData: () => refetch(),
+    onData: () => refetch({ page: 1 }),
   });
 
   const {
@@ -151,14 +164,43 @@ export default function ProjektListePage() {
     fetchPolicy: "network-only",
   });
 
-  const items = isSearching
-    ? (searchData?.search.results ?? [])
-    : (data?.projektList.items ?? []);
+  const items = isSearching ? (searchData?.search.results ?? []) : listItems;
   const total = isSearching
     ? (searchData?.search.total ?? 0)
     : (data?.projektList.pageInfo.totalCount ?? 0);
   const isLoading = isSearching ? searchLoading : loading;
   const displayError = isSearching ? searchError : error;
+
+  useEffect(() => {
+    if (isSearching) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadMore();
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearching, listItems.length, total, loadingMore]);
+
+  function loadMore() {
+    if (loadingMore || isSearching || listItems.length >= total) return;
+    const nextPage = loadedPage + 1;
+    setLoadingMore(true);
+    client
+      .query<QueryData>({
+        query: GET_PROJEKTE,
+        variables: { page: nextPage },
+        fetchPolicy: "network-only",
+      })
+      .then((res) => {
+        if (!res.data) return;
+        const newItems = res.data.projektList.items;
+        setListItems((prev) => [...prev, ...newItems]);
+        setLoadedPage(nextPage);
+      })
+      .finally(() => setLoadingMore(false));
+  }
 
   return (
     <Layout>
@@ -354,6 +396,16 @@ export default function ProjektListePage() {
                     </td>
                   </tr>
                 ))}
+                {!isSearching && listItems.length < total && (
+                  <tr ref={sentinelRef}>
+                    <td
+                      colSpan={showFinancials ? 7 : 4}
+                      className="px-4 py-3 text-center text-xs text-gray-400"
+                    >
+                      {loadingMore ? "Lade weitere Projekte…" : ""}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}

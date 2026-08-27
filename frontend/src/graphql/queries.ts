@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client/core";
 
 export const GET_PROJEKTE = gql`
-  query ProjektListe {
-    projektList(pageSize: 100, sortBy: [auftragsnummer], reverse: true) {
+  query ProjektListe($page: Int!) {
+    projektList(page: $page, pageSize: 20, sortBy: [auftragsnummer], reverse: true) {
       items {
         id
         auftragsnummer
