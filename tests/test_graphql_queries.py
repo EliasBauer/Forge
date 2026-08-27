@@ -116,7 +116,7 @@ _QUERY_PROJEKT_DETAIL = """
 
 _QUERY_SEARCH_PROJEKTE = """
     query SearchProjekte($query: String!) {
-      search(query: $query, index: "global", types: ["Projekt"], pageSize: 20) {
+      search(query: $query, index: "projekte", types: ["Projekt"], pageSize: 20) {
         results {
           ... on ProjektType {
             id
