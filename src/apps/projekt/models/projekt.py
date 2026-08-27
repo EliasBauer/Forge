@@ -77,7 +77,7 @@ class Projekt(GeneralManager):
     class SearchConfig:
         indexes = [
             IndexConfig(
-                name="global",
+                name="projekte",
                 fields=[
                     "name",
                     "auftragsnummer",
