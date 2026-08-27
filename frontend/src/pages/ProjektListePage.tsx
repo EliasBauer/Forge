@@ -1,7 +1,7 @@
-import { useQuery, useSubscription } from "@apollo/client/react";
-import { useEffect, useState } from "react";
+import { useApolloClient, useQuery, useSubscription } from "@apollo/client/react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronsUpDown, ChevronUp, ChevronDown, Plus, Search, UserRound } from "lucide-react";
+import { ChevronRight, Plus, Search, UserRound } from "lucide-react";
 import Layout from "../components/Layout";
 import { GET_PROJEKTE, SEARCH_PROJEKTE } from "../graphql/queries";
 import { PROJEKT_LISTE_SUBSCRIPTION } from "../graphql/subscriptions";
@@ -28,11 +28,6 @@ type QueryData = {
 type SearchData = {
   search: { results: Projekt[]; total: number };
 };
-
-type SortKey = "auftragsnummer" | "name" | "projektleiter" | "offerteSumme" | "summeWvPlus";
-type SortDir = "asc" | "desc";
-
-const DESC_DEFAULT = new Set<SortKey>(["offerteSumme", "summeWvPlus"]);
 
 const AVATAR_COLORS = [
   "bg-blue-100 text-blue-700",
@@ -122,49 +117,25 @@ function DeviationCell({ wv, ist }: { wv: number | null; ist: number | null }) {
   );
 }
 
-function SortIcon({ active, dir, hovered }: { active: boolean; dir: SortDir; hovered: boolean }) {
-  if (active) {
-    return dir === "asc"
-      ? <ChevronUp size={13} className="inline ml-1 opacity-100" />
-      : <ChevronDown size={13} className="inline ml-1 opacity-100" />;
-  }
-  return <ChevronsUpDown size={13} className={`inline ml-1 transition-opacity ${hovered ? "opacity-100" : "opacity-30"}`} />;
-}
-
-function sortProjekte(items: Projekt[], key: SortKey, dir: SortDir): Projekt[] {
-  return [...items].sort((a, b) => {
-    let va: string | number;
-    let vb: string | number;
-    if (key === "offerteSumme") {
-      va = Number(a.offerteSumme?.value ?? 0);
-      vb = Number(b.offerteSumme?.value ?? 0);
-    } else if (key === "summeWvPlus") {
-      va = a.projektKennzahlenList.items[0]?.summeWvPlus?.value ?? 0;
-      vb = b.projektKennzahlenList.items[0]?.summeWvPlus?.value ?? 0;
-    } else if (key === "projektleiter") {
-      va = a.projektleiter ?? "￿";
-      vb = b.projektleiter ?? "￿";
-    } else {
-      va = (a[key] ?? "") as string;
-      vb = (b[key] ?? "") as string;
-    }
-    if (va < vb) return dir === "asc" ? -1 : 1;
-    if (va > vb) return dir === "asc" ? 1 : -1;
-    return 0;
-  });
-}
-
 export default function ProjektListePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const showFinancials = canViewFinancials(user);
   const showCreateButton = canCreateProject(user);
 
-  const [sortKey, setSortKey] = useState<SortKey>("auftragsnummer");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [hoveredHeader, setHoveredHeader] = useState<SortKey | null>(null);
+  const client = useApolloClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [listItems, setListItems] = useState<Projekt[]>([]);
+  const [loadedPage, setLoadedPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<Error | null>(null);
+  const sentinelRef = useRef<HTMLTableRowElement | null>(null);
+  // Erhöht sich bei jedem Reset auf Seite 1 (Initial-Load oder Live-Update). loadMore()
+  // merkt sich die Generation, mit der es gestartet wurde, und verwirft seine Antwort,
+  // falls zwischenzeitlich ein Reset stattgefunden hat — sonst würde eine verspätete
+  // Seite-N-Antwort an die inzwischen frisch geladene Seite 1 angehängt.
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
@@ -174,11 +145,27 @@ export default function ProjektListePage() {
   const isSearching = debouncedQuery.length > 0;
 
   const { data, loading, error, refetch } = useQuery<QueryData>(GET_PROJEKTE, {
+    variables: { page: 1 },
     fetchPolicy: "network-only",
   });
 
+  useEffect(() => {
+    if (data) {
+      requestGenerationRef.current += 1;
+      setListItems(data.projektList.items);
+      setLoadedPage(1);
+      setLoadMoreError(null);
+    }
+  }, [data]);
+
   useSubscription(PROJEKT_LISTE_SUBSCRIPTION, {
-    onData: () => refetch(),
+    onData: () => {
+      // Generation sofort erhöhen, nicht erst wenn die neuen Seite-1-Daten eintreffen —
+      // sonst kann eine schneller auflösende, noch laufende loadMore()-Antwort (z. B.
+      // Seite 2) zwischen Live-Update und Ankunft der neuen Seite 1 noch angehängt werden.
+      requestGenerationRef.current += 1;
+      refetch({ page: 1 });
+    },
   });
 
   const {
@@ -191,29 +178,50 @@ export default function ProjektListePage() {
     fetchPolicy: "network-only",
   });
 
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(DESC_DEFAULT.has(key) ? "desc" : "asc");
-    }
-  }
-
-  const sourceItems = isSearching
-    ? (searchData?.search.results ?? [])
-    : (data?.projektList.items ?? []);
-  const items = sortProjekte(sourceItems, sortKey, sortDir);
+  const items = isSearching ? (searchData?.search.results ?? []) : listItems;
   const total = isSearching
     ? (searchData?.search.total ?? 0)
     : (data?.projektList.pageInfo.totalCount ?? 0);
   const isLoading = isSearching ? searchLoading : loading;
-  const displayError = isSearching ? searchError : error;
+  const displayError = isSearching ? searchError : (error ?? loadMoreError);
 
-  const thBase = (key: SortKey) =>
-    `px-4 py-3 text-[11px] uppercase tracking-wider font-semibold select-none cursor-pointer transition-colors whitespace-nowrap ${
-      sortKey === key ? "text-blue-700" : "text-gray-500 hover:text-gray-900"
-    }`;
+  useEffect(() => {
+    if (isSearching) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && !loadMoreError) loadMore();
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearching, listItems.length, total, loadingMore, loadMoreError]);
+
+  function loadMore() {
+    if (loadingMore || isSearching || listItems.length >= total) return;
+    const nextPage = loadedPage + 1;
+    const generation = requestGenerationRef.current;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    client
+      .query<QueryData>({
+        query: GET_PROJEKTE,
+        variables: { page: nextPage },
+        fetchPolicy: "network-only",
+      })
+      .then((res) => {
+        if (generation !== requestGenerationRef.current) return; // inzwischen zurückgesetzt, verwerfen
+        if (!res.data) return;
+        const newItems = res.data.projektList.items;
+        setListItems((prev) => [...prev, ...newItems]);
+        setLoadedPage(nextPage);
+      })
+      .catch((err: unknown) => {
+        if (generation !== requestGenerationRef.current) return;
+        setLoadMoreError(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => setLoadingMore(false));
+  }
 
   return (
     <Layout>
@@ -221,11 +229,6 @@ export default function ProjektListePage() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-[22px] font-semibold text-gray-900">Projekte</h1>
-          {data && (
-            <p className="text-[12px] text-gray-500 mt-0.5">
-            {isSearching ? `${items.length} von ${total} Projekten` : `${total} Projekte`}
-          </p>
-          )}
         </div>
         {showCreateButton && (
           <button
@@ -254,8 +257,8 @@ export default function ProjektListePage() {
       {data && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {/* Suchfeld — innerhalb der Card, mit border-b zur Tabelle */}
-          <div className="px-4 py-3 border-b border-gray-200">
-            <div className="relative max-w-sm">
+          <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-4">
+            <div className="relative max-w-sm flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input
                 type="text"
@@ -275,6 +278,9 @@ export default function ProjektListePage() {
                 </button>
               )}
             </div>
+            <p className="text-[12px] text-gray-500 whitespace-nowrap">
+              {items.length} von {total} Projekten
+            </p>
           </div>
 
           {items.length === 0 ? (
@@ -344,52 +350,22 @@ export default function ProjektListePage() {
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200 text-left">
-                  <th
-                    className={thBase("auftragsnummer")}
-                    onClick={() => handleSort("auftragsnummer")}
-                    onMouseEnter={() => setHoveredHeader("auftragsnummer")}
-                    onMouseLeave={() => setHoveredHeader(null)}
-                  >
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500">
                     Auftragsnr.
-                    <SortIcon active={sortKey === "auftragsnummer"} dir={sortDir} hovered={hoveredHeader === "auftragsnummer"} />
                   </th>
-                  <th
-                    className={thBase("name")}
-                    onClick={() => handleSort("name")}
-                    onMouseEnter={() => setHoveredHeader("name")}
-                    onMouseLeave={() => setHoveredHeader(null)}
-                  >
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500">
                     Name
-                    <SortIcon active={sortKey === "name"} dir={sortDir} hovered={hoveredHeader === "name"} />
                   </th>
-                  <th
-                    className={thBase("projektleiter")}
-                    onClick={() => handleSort("projektleiter")}
-                    onMouseEnter={() => setHoveredHeader("projektleiter")}
-                    onMouseLeave={() => setHoveredHeader(null)}
-                  >
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500">
                     Projektleiter
-                    <SortIcon active={sortKey === "projektleiter"} dir={sortDir} hovered={hoveredHeader === "projektleiter"} />
                   </th>
                   {showFinancials && (
                     <>
-                      <th
-                        className={`${thBase("offerteSumme")} text-right`}
-                        onClick={() => handleSort("offerteSumme")}
-                        onMouseEnter={() => setHoveredHeader("offerteSumme")}
-                        onMouseLeave={() => setHoveredHeader(null)}
-                      >
+                      <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right">
                         Offerte
-                        <SortIcon active={sortKey === "offerteSumme"} dir={sortDir} hovered={hoveredHeader === "offerteSumme"} />
                       </th>
-                      <th
-                        className={`${thBase("summeWvPlus")} text-right`}
-                        onClick={() => handleSort("summeWvPlus")}
-                        onMouseEnter={() => setHoveredHeader("summeWvPlus")}
-                        onMouseLeave={() => setHoveredHeader(null)}
-                      >
+                      <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right">
                         WV + Zusätze
-                        <SortIcon active={sortKey === "summeWvPlus"} dir={sortDir} hovered={hoveredHeader === "summeWvPlus"} />
                       </th>
                       <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500">
                         Abweichung zu Ist
@@ -441,6 +417,28 @@ export default function ProjektListePage() {
                     </td>
                   </tr>
                 ))}
+                {!isSearching && listItems.length < total && (
+                  <tr ref={sentinelRef}>
+                    <td
+                      colSpan={showFinancials ? 7 : 4}
+                      className="px-4 py-3 text-center text-xs text-gray-400"
+                    >
+                      {loadingMore ? (
+                        "Lade weitere Projekte…"
+                      ) : loadMoreError ? (
+                        <button
+                          type="button"
+                          onClick={loadMore}
+                          className="text-red-600 underline"
+                        >
+                          Fehler beim Nachladen — erneut versuchen
+                        </button>
+                      ) : (
+                        ""
+                      )}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
