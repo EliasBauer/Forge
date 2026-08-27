@@ -21,9 +21,11 @@
     -e GIT_DIR=/workspaces/Forge/.git/worktrees/projektliste-graphql-query-aaa373 \
     -e GIT_WORK_TREE=/workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
     -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
-    forge-dev git commit -m "…"
+    forge-dev bash -lc 'git commit -m "…"'
   ```
-  Niemals `--no-verify`. (Falls ein neu angelegter Worktree wieder einen kaputten `core.hooksPath` in seiner `config.worktree` hat: `git config --worktree --unset core.hooksPath` einmalig auf dem Host.)
+  `bash -lc` ist beim Commit zwingend (nicht nur bei `uv run ...`) — ohne Login-Shell fehlt `uv`
+  im PATH und der `pre-commit`-Hook bricht mit `Executable "uv" not found` ab (live beim
+  Ausführen dieses Plans aufgetreten, Task 1 Step 7). Niemals `--no-verify`. (Falls ein neu angelegter Worktree wieder einen kaputten `core.hooksPath` in seiner `config.worktree` hat: `git config --worktree --unset core.hooksPath` einmalig auf dem Host.)
 - **Commit-Disziplin (CLAUDE.md):** Bei jedem Task-Commit **diese Plan-Datei mit in `git add`** aufnehmen, nachdem die Boxen des Tasks abgehakt wurden — sonst werden die Haken nie mitcommittet.
 - **„Erledigt" erst, wenn das volle Gate grün ist (CLAUDE.md):** `uv run pre-commit run --all-files` (ruff, pytest, mypy, vitest) — nicht nur der einzelne Test aus dem jeweiligen Task.
 - **GM-Feldzugriff** immer via `self.feldname`, nie `self._interface._instance` (GM-Skill, goldene Regel) — betrifft hier nur Task 1.
@@ -174,10 +176,12 @@ docker exec -u vscode \
   -e GIT_DIR=/workspaces/Forge/.git/worktrees/projektliste-graphql-query-aaa373 \
   -e GIT_WORK_TREE=/workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
   -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
-  forge-dev git commit -m "feat: Suche-Index von global auf projekte umbenennen
+  forge-dev bash -lc 'git commit -m "feat: Suche-Index von global auf projekte umbenennen
 
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"'
 ```
+
+(bereits ausgeführt: Commit `d05ab30`)
 
 ---
 
@@ -192,7 +196,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Consumes: `GET_PROJEKTE` liefert weiterhin `projektList(pageSize: Int, sortBy: [ProjektSortByOptions!], reverse: Boolean) { items {...} pageInfo { totalCount } }` — hier noch ohne `page`-Variable (kommt in Task 3).
 - Produces: `ProjektListePage` rendert Tabellen-Header ohne `onClick`/Sortier-Icon; ein neuer Test-Aufbau (`MockedProvider` + Auth-Mock) in `ProjektListePage.test.tsx`, den Task 3 erweitert statt neu zu bauen.
 
-- [ ] **Step 1: `GET_PROJEKTE` um Server-Default-Sort ergänzen**
+- [x] **Step 1: `GET_PROJEKTE` um Server-Default-Sort ergänzen**
 
 In `frontend/src/graphql/queries.ts`, `GET_PROJEKTE` (Zeile 3-38), die erste Zeile im Query-Body:
 
@@ -237,7 +241,7 @@ export const GET_PROJEKTE = gql`
 
 (Nur `projektList(pageSize: 100)` → `projektList(pageSize: 100, sortBy: [auftragsnummer], reverse: true)`, Rest unverändert. `pageSize` bleibt bewusst bei 100 — wird erst in Task 3 auf 20 reduziert, wenn Infinite Scroll den Ausgleich schafft.)
 
-- [ ] **Step 2: Failing Test schreiben**
+- [x] **Step 2: Failing Test schreiben**
 
 Neue Datei `frontend/src/pages/ProjektListePage.test.tsx`:
 
@@ -300,7 +304,7 @@ const subscriptionMock = {
 function renderPage() {
   return render(
     <MemoryRouter>
-      <MockedProvider mocks={[listeMock, subscriptionMock]} addTypename={false}>
+      <MockedProvider mocks={[listeMock, subscriptionMock]}>
         <ProjektListePage />
       </MockedProvider>
     </MemoryRouter>,
@@ -335,7 +339,7 @@ describe("ProjektListePage – keine Client-Sortierung mehr", () => {
 });
 ```
 
-- [ ] **Step 3: Tests laufen lassen, erwartet FAIL**
+- [x] **Step 3: Tests laufen lassen, erwartet FAIL**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373/frontend forge-dev bash -lc "npx vitest run src/pages/ProjektListePage.test.tsx"
@@ -343,7 +347,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphq
 
 Erwartet: FAIL — die aktuelle Komponente zeigt "2 Projekte" statt "2 von 2 Projekten" (Listenmodus-Sonderformulierung) und die Summe steht noch in der `<h1>`-Kopfzeile statt neben dem Suchfeld; der Sortier-Test schlägt ebenfalls fehl, weil ein Klick auf "Name" die Reihenfolge aktuell noch ändert.
 
-- [ ] **Step 4: `ProjektListePage.tsx` umbauen — Sortierung raus, Summe verschieben**
+- [x] **Step 4: `ProjektListePage.tsx` umbauen — Sortierung raus, Summe verschieben**
 
 Import-Zeile (Zeile 4):
 
@@ -461,7 +465,7 @@ ersetzen durch:
   const displayError = isSearching ? searchError : error;
 ```
 
-- [ ] **Step 5: Kopfzeile — Summentext raus aus der `<h1>`-Zeile**
+- [x] **Step 5: Kopfzeile — Summentext raus aus der `<h1>`-Zeile**
 
 Den Block (im Original Zeilen 220-241):
 
@@ -486,7 +490,7 @@ ersetzen durch:
         </div>
 ```
 
-- [ ] **Step 6: Suchfeld-Zeile — Summe daneben anzeigen**
+- [x] **Step 6: Suchfeld-Zeile — Summe daneben anzeigen**
 
 Den Block (im Original Zeilen 256-278):
 
@@ -545,7 +549,7 @@ ersetzen durch:
           </div>
 ```
 
-- [ ] **Step 7: Tabellen-Header — statische Labels statt Klick-Sortierung**
+- [x] **Step 7: Tabellen-Header — statische Labels statt Klick-Sortierung**
 
 Den Block (im Original Zeilen 345-402, `<thead>...</thead>`):
 
@@ -645,11 +649,11 @@ ersetzen durch:
               </thead>
 ```
 
-- [ ] **Step 8: Leerer-Zustand-Text — `q` durch `isSearching` ersetzen**
+- [x] **Step 8: Leerer-Zustand-Text — `q` durch `isSearching` ersetzen**
 
 Im Original nutzt der Leer-Zustand-Block bereits `{isSearching ? (` (das war schon in der Vorgänger-Spec so umgestellt, siehe `git log` für `queries.ts`/`ProjektListePage.tsx`) — falls beim Lesen der aktuellen Datei stattdessen noch `{q ? (` auftaucht: auf `{isSearching ? (` ändern. Sonst diesen Step überspringen (nichts zu tun).
 
-- [ ] **Step 9: Tests laufen lassen, erwartet PASS**
+- [x] **Step 9: Tests laufen lassen, erwartet PASS**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373/frontend forge-dev bash -lc "npx vitest run src/pages/ProjektListePage.test.tsx"
@@ -657,7 +661,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphq
 
 Erwartet: PASS (beide Tests).
 
-- [ ] **Step 10: TypeScript/Build prüfen**
+- [x] **Step 10: TypeScript/Build prüfen**
 
 ```bash
 docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373/frontend forge-dev bash -lc "npx tsc --noEmit"
@@ -665,7 +669,7 @@ docker exec -u vscode -w /workspaces/Forge/.claude/worktrees/projektliste-graphq
 
 Erwartet: keine Fehler (insbesondere kein `SortKey`/`sortProjekte` mehr referenziert).
 
-- [ ] **Step 11: Volles Gate laufen lassen**
+- [x] **Step 11: Volles Gate laufen lassen**
 
 ```bash
 docker exec -u vscode \
@@ -677,7 +681,7 @@ docker exec -u vscode \
 
 Erwartet: alle fünf Hooks `Passed`.
 
-- [ ] **Step 12: Boxen abhaken + Commit**
+- [x] **Step 12: Boxen abhaken + Commit**
 
 Alle Boxen in Task 2 oben in dieser Datei auf `- [x]` setzen, dann:
 
@@ -692,9 +696,9 @@ docker exec -u vscode \
   -e GIT_DIR=/workspaces/Forge/.git/worktrees/projektliste-graphql-query-aaa373 \
   -e GIT_WORK_TREE=/workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
   -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
-  forge-dev git commit -m "feat: Klick-Sortierung aus Projektliste entfernen, Server-Default-Sort
+  forge-dev bash -lc 'git commit -m "feat: Klick-Sortierung aus Projektliste entfernen, Server-Default-Sort
 
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"'
 ```
 
 ---
@@ -759,7 +763,7 @@ const listePage1Mock = {
 function renderPage() {
   return render(
     <MemoryRouter>
-      <MockedProvider mocks={[listePage1Mock, subscriptionMock]} addTypename={false}>
+      <MockedProvider mocks={[listePage1Mock, subscriptionMock]}>
         <ProjektListePage />
       </MockedProvider>
     </MemoryRouter>,
@@ -801,7 +805,7 @@ function renderWithControlledSubscription(mocks: MockLink.MockedResponse[]) {
   );
   const utils = render(
     <MemoryRouter>
-      <MockedProvider link={link} addTypename={false}>
+      <MockedProvider link={link}>
         <ProjektListePage />
       </MockedProvider>
     </MemoryRouter>,
@@ -843,7 +847,7 @@ describe("ProjektListePage – Infinite Scroll", () => {
 
     render(
       <MemoryRouter>
-        <MockedProvider mocks={[page1, page2, subscriptionMock]} addTypename={false}>
+        <MockedProvider mocks={[page1, page2, subscriptionMock]}>
           <ProjektListePage />
         </MockedProvider>
       </MemoryRouter>,
@@ -1140,9 +1144,9 @@ docker exec -u vscode \
   -e GIT_DIR=/workspaces/Forge/.git/worktrees/projektliste-graphql-query-aaa373 \
   -e GIT_WORK_TREE=/workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
   -w /workspaces/Forge/.claude/worktrees/projektliste-graphql-query-aaa373 \
-  forge-dev git commit -m "feat: Infinite Scroll für die Projektliste (GET_PROJEKTE)
+  forge-dev bash -lc 'git commit -m "feat: Infinite Scroll für die Projektliste (GET_PROJEKTE)
 
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"'
 ```
 
 ---
