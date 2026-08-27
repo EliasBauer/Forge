@@ -159,7 +159,13 @@ export default function ProjektListePage() {
   }, [data]);
 
   useSubscription(PROJEKT_LISTE_SUBSCRIPTION, {
-    onData: () => refetch({ page: 1 }),
+    onData: () => {
+      // Generation sofort erhöhen, nicht erst wenn die neuen Seite-1-Daten eintreffen —
+      // sonst kann eine schneller auflösende, noch laufende loadMore()-Antwort (z. B.
+      // Seite 2) zwischen Live-Update und Ankunft der neuen Seite 1 noch angehängt werden.
+      requestGenerationRef.current += 1;
+      refetch({ page: 1 });
+    },
   });
 
   const {
