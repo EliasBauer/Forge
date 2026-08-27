@@ -227,4 +227,109 @@ describe("ProjektListePage – Infinite Scroll", () => {
     expect(screen.queryByText("Vor Update")).not.toBeInTheDocument();
     expect(screen.queryByText("Seite Zwei")).not.toBeInTheDocument();
   });
+
+  it("verwirft eine noch ausstehende Seite-2-Antwort, wenn ein Live-Update dazwischenkommt", async () => {
+    const page1 = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "1", auftragsnummer: "T-2026-002", name: "Reset Vorher" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+    };
+    const page2Verspaetet = {
+      request: { query: GET_PROJEKTE, variables: { page: 2 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "2", auftragsnummer: "T-2026-001", name: "Verspätete Seite Zwei" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+      delay: 300,
+    };
+    const page1NachUpdate = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "3", auftragsnummer: "T-2026-003", name: "Reset Nachher" })],
+            pageInfo: { totalCount: 1 },
+          },
+        },
+      },
+    };
+
+    const { subscriptionLink } = renderWithControlledSubscription([
+      page1,
+      page2Verspaetet,
+      page1NachUpdate,
+    ]);
+
+    await screen.findByText("Reset Vorher");
+    intersectionCallback([{ isIntersecting: true }]);
+
+    // Live-Update kommt rein, WÄHREND die Seite-2-Antwort noch unterwegs ist (300ms delay).
+    subscriptionLink.simulateResult({
+      result: { data: { onProjektClassChange: { action: "updated" } } },
+    });
+
+    await screen.findByText("Reset Nachher");
+    // Der verspäteten Seite-2-Antwort Zeit geben, aufzulösen — sie darf nicht mehr angehängt werden.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(screen.queryByText("Verspätete Seite Zwei")).not.toBeInTheDocument();
+    expect(screen.getByText("Reset Nachher")).toBeInTheDocument();
+  });
+});
+
+describe("ProjektListePage – Fehler beim Nachladen", () => {
+  it("zeigt eine Wiederholungsaktion, die das Nachladen erneut auslöst", async () => {
+    const page1 = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "1", auftragsnummer: "T-2026-002", name: "Retry Seite Eins" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+    };
+    const page2Fehler = {
+      request: { query: GET_PROJEKTE, variables: { page: 2 } },
+      error: new Error("Netzwerkfehler"),
+    };
+    const page2Retry = {
+      request: { query: GET_PROJEKTE, variables: { page: 2 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "2", auftragsnummer: "T-2026-001", name: "Retry Seite Zwei" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+    };
+
+    render(
+      <MemoryRouter>
+        <MockedProvider mocks={[page1, page2Fehler, page2Retry, subscriptionMock]}>
+          <ProjektListePage />
+        </MockedProvider>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Retry Seite Eins");
+    intersectionCallback([{ isIntersecting: true }]);
+
+    const retryButton = await screen.findByRole("button", { name: /erneut versuchen/i });
+    fireEvent.click(retryButton);
+
+    await screen.findByText("Retry Seite Zwei");
+  });
 });
