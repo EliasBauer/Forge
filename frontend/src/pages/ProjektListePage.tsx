@@ -129,7 +129,13 @@ export default function ProjektListePage() {
   const [listItems, setListItems] = useState<Projekt[]>([]);
   const [loadedPage, setLoadedPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<Error | null>(null);
   const sentinelRef = useRef<HTMLTableRowElement | null>(null);
+  // Erhöht sich bei jedem Reset auf Seite 1 (Initial-Load oder Live-Update). loadMore()
+  // merkt sich die Generation, mit der es gestartet wurde, und verwirft seine Antwort,
+  // falls zwischenzeitlich ein Reset stattgefunden hat — sonst würde eine verspätete
+  // Seite-N-Antwort an die inzwischen frisch geladene Seite 1 angehängt.
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
@@ -145,8 +151,10 @@ export default function ProjektListePage() {
 
   useEffect(() => {
     if (data) {
+      requestGenerationRef.current += 1;
       setListItems(data.projektList.items);
       setLoadedPage(1);
+      setLoadMoreError(null);
     }
   }, [data]);
 
@@ -169,24 +177,26 @@ export default function ProjektListePage() {
     ? (searchData?.search.total ?? 0)
     : (data?.projektList.pageInfo.totalCount ?? 0);
   const isLoading = isSearching ? searchLoading : loading;
-  const displayError = isSearching ? searchError : error;
+  const displayError = isSearching ? searchError : (error ?? loadMoreError);
 
   useEffect(() => {
     if (isSearching) return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) loadMore();
+      if (entries[0]?.isIntersecting && !loadMoreError) loadMore();
     });
     observer.observe(sentinel);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSearching, listItems.length, total, loadingMore]);
+  }, [isSearching, listItems.length, total, loadingMore, loadMoreError]);
 
   function loadMore() {
     if (loadingMore || isSearching || listItems.length >= total) return;
     const nextPage = loadedPage + 1;
+    const generation = requestGenerationRef.current;
     setLoadingMore(true);
+    setLoadMoreError(null);
     client
       .query<QueryData>({
         query: GET_PROJEKTE,
@@ -194,10 +204,15 @@ export default function ProjektListePage() {
         fetchPolicy: "network-only",
       })
       .then((res) => {
+        if (generation !== requestGenerationRef.current) return; // inzwischen zurückgesetzt, verwerfen
         if (!res.data) return;
         const newItems = res.data.projektList.items;
         setListItems((prev) => [...prev, ...newItems]);
         setLoadedPage(nextPage);
+      })
+      .catch((err: unknown) => {
+        if (generation !== requestGenerationRef.current) return;
+        setLoadMoreError(err instanceof Error ? err : new Error(String(err)));
       })
       .finally(() => setLoadingMore(false));
   }
@@ -402,7 +417,19 @@ export default function ProjektListePage() {
                       colSpan={showFinancials ? 7 : 4}
                       className="px-4 py-3 text-center text-xs text-gray-400"
                     >
-                      {loadingMore ? "Lade weitere Projekte…" : ""}
+                      {loadingMore ? (
+                        "Lade weitere Projekte…"
+                      ) : loadMoreError ? (
+                        <button
+                          type="button"
+                          onClick={loadMore}
+                          className="text-red-600 underline"
+                        >
+                          Fehler beim Nachladen — erneut versuchen
+                        </button>
+                      ) : (
+                        ""
+                      )}
                     </td>
                   </tr>
                 )}
