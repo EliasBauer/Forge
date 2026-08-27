@@ -285,6 +285,65 @@ describe("ProjektListePage – Infinite Scroll", () => {
     expect(screen.queryByText("Verspätete Seite Zwei")).not.toBeInTheDocument();
     expect(screen.getByText("Reset Nachher")).toBeInTheDocument();
   });
+
+  it("verwirft eine bereits laufende Seite-2-Antwort sofort beim Live-Update, auch wenn die neue Seite 1 verzögert eintrifft", async () => {
+    const page1 = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "1", auftragsnummer: "T-2026-002", name: "Vorher Live" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+    };
+    const page2Schnell = {
+      request: { query: GET_PROJEKTE, variables: { page: 2 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "2", auftragsnummer: "T-2026-001", name: "Sollte nie erscheinen" })],
+            pageInfo: { totalCount: 2 },
+          },
+        },
+      },
+    };
+    const page1VerzoegertNachUpdate = {
+      request: { query: GET_PROJEKTE, variables: { page: 1 } },
+      result: {
+        data: {
+          projektList: {
+            items: [projekt({ id: "3", auftragsnummer: "T-2026-003", name: "Verzögertes Reset-Ergebnis" })],
+            pageInfo: { totalCount: 1 },
+          },
+        },
+      },
+      delay: 200,
+    };
+
+    const { subscriptionLink } = renderWithControlledSubscription([
+      page1,
+      page2Schnell,
+      page1VerzoegertNachUpdate,
+    ]);
+
+    await screen.findByText("Vorher Live");
+    intersectionCallback([{ isIntersecting: true }]);
+
+    // Live-Update kommt sofort rein, WÄHREND die (schnelle) Seite-2-Antwort noch aussteht —
+    // die neue Seite 1 (Reset) trifft aber erst mit 200ms Verzögerung ein.
+    subscriptionLink.simulateResult({
+      result: { data: { onProjektClassChange: { action: "updated" } } },
+    });
+
+    // Der schnellen Seite-2-Antwort Zeit geben aufzulösen, bevor die verzögerte Seite 1 da ist.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText("Sollte nie erscheinen")).not.toBeInTheDocument();
+
+    await screen.findByText("Verzögertes Reset-Ergebnis");
+    expect(screen.queryByText("Sollte nie erscheinen")).not.toBeInTheDocument();
+  });
 });
 
 describe("ProjektListePage – Fehler beim Nachladen", () => {
