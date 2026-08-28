@@ -3,44 +3,24 @@
 > Prozess (Brainstorming, Planung, TDD, Code-Review, Branch-Flow) liegt bei **Superpowers** und triggert automatisch.
 > Diese Datei trägt nur, was Superpowers nicht wissen kann: Forge-Umgebung, Test-Befehle, GM- und Frontend-Regeln.
 
-## Umgebung & wo Befehle laufen
-Erkenne zu Beginn via `test -f /.dockerenv`:
-- **existiert** → du bist IM DevContainer (CLI/VS Code). Dev-Befehle direkt ausführen.
-- **fehlt** → du bist auf dem Host (Desktop App). Dev-Befehle wrappen:
-  `docker exec -w /workspaces/Forge forge-dev <befehl>`
+## Umgebung
+Du läufst **immer im DevContainer** dieses Worktrees — eine in sich geschlossene Umgebung mit eigenem `uv`-venv und `node_modules`. Alle Dev-Befehle (`uv`, `pytest`, `ruff`, `mypy`, `python manage.py`, `npm`, `pre-commit`, `git commit`) führst du **direkt** aus, ohne `docker exec`-Wrapper.
 
-**Dev-Befehle** (Code/Tests/Linting) gehören in `forge-dev`: `uv`, `pytest`, `ruff`, `mypy`, `python manage.py`, `npm`, `pre-commit`.
-
-**Orchestrierung roh auf dem Host, nie wrappen:** `docker`, `docker compose`, `gh` und die hook-freien Git-Kommandos (`add`, `status`, `log`, `diff`, `push`, `fetch`) laufen immer roh auf dem Host. `docker exec … docker compose …` ist immer falsch.
-
-**Ausnahme `git commit`:** Der Commit triggert den pre-commit-Hook, der Dev-Tools (ruff/pytest/mypy/vitest) braucht — die gibt es nur im Container. Auf dem Host **im Container committen**, mit Benutzer `vscode`, Login-Shell (`bash -lc`, sonst fehlt `uv` im PATH) und — falls im aktiven Worktree statt im Haupt-Checkout gearbeitet wird — den zu diesem Worktree gehörenden `GIT_DIR`/`GIT_WORK_TREE` (das `.git`-File im Worktree zeigt sonst auf einen Host-Pfad, den der Container nicht kennt):
-```bash
-docker exec -u vscode \
-  -e GIT_DIR=/workspaces/Forge/.git/worktrees/<worktree-name> \
-  -e GIT_WORK_TREE=/workspaces/Forge/.claude/worktrees/<worktree-name> \
-  -w /workspaces/Forge/.claude/worktrees/<worktree-name> \
-  forge-dev bash -lc 'git commit -m "…"'
-```
-Im Haupt-Checkout (kein Worktree) reicht `-w /workspaces/Forge` ohne die beiden `-e`-Flags.
-Niemals `--no-verify`, um den Hook zu umgehen — das verwirft genau die Prüfung, die grün sein soll.
+Sicherheits-Check zu Beginn: `test -f /.dockerenv` muss existieren. Fehlt es, bist du versehentlich auf dem Host — dann **nicht** raten, sondern stoppen und den Nutzer bitten, den Worktree im Container zu öffnen.
 
 ## Schneller Test-Loop
 Gezielt: `uv run --group dev pytest tests/pfad/test_x.py` (Backend) · `npm --prefix frontend test` (Frontend).
 „Erledigt" erst, wenn das volle Gate **grün** ist: `pre-commit run --all-files` (ruff, pytest, mypy, vitest).
 
-## Compose-Smoke-Test (ganzer Stack, auf dem HOST)
-Zweck: prüfen, ob die *zusammengebaute* App startet und läuft — nicht Code ändern (dafür ist der DevContainer da).
-Der Compose-Stack ist eine ANDERE Umgebung als `forge-dev`: „läuft im DevContainer" heißt nicht „läuft in Compose".
-- Hoch:   `docker compose -f <DATEI> up -d --build`
-- Status: `docker compose -f <DATEI> ps`  (alle Services healthy?) · Logs: `docker compose -f <DATEI> logs -f <SERVICE>`
-- Check:  <SMOKE-CHECK, z.B. curl auf einen Health-Endpoint>
-- Runter: `docker compose -f <DATEI> down`  (Volumes nur bewusst mit `-v`)
-„Grün" heißt hier: Stack kommt hoch, Services healthy, Ziel-Endpoint antwortet — NICHT die Test-Suite.
-Up/Down sind bewusste Aktionen, kein Teil des automatischen Task-Loops.
+## Commit
+Direkt `git commit` (im Container laufen die pre-commit-Hooks korrekt). **Niemals `--no-verify`** — das überspringt genau die Prüfung, die grün sein soll.
+Bei jedem Task-Commit die zugehörige Plan-Datei (`docs/specs/plans/<task>.md`) mit in `git add` aufnehmen — sonst werden die abgehakten Boxen nie mitcommittet.
 
-## Commit-Disziplin
-Bei jedem Task-Commit die Plan-Datei mit in `git add` aufnehmen —
-sonst werden die abgehakten Boxen des Tasks nie mitcommittet.
+## Compose-Smoke-Test (ganzer Stack)
+Zweck: prüfen, ob die *zusammengebaute* App startet — nicht Code ändern. Der Compose-Stack ist eine ANDERE Umgebung als der DevContainer.
+- Hoch: `docker compose -f <DATEI> up -d --build` · Status: `… ps` · Logs: `… logs -f <SERVICE>`
+- Check: <SMOKE-CHECK, z. B. curl auf einen Health-Endpoint> · Runter: `… down` (Volumes nur bewusst mit `-v`)
+„Grün" heißt: Stack kommt hoch, Services healthy, Ziel-Endpoint antwortet — NICHT die Test-Suite. Up/Down sind bewusste Aktionen, kein Teil des Task-Loops.
 
 ## Code-Regeln
 

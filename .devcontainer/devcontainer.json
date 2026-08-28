@@ -1,7 +1,7 @@
 {
   "name": "Forge Dev",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "runArgs": ["--name", "forge-dev"],
+  // "runArgs": ["--name", "forge-dev"],
 
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" }
@@ -14,7 +14,8 @@
   "onCreateCommand": "pip install uv && uv sync --group dev",
   "postCreateCommand": "npm --prefix frontend install && uv run pre-commit install && npm install -g @anthropic-ai/claude-code",
 
-  "forwardPorts": [8000, 5173],
+  // "forwardPorts": [8000, 5173],
+  "otherPortsAttributes": { "onAutoForward": "silent" },
   "portsAttributes": {
     "8000": { "label": "Django" },
     "5173": { "label": "Frontend (Vite)" }
