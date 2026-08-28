@@ -32,7 +32,7 @@ export const UPDATE_PROJEKT = gql`
     $offerteSumme: MeasurementScalar
     $wvSumme: MeasurementScalar
     $projektleiter: String
-    $auftragFertig: Boolean
+    $projektStatus: ID
   ) {
     updateProjekt(
       id: $id
@@ -40,7 +40,7 @@ export const UPDATE_PROJEKT = gql`
       offerteSumme: $offerteSumme
       wvSumme: $wvSumme
       projektleiter: $projektleiter
-      auftragFertig: $auftragFertig
+      projektStatus: $projektStatus
     ) {
       success
     }

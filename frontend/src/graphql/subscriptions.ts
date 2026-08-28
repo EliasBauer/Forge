@@ -30,7 +30,10 @@ export const PROJEKT_DETAIL_SUBSCRIPTION = gql`
           value
           unit
         }
-        auftragFertig
+        projektStatus {
+          id
+          name
+        }
         projektleiter
       }
     }
