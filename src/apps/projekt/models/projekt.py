@@ -62,10 +62,7 @@ class Projekt(GeneralManager):
             "projekt.ProjektStatus",
             on_delete=models.PROTECT,
             related_name="projekte",
-            null=True,
-            blank=True,
         )
-        auftrag_fertig = models.BooleanField(default=False)
 
         class Meta:
             verbose_name = "Projekt"
