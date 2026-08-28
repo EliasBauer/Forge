@@ -195,7 +195,7 @@ Headline `text-[15px] font-semibold text-gray-900`, Body `text-sm text-gray-500 
 ## 8. Datentypen
 
 ```ts
-type ProjectStatus = "active" | "archived";
+type ProjectStatus = "Offen" | "In Arbeit" | "Fertig";
 
 interface ProjectListItem {
   id: number;

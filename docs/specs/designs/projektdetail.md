@@ -42,8 +42,9 @@ Visualisierungs-Sektion.
 - Card: `bg-white rounded-lg border border-gray-200 shadow-sm`
 - Titel: `text-[22px] font-semibold` (Projektname)
 - Untertitel: `text-xs text-gray-500` (ID)
-- Actions rechts: `Bearbeiten` (mit `IconPencil`), `Archivieren` (mit `IconArchive`)
-  als sekundäre Buttons
+- Actions rechts: `Bearbeiten` (mit `IconPencil`) als sekundärer Button —
+  Status wird über ein Dropdown im Bearbeiten-Formular gesetzt, kein
+  separater Archivieren-Button
 - Border-Trenner, dann 5-Spalten-Grid mit Labels und Werten:
   - **Projektleiter** ([Avatar oder „–"](./projektuebersicht.md#3-avatar-projektleiter-zelle))
   - **Jahr**
@@ -297,4 +298,4 @@ erscheinen im Diagramm.
 - [ ] Ist-vs-Plan-Δ ist visuell grün wenn IST unter Plan (polarity-Flag korrekt gesetzt)
 - [ ] Soll-Total ändert sich live wenn eine Soll-Zelle editiert wird (alle abhängigen Spalten ebenfalls)
 - [ ] Visualisierung zeigt keine locked rows
-- [ ] „Bearbeiten" / „Archivieren" oben rechts rendern (Action TBD — klick öffnet später Modal)
+- [ ] „Bearbeiten" oben rechts rendert; Klick öffnet das Edit-Formular inkl. Status-Dropdown

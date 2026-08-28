@@ -531,12 +531,10 @@ export default function ProjektDetailPage() {
               </div>
               <div className="flex items-center gap-2 ml-4 shrink-0">
                 {canEditData && !editingHeader && (
-                  <>
-                    <button type="button" onClick={startEditHeader}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Pencil size={13} />Bearbeiten
-                    </button>
-                  </>
+                  <button type="button" onClick={startEditHeader}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Pencil size={13} />Bearbeiten
+                  </button>
                 )}
                 {editingHeader && (
                   <>
