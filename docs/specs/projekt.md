@@ -47,7 +47,7 @@ Konkrete Benutzer beim Start: 1× Admin, 2× Projektleiter (Simon, Karl-Heinz), 
 | `projektleiter`  | FK → User (nullable)             | Zugewiesener Projektleiter                                                        |
 | `offerte_summe`  | MeasurementField (CHF)           | Erster Angebotsbetrag exkl. MwSt.                                                 |
 | `wv_summe`       | MeasurementField (CHF, nullable) | Aktueller Werkvertragsumfang exkl. MwSt. — bei neuen Projekten noch nicht gesetzt |
-| `auftrag_fertig` | BooleanField                     | Ob das Projekt abgeschlossen/archiviert werden kann                               |
+| `projekt_status` | ForeignKey(ProjektStatus)        | Lifecycle-Status des Projekts: „Offen", „In Arbeit" oder „Fertig"                 |
 
 **Berechnete Eigenschaft**
 `summe_wv_plus`: WV-Summe (**TODO** das ist erstmal dasselbe, die implementierung kommt noch).
@@ -227,16 +227,17 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 #### Kopfbereich
 
 ```
-[← Zurück]                                          [Bearbeiten]  [Archivieren]
+[← Zurück]                                                       [Bearbeiten]
 
 Hotel Glockenhof Sihlstr, ZH
 Auftragsnummer: 2022.0050   |   PL: Karl-Heinz Bauer
 1. Offerte exkl.: 365'595.00   |   Summe WV exkl.: 319'220.06   |   Summe WV + Zusätze: 393'319.37
-Auftrag fertig: Nein
+Status: In Arbeit
 ```
 
-„Bearbeiten" und „Archivieren" nur für Projektleiter + Admin.
-Button „Bearbeiten" → Kopffelder werden zu Eingabefeldern (kein Modal).
+„Bearbeiten" nur für Projektleiter + Admin.
+Button „Bearbeiten" → Kopffelder werden zu Eingabefeldern (kein Modal), inkl.
+Status-Dropdown (Offen / In Arbeit / Fertig).
 
 #### Kostenmatrix
 

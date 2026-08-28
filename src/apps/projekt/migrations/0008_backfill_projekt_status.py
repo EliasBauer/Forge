@@ -12,6 +12,7 @@ def backfill_projekt_status(
 ) -> None:
     ProjektStatusModel: Any = apps.get_model("projekt", "ProjektStatus")
     ProjektModel: Any = apps.get_model("projekt", "Projekt")
+    HistoricalProjektModel: Any = apps.get_model("projekt", "HistoricalProjekt")
 
     offen, _ = ProjektStatusModel.objects.get_or_create(name="Offen")
     in_arbeit, _ = ProjektStatusModel.objects.get_or_create(name="In Arbeit")
@@ -19,6 +20,13 @@ def backfill_projekt_status(
 
     ProjektModel.objects.filter(auftrag_fertig=True).update(projekt_status=fertig)
     ProjektModel.objects.filter(auftrag_fertig=False).update(projekt_status=in_arbeit)
+
+    HistoricalProjektModel.objects.filter(auftrag_fertig=True).update(
+        projekt_status=fertig
+    )
+    HistoricalProjektModel.objects.filter(auftrag_fertig=False).update(
+        projekt_status=in_arbeit
+    )
 
 
 def noop_reverse(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:

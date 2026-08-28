@@ -27,6 +27,7 @@ class ProjektStatus(GeneralManager):
             verbose_name = "Projekt-Status"
             verbose_name_plural = "Projekt-Status"
             db_table = "projekt_projektstatus"
+            ordering = ["id"]
 
     class Permission(AdditiveManagerPermission):
         __read__ = ["isAuthenticated"]
