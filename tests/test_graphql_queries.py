@@ -53,7 +53,7 @@ _QUERY_PROJEKT_LISTE = """
           name
           offerteSumme { value unit }
           wvSumme { value unit }
-          auftragFertig
+          projektStatus { name }
           projektleiter
           projektKennzahlenList {
             items {
@@ -76,7 +76,7 @@ _QUERY_PROJEKT_DETAIL = """
         jahr
         offerteSumme { value unit }
         wvSumme { value unit }
-        auftragFertig
+        projektStatus { name }
         projektleiter
         projektKennzahlenList {
           items {
@@ -181,6 +181,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
         self.assertIn("auftragsnummer", p)
         self.assertIn("offerteSumme", p)
         self.assertIn("projektKennzahlenList", p)
+        self.assertEqual(p["projektStatus"]["name"], "Offen")
         kennzahlen = p["projektKennzahlenList"]["items"]
         self.assertEqual(len(kennzahlen), 1)
         self.assertIn("summeWvPlus", kennzahlen[0])
@@ -201,6 +202,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
         p = result["data"]["projekt"]
         self.assertIsNotNone(p)
         self.assertEqual(p["auftragsnummer"], "T-2026-001")
+        self.assertEqual(p["projektStatus"]["name"], "Offen")
 
         # projektKennzahlenList — Kernfelder korrekt berechnet
         kennzahlen = p["projektKennzahlenList"]["items"]
