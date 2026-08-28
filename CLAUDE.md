@@ -3,21 +3,37 @@
 > Prozess (Brainstorming, Planung, TDD, Code-Review, Branch-Flow) liegt bei **Superpowers** und triggert automatisch.
 > Diese Datei trägt nur, was Superpowers nicht wissen kann: Forge-Umgebung, Test-Befehle, GM- und Frontend-Regeln.
 
-## Umgebung
-Du läufst **immer im DevContainer** dieses Worktrees — eine in sich geschlossene Umgebung mit eigenem `uv`-venv und `node_modules`. Alle Dev-Befehle (`uv`, `pytest`, `ruff`, `mypy`, `python manage.py`, `npm`, `pre-commit`, `git commit`) führst du **direkt** aus, ohne `docker exec`-Wrapper.
+## Umgebung — eigener Container pro Worktree
+Jeder Worktree läuft in seinem EIGENEN Container, gebaut aus `.devcontainer/devcontainer.json`. Der Agent läuft auf dem Host und spricht den Container über die `devcontainer`-CLI an — **nicht** über `docker exec`, **kein** fester Container-Name.
 
-Sicherheits-Check zu Beginn: `test -f /.dockerenv` muss existieren. Fehlt es, bist du versehentlich auf dem Host — dann **nicht** raten, sondern stoppen und den Nutzer bitten, den Worktree im Container zu öffnen.
+Zu Beginn der Session einmal (baut/startet den Container für DIESEN Worktree):
+```bash
+devcontainer up --workspace-folder .
+```
+Fehlt die CLI: `npm install -g @devcontainers/cli`.
+
+Danach JEDEN Dev-Befehl über `devcontainer exec` in genau diesen Container:
+```bash
+devcontainer exec --workspace-folder . uv run --group dev pytest tests/…
+devcontainer exec --workspace-folder . npm --prefix frontend test
+devcontainer exec --workspace-folder . git commit -m "…"
+```
+`--workspace-folder .` = aktueller Worktree; die CLI ordnet den passenden Container selbst zu.
+
+**Einmal verifizieren (Worktree-Eigenheit!):** direkt nach dem ersten `up`:
+`devcontainer exec --workspace-folder . git status`
+Ein Worktree-`.git` verweist auf einen Host-Pfad. Kommt „not a git repository", fehlt dem Container die Git-Datenbank → Mount nötig (Ein-Zeilen-Fix in der devcontainer.json). Dann stoppen und melden, nicht basteln.
 
 ## Schneller Test-Loop
-Gezielt: `uv run --group dev pytest tests/pfad/test_x.py` (Backend) · `npm --prefix frontend test` (Frontend).
+Gezielt (im Container): `pytest tests/pfad/test_x.py` (Backend) · `npm --prefix frontend test` (Frontend).
 „Erledigt" erst, wenn das volle Gate **grün** ist: `pre-commit run --all-files` (ruff, pytest, mypy, vitest).
 
 ## Commit
-Direkt `git commit` (im Container laufen die pre-commit-Hooks korrekt). **Niemals `--no-verify`** — das überspringt genau die Prüfung, die grün sein soll.
+`git commit`; über `devcontainer exec` (dann laufen die pre-commit-Hooks im Container korrekt). **Niemals `--no-verify`** — das überspringt genau die Prüfung, die grün sein soll.
 Bei jedem Task-Commit die zugehörige Plan-Datei (`docs/specs/plans/<task>.md`) mit in `git add` aufnehmen — sonst werden die abgehakten Boxen nie mitcommittet.
 
-## Compose-Smoke-Test (ganzer Stack)
-Zweck: prüfen, ob die *zusammengebaute* App startet — nicht Code ändern. Der Compose-Stack ist eine ANDERE Umgebung als der DevContainer.
+## Compose-Smoke-Test (ganzer Stack, auf dem HOST)
+Zweck: prüfen, ob die *zusammengebaute* App startet — nicht Code ändern. Läuft roh auf dem Host, NICHT über devcontainer/exec.
 - Hoch: `docker compose -f <DATEI> up -d --build` · Status: `… ps` · Logs: `… logs -f <SERVICE>`
 - Check: <SMOKE-CHECK, z. B. curl auf einen Health-Endpoint> · Runter: `… down` (Volumes nur bewusst mit `-v`)
 „Grün" heißt: Stack kommt hoch, Services healthy, Ziel-Endpoint antwortet — NICHT die Test-Suite. Up/Down sind bewusste Aktionen, kein Teil des Task-Loops.
