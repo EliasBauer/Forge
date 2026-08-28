@@ -15,7 +15,10 @@ export const GET_PROJEKTE = gql`
           value
           unit
         }
-        auftragFertig
+        projektStatus {
+          id
+          name
+        }
         projektleiter
         projektKennzahlenList {
           items {
@@ -53,7 +56,10 @@ export const SEARCH_PROJEKTE = gql`
             value
             unit
           }
-          auftragFertig
+          projektStatus {
+            id
+            name
+          }
           projektleiter
           projektKennzahlenList {
             items {
@@ -89,7 +95,10 @@ export const GET_PROJEKT = gql`
         value
         unit
       }
-      auftragFertig
+      projektStatus {
+        id
+        name
+      }
       projektleiter
       projektKennzahlenList {
         items {
@@ -167,6 +176,17 @@ export const GET_KOSTENART_IDS = gql`
       items {
         id
         schluessel
+      }
+    }
+  }
+`;
+
+export const GET_PROJEKT_STATUS_IDS = gql`
+  query ProjektStatusIds {
+    projektStatusList {
+      items {
+        id
+        name
       }
     }
   }
