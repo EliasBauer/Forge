@@ -16,7 +16,7 @@ type Projekt = {
   name: string;
   offerteSumme: GQLMeasurement;
   wvSumme: GQLMeasurement | null;
-  auftragFertig: boolean;
+  projektStatus: { id: string; name: string };
   projektleiter: string | null;
   projektKennzahlenList: { items: { summeWvPlus: GQLMeasurement | null; summeIstKosten: GQLMeasurement | null }[] };
 };
@@ -66,19 +66,25 @@ function Avatar({ name }: { name: string | null }) {
   );
 }
 
-function StatusBadge({ archived }: { archived: boolean }) {
-  if (archived) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500 ring-1 ring-inset ring-gray-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-        Archiviert
-      </span>
-    );
-  }
+const STATUS_STYLES: Record<string, string> = {
+  Offen: "bg-blue-50 text-blue-700 ring-blue-200",
+  "In Arbeit": "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  Fertig: "bg-gray-50 text-gray-500 ring-gray-200",
+};
+
+const STATUS_DOTS: Record<string, string> = {
+  Offen: "bg-blue-500",
+  "In Arbeit": "bg-emerald-500",
+  Fertig: "bg-gray-400",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const style = STATUS_STYLES[status] ?? STATUS_STYLES.Offen;
+  const dot = STATUS_DOTS[status] ?? STATUS_DOTS.Offen;
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-      Aktiv
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset ${style}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      {status}
     </span>
   );
 }
@@ -413,7 +419,7 @@ export default function ProjektListePage() {
                       </>
                     )}
                     <td className="px-4 py-3">
-                      <StatusBadge archived={p.auftragFertig} />
+                      <StatusBadge status={p.projektStatus.name} />
                     </td>
                   </tr>
                 ))}

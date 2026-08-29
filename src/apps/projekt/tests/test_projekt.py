@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.projekt.models import Projekt
+from apps.projekt.models import Projekt, ProjektStatus
 
 _ProjektModel: Any = Projekt.Interface._model  # type: ignore[misc]
 
@@ -44,7 +44,7 @@ class ProjektModelTest(TestCase):
             "projektleiter",
             "offerte_summe",
             "wv_summe",
-            "auftrag_fertig",
+            "projekt_status",
         ):
             self.assertIn(feld, feld_namen, msg=f"Feld '{feld}' fehlt am Modell")
 
@@ -95,7 +95,7 @@ class ProjektModelTest(TestCase):
         )
         self.assertIsNone(proj.wv_summe)
 
-    def test_auftrag_fertig_default_ist_false(self) -> None:
+    def test_projekt_status_default_ist_offen(self) -> None:
         proj = Projekt.create(
             ignore_permission=True,
             name="Standard Flags 2",
@@ -103,7 +103,19 @@ class ProjektModelTest(TestCase):
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
         )
-        self.assertFalse(proj.auftrag_fertig)
+        self.assertEqual(proj.projekt_status.name, "Offen")
+
+    def test_projekt_status_explizit_gesetzt(self) -> None:
+        fertig = ProjektStatus.filter(name="Fertig").first()
+        proj = Projekt.create(
+            ignore_permission=True,
+            name="Mit explizitem Status",
+            auftragsnummer="2024-007",
+            jahr=_TESTJAHR,
+            offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
+            projekt_status=fertig,
+        )
+        self.assertEqual(proj.projekt_status.name, "Fertig")
 
     def test_create_mit_projektleiter_als_string_id(self) -> None:
         """create() konvertiert projektleiter:'2' → projektleiter_id=2."""

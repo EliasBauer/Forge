@@ -16,6 +16,8 @@ from general_manager.bucket import Bucket
 from general_manager.measurement import Measurement, MeasurementField
 from general_manager.rule import Rule
 
+from apps.projekt.models.projekt_status import ProjektStatus
+
 if TYPE_CHECKING:
     from apps.projekt.models import KostenPosition
 
@@ -35,7 +37,7 @@ class Projekt(GeneralManager):
     projektleiter: User | None
     offerte_summe: Measurement
     wv_summe: Measurement | None
-    auftrag_fertig: bool
+    projekt_status: ProjektStatus
 
     kostenposition_list: Bucket[KostenPosition]
 
@@ -56,7 +58,11 @@ class Projekt(GeneralManager):
         wv_summe = MeasurementField(
             base_unit="CHF", default=None, null=True, blank=True
         )
-        auftrag_fertig = models.BooleanField(default=False)
+        projekt_status = models.ForeignKey(
+            "projekt.ProjektStatus",
+            on_delete=models.PROTECT,
+            related_name="projekte",
+        )
 
         class Meta:
             verbose_name = "Projekt"
@@ -96,6 +102,8 @@ class Projekt(GeneralManager):
     ) -> Projekt:
         if "projektleiter" in kwargs and kwargs["projektleiter"] is not None:
             kwargs["projektleiter_id"] = int(kwargs.pop("projektleiter"))
+        if kwargs.get("projekt_status") is None:
+            kwargs["projekt_status"] = ProjektStatus.filter(name="Offen").first()
         return super().create(
             creator_id=creator_id,
             history_comment=history_comment,

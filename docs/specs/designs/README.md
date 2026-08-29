@@ -58,7 +58,7 @@ Gelten für alle Seiten:
 - [ ] Alle Geld- und Prozent-Spalten mit `tabular-nums` (Ziffern fluchten)
 - [ ] Sticky-Layer-Stacking: Navbar `top:0`, Table-Header `top:56px`
 - [ ] Alle Backend-Calls als typisierte API-Aufrufe (kein implizites `any`)
-- [ ] Keine ungenutzten Status — nur `active` und `archived` (siehe Design-System)
+- [ ] Keine ungenutzten Status — nur `Offen`, `In Arbeit` und `Fertig` (siehe Design-System)
 - [ ] Logo: bestehendes Forge-Asset unter `assets/brand/` verwenden (siehe Shared-Components)
 
 ## Out of Scope
