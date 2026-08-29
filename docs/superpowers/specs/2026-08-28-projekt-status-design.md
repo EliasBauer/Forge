@@ -96,11 +96,13 @@ und `list_filter` durch `projekt_status` ersetzen.
 - `projektStatus` erscheint automatisch als Sub-Objekt
   (`projektStatus { name }`), da beide Seiten GeneralManager sind (siehe
   `KostenPosition.art` → `art { schluessel }`).
-- Mutations (`updateProjekt`, `createProjekt`) nehmen `$projektStatus: ID!`
-  entgegen (analog `$art: ID!` bei `createKostenPosition`).
-- Neue Query `PROJEKT_STATUS_LIST` (`frontend/src/graphql/queries.ts`), liefert
-  `{ items { id name } }` — wird ausschließlich intern vom Bearbeiten-Formular
-  auf der Detailseite genutzt, um die drei Auswahloptionen zu laden. Keine
+- `createProjekt` bleibt unverändert (kein `projektStatus`-Parameter) — das
+  Backend setzt den Default „Offen" serverseitig (`Projekt.create()`).
+  `updateProjekt` nimmt optional `$projektStatus: ID` entgegen.
+- Neue Query `GET_PROJEKT_STATUS_IDS` (`frontend/src/graphql/queries.ts`,
+  analog `GET_KOSTENART_IDS`), liefert `{ projektStatusList: { items: { id
+  name } } }` — wird ausschließlich intern vom Bearbeiten-Formular auf der
+  Detailseite genutzt, um die drei Auswahloptionen zu laden. Keine
   eigene Seite/Route dafür.
 
 ### Frontend

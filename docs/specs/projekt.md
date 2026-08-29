@@ -47,7 +47,7 @@ Konkrete Benutzer beim Start: 1× Admin, 2× Projektleiter (Simon, Karl-Heinz), 
 | `projektleiter`  | FK → User (nullable)             | Zugewiesener Projektleiter                                                        |
 | `offerte_summe`  | MeasurementField (CHF)           | Erster Angebotsbetrag exkl. MwSt.                                                 |
 | `wv_summe`       | MeasurementField (CHF, nullable) | Aktueller Werkvertragsumfang exkl. MwSt. — bei neuen Projekten noch nicht gesetzt |
-| `projekt_status` | ForeignKey(ProjektStatus)        | Lifecycle-Status des Projekts: „Offen", „In Arbeit" oder „Fertig"                 |
+| `projekt_status` | ForeignKey(ProjektStatus)        | Lifecycle-Status des Projekts: „Offen“, „In Arbeit“ oder „Fertig“                  |
 
 **Berechnete Eigenschaft**
 `summe_wv_plus`: WV-Summe (**TODO** das ist erstmal dasselbe, die implementierung kommt noch).
