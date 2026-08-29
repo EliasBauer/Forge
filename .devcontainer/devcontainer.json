@@ -1,26 +1,72 @@
 {
+  // Anzeigename des Containers in VS Code (kosmetisch).
   "name": "Forge Dev",
+
+  // Basis-Image: Debian mit vorinstalliertem Python 3.12.
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  // Fester Container-Name — BEWUSST auskommentiert.
+  // Mit festem Namen könnte nur EIN Container gleichzeitig existieren
+  // → jeder Worktree bekäme sonst denselben und würde kollidieren.
+  // Ohne diese Zeile vergibt die devcontainer-CLI pro Worktree einen eigenen Namen.
   // "runArgs": ["--name", "forge-dev"],
 
+  // Zusatz-Bausteine über den offiziellen Feature-Mechanismus.
+  // Hier: Node 22 (für das Frontend / vitest). Versionen werden in
+  // devcontainer-lock.json festgehalten (mitcommitten).
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" }
   },
 
+  // Umgebungsvariable, die im Container gesetzt ist (App erkennt "dev"-Modus).
   "containerEnv": {
     "FORGE_ENV": "dev"
   },
 
+  // Läuft EINMAL beim Erstellen des Containers, vor postCreate:
+  // uv installieren + Python-Dependencies (inkl. dev-Gruppe) synchronisieren.
   "onCreateCommand": "pip install uv && uv sync --group dev",
+
+  // Läuft nach onCreate, wenn der Workspace gemountet ist:
+  // Frontend-Pakete, pre-commit-Hooks installieren, Claude-Code-CLI global.
   "postCreateCommand": "npm --prefix frontend install && uv run pre-commit install && npm install -g @anthropic-ai/claude-code",
 
+  // ---------------------------------------------------------------------------
+  // GIT-DATENBANK FÜR WORKTREE-CONTAINER
+  // Ein Worktree hat kein echtes .git-Verzeichnis, nur eine .git-DATEI, die per
+  // absolutem Host-Pfad auf das Haupt-Repo zeigt (…/Forge/.git/worktrees/<name>).
+  // Zeigt ein Container nur auf den Worktree-Unterordner, fehlt ihm dieses .git
+  // → git bricht mit "not a git repository".
+  // Dieser Mount hängt das Haupt-.git unter demselben absoluten Pfad in den
+  // Container, sodass der Zeiger aufgeht und git/pre-commit funktionieren.
+  //
+  // Hinweise:
+  //  - Nur für Worktree-Container nötig. Beim normalen main-Rebuild in VS Code
+  //    ist er redundant (main mountet .git ohnehin) und schadet nicht.
+  //  - HART VERDRAHTETER PFAD: gilt nur auf DIESEM Mac. Wird das Repo verschoben
+  //    oder von jemand anderem ausgecheckt, existiert der source-Pfad dort nicht
+  //    → Rebuild scheitert. Vor dem Teilen auf ${localWorkspaceFolder}/.git
+  //    umstellen (und im Worktree-Container einmal testen).
+  // ---------------------------------------------------------------------------
+  "mounts": [
+    "source=/Users/eliasbauer/Desktop/Github/Forge/.git,target=/Users/eliasbauer/Desktop/Github/Forge/.git,type=bind"
+  ],
+
+  // Feste Port-Weiterleitung — BEWUSST auskommentiert.
+  // Feste Host-Ports würden bei mehreren Worktree-Containern kollidieren.
   // "forwardPorts": [8000, 5173],
+
+  // Automatisch erkannte Ports still weiterleiten (keine Popups pro Port).
   "otherPortsAttributes": { "onAutoForward": "silent" },
+
+  // Nur Beschriftung für die Ports in der VS-Code-Ports-Ansicht (kosmetisch).
   "portsAttributes": {
     "8000": { "label": "Django" },
     "5173": { "label": "Frontend (Vite)" }
   },
 
+  // VS-Code-spezifisch: Extensions, die im Container automatisch installiert werden.
+  // (Gilt nur für VS Code; für den CLI-/App-Weg ohne Wirkung.)
   "customizations": {
     "vscode": {
       "extensions": [
