@@ -210,16 +210,16 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 ```
 [Logo]           [Projekte] [Stundensätze]      [Karl-Heinz]  [Abmelden]
 ────────────────────────────────────────────────────────────────────────────
-[+ Neues Projekt]   [☐ Archivierte anzeigen]
+[+ Neues Projekt]   [☐ Fertige anzeigen]
 
   Auftragsnr.   Name                    PL            WV exkl.    WV + Zusätze   Status
   ─────────────────────────────────────────────────────────────────────────────────────
-  2022.0050     Hotel Glockenhof …      Karl-Heinz    319'220     393'319        Aktiv    [→]
-  2022.0055     Raiffeisenbank …        Karl-Heinz    131'848     156'537        Fertig   [→]
+  2022.0050     Hotel Glockenhof …      Karl-Heinz    319'220     393'319        In Arbeit [→]
+  2022.0055     Raiffeisenbank …        Karl-Heinz    131'848     156'537        Fertig    [→]
 ```
 
 - Sortierung per Klick auf Spaltenköpfe (Standard: Auftragsnummer aufsteigend)
-- Archivierte Projekte (auftrag_fertig = true) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
+- Projekte mit Status „Fertig“ (`projekt_status`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
 - Monteur: sieht nur Auftragsnr., Name, Status (keine Finanzdaten)
 
 ### 3. Projektdetail (`/projekte/:id`)
