@@ -357,9 +357,9 @@ class Meta:
 
 ```python
 alle    = Projekt.all()
-aktive  = Projekt.filter(auftrag_fertig=False)
+offene  = Projekt.filter(projekt_status__name="Offen")
 exkl    = Projekt.exclude(status="archiviert")
-kombi   = aktive | exkl   # Union (OR)
+kombi   = offene | exkl   # Union (OR)
 ```
 
 ### Filtern & Ausschliessen

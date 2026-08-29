@@ -131,7 +131,7 @@ In [ProjektListePage.tsx](../../frontend/src/pages/ProjektListePage.tsx):
           name
           offerteSumme { value unit }
           wvSumme { value unit }
-          auftragFertig
+          projektStatus { name }
           projektleiter
           projektKennzahlenList { items { summeWvPlus { value unit } summeIstKosten { value unit } } }
         }

@@ -47,7 +47,7 @@ Konkrete Benutzer beim Start: 1× Admin, 2× Projektleiter (Simon, Karl-Heinz), 
 | `projektleiter`  | FK → User (nullable)             | Zugewiesener Projektleiter                                                        |
 | `offerte_summe`  | MeasurementField (CHF)           | Erster Angebotsbetrag exkl. MwSt.                                                 |
 | `wv_summe`       | MeasurementField (CHF, nullable) | Aktueller Werkvertragsumfang exkl. MwSt. — bei neuen Projekten noch nicht gesetzt |
-| `auftrag_fertig` | BooleanField                     | Ob das Projekt abgeschlossen/archiviert werden kann                               |
+| `projekt_status` | ForeignKey(ProjektStatus)        | Lifecycle-Status des Projekts: „Offen“, „In Arbeit“ oder „Fertig“                  |
 
 **Berechnete Eigenschaft**
 `summe_wv_plus`: WV-Summe (**TODO** das ist erstmal dasselbe, die implementierung kommt noch).
@@ -210,16 +210,16 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 ```
 [Logo]           [Projekte] [Stundensätze]      [Karl-Heinz]  [Abmelden]
 ────────────────────────────────────────────────────────────────────────────
-[+ Neues Projekt]   [☐ Archivierte anzeigen]
+[+ Neues Projekt]   [☐ Fertige anzeigen]
 
   Auftragsnr.   Name                    PL            WV exkl.    WV + Zusätze   Status
   ─────────────────────────────────────────────────────────────────────────────────────
-  2022.0050     Hotel Glockenhof …      Karl-Heinz    319'220     393'319        Aktiv    [→]
-  2022.0055     Raiffeisenbank …        Karl-Heinz    131'848     156'537        Fertig   [→]
+  2022.0050     Hotel Glockenhof …      Karl-Heinz    319'220     393'319        In Arbeit [→]
+  2022.0055     Raiffeisenbank …        Karl-Heinz    131'848     156'537        Fertig    [→]
 ```
 
 - Sortierung per Klick auf Spaltenköpfe (Standard: Auftragsnummer aufsteigend)
-- Archivierte Projekte (auftrag_fertig = true) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
+- Projekte mit Status „Fertig“ (`projekt_status`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
 - Monteur: sieht nur Auftragsnr., Name, Status (keine Finanzdaten)
 
 ### 3. Projektdetail (`/projekte/:id`)
@@ -227,16 +227,17 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 #### Kopfbereich
 
 ```
-[← Zurück]                                          [Bearbeiten]  [Archivieren]
+[← Zurück]                                                       [Bearbeiten]
 
 Hotel Glockenhof Sihlstr, ZH
 Auftragsnummer: 2022.0050   |   PL: Karl-Heinz Bauer
 1. Offerte exkl.: 365'595.00   |   Summe WV exkl.: 319'220.06   |   Summe WV + Zusätze: 393'319.37
-Auftrag fertig: Nein
+Status: In Arbeit
 ```
 
-„Bearbeiten" und „Archivieren" nur für Projektleiter + Admin.
-Button „Bearbeiten" → Kopffelder werden zu Eingabefeldern (kein Modal).
+„Bearbeiten" nur für Projektleiter + Admin.
+Button „Bearbeiten" → Kopffelder werden zu Eingabefeldern (kein Modal), inkl.
+Status-Dropdown (Offen / In Arbeit / Fertig).
 
 #### Kostenmatrix
 

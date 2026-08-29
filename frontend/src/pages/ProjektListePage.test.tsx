@@ -26,7 +26,7 @@ function projekt(overrides: Record<string, unknown> = {}) {
     name: "Bauprojekt B",
     offerteSumme: { value: 10000, unit: "CHF" },
     wvSumme: { value: 9000, unit: "CHF" },
-    auftragFertig: false,
+    projektStatus: { id: "2", name: "In Arbeit" },
     projektleiter: "Max Muster",
     projektKennzahlenList: {
       items: [{ summeWvPlus: { value: 9500, unit: "CHF" }, summeIstKosten: { value: 8000, unit: "CHF" } }],
@@ -129,6 +129,12 @@ describe("ProjektListePage – keine Client-Sortierung mehr", () => {
     expect(
       total.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_PRECEDING,
     ).toBeTruthy();
+  });
+
+  it("zeigt den ProjektStatus-Namen als Badge an", async () => {
+    renderPage();
+    expect(await screen.findByText("Bauprojekt B")).toBeInTheDocument();
+    expect(screen.getAllByText("In Arbeit").length).toBeGreaterThan(0);
   });
 });
 

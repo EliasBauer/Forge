@@ -100,21 +100,24 @@ DEV_STYLES = {
 
 ## 6. Status (Projekt-Lifecycle)
 
-Es gibt **nur zwei** Status:
+Es gibt **drei** Status (`ProjektStatus`-Lookup-Tabelle, editierbar im
+Bearbeiten-Formular des Projekts):
 
-| Status     | Label        | Visual                                  |
-|------------|--------------|-----------------------------------------|
-| `active`   | Aktiv        | Grüner Dot, emerald-50 BG, emerald-700 Text |
-| `archived` | Archiviert   | Grauer Dot, gray-50 BG, gray-500 Text   |
+| Status       | Visual                                     |
+|--------------|---------------------------------------------|
+| `Offen`      | Blauer Dot, blue-50 BG, blue-700 Text       |
+| `In Arbeit`  | Grüner Dot, emerald-50 BG, emerald-700 Text |
+| `Fertig`     | Grauer Dot, gray-50 BG, gray-500 Text       |
 
-(Frühere Status „In Verzug" und „Abgeschlossen" wurden bewusst entfernt — der
-operative Zustand ergibt sich aus der Kostenanalyse, nicht aus einem Label.)
+(Frühere Status „In Verzug" und „Abgeschlossen" wurden bewusst nicht
+eingeführt — der operative Zustand ergibt sich aus der Kostenanalyse, nicht
+aus einem Label.)
 
-Badge-Markup:
+Badge-Markup (siehe `STATUS_STYLES`/`StatusBadge` in `ProjektListePage.tsx`):
 ```tsx
 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px]
                  font-medium bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200">
   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-  Aktiv
+  In Arbeit
 </span>
 ```

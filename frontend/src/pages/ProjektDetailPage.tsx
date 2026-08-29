@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calculator, ChevronLeft, Database, Pencil } from "lucide-react";
 import Layout from "../components/Layout";
-import { GET_KOSTENART_IDS, GET_PROJEKT } from "../graphql/queries";
+import { GET_KOSTENART_IDS, GET_PROJEKT, GET_PROJEKT_STATUS_IDS } from "../graphql/queries";
 import {
   CREATE_KOSTEN_POSITION,
   DELETE_KOSTEN_POSITION,
@@ -52,7 +52,7 @@ type Projekt = {
   jahr: number;
   offerteSumme: GQLMeasurement;
   wvSumme: GQLMeasurement | null;
-  auftragFertig: boolean;
+  projektStatus: { id: string; name: string };
   projektleiter: string | null;
   projektKennzahlenList: { items: ProjektKennzahlen[] };
   kostenPositionenList: { items: KostenPosition[] };
@@ -66,8 +66,10 @@ type CreateKostenPositionResult = { createKostenPosition: { success: boolean } }
 type DeleteKostenPositionResult = { deleteKostenPosition: { success: boolean } };
 type KostenartIdItem = { id: string; schluessel: string };
 type KostenartIdsData = { kostenartList: { items: KostenartIdItem[] } };
+type ProjektStatusIdItem = { id: string; name: string };
+type ProjektStatusIdsData = { projektStatusList: { items: ProjektStatusIdItem[] } };
 type UserOption = { id: number; username: string };
-type HeaderForm = { name: string; offerteSumme: string; wvSumme: string; projektleiter: string };
+type HeaderForm = { name: string; offerteSumme: string; wvSumme: string; projektleiter: string; projektStatus: string };
 
 const ART_LABELS: Record<string, string> = {
   regie: "Regie",
@@ -313,6 +315,7 @@ export default function ProjektDetailPage() {
   });
 
   const { data: kostenartData } = useQuery<KostenartIdsData>(GET_KOSTENART_IDS);
+  const { data: projektStatusData } = useQuery<ProjektStatusIdsData>(GET_PROJEKT_STATUS_IDS);
   const artIdMap = new Map<string, string>(
     kostenartData?.kostenartList.items.map((a) => [a.schluessel, a.id]) ?? [],
   );
@@ -422,6 +425,7 @@ export default function ProjektDetailPage() {
       wvSumme: p.wvSumme ? String(p.wvSumme.value) : "",
       projektleiter: users.find((u) => u.username === p.projektleiter)
         ? String(users.find((u) => u.username === p.projektleiter)!.id) : "",
+      projektStatus: p.projektStatus.id,
     });
     setEditingHeader(true);
     setMutationError(null);
@@ -439,12 +443,7 @@ export default function ProjektDetailPage() {
     const wvSumme = parseCHF(headerForm.wvSumme);
     if (!offerteSumme) { setMutationError("Bitte eine gültige Offerte-Summe eingeben."); return; }
     if (headerForm.wvSumme.trim() && !wvSumme) { setMutationError("Bitte eine gültige WV-Summe eingeben."); return; }
-    updateProjekt({ variables: { id: p.id, name: headerForm.name, offerteSumme, wvSumme: wvSumme ?? undefined, projektleiter: headerForm.projektleiter || undefined } });
-  }
-
-  function toggleArchivieren() {
-    if (!p) return;
-    updateProjekt({ variables: { id: p.id, auftragFertig: !p.auftragFertig } });
+    updateProjekt({ variables: { id: p.id, name: headerForm.name, offerteSumme, wvSumme: wvSumme ?? undefined, projektleiter: headerForm.projektleiter || undefined, projektStatus: headerForm.projektStatus || undefined } });
   }
 
   function startEditPos(schluessel: string, pos: KostenPosition | null) {
@@ -531,20 +530,11 @@ export default function ProjektDetailPage() {
                 <p className="text-xs text-gray-500 mt-1">{p.auftragsnummer} (id:{p.id})</p>
               </div>
               <div className="flex items-center gap-2 ml-4 shrink-0">
-                {!editingHeader && p.auftragFertig && (
-                  <span className="rounded px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600">Fertig</span>
-                )}
                 {canEditData && !editingHeader && (
-                  <>
-                    <button type="button" onClick={startEditHeader}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Pencil size={13} />Bearbeiten
-                    </button>
-                    <button type="button" onClick={toggleArchivieren} disabled={savingHeader}
-                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
-                      {p.auftragFertig ? "Reaktivieren" : "Archivieren"}
-                    </button>
-                  </>
+                  <button type="button" onClick={startEditHeader}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Pencil size={13} />Bearbeiten
+                  </button>
                 )}
                 {editingHeader && (
                   <>
@@ -574,6 +564,20 @@ export default function ProjektDetailPage() {
                   </select>
                 ) : (
                   <div className="mt-1 text-[15px] text-gray-900">{p.projektleiter ?? "–"}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Status</div>
+                {editingHeader && headerForm ? (
+                  <select value={headerForm.projektStatus}
+                    onChange={(e) => setHeaderForm((f) => f ? { ...f, projektStatus: e.target.value } : f)}
+                    className="text-[15px] text-gray-900 mt-1 border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none w-full text-sm">
+                    {projektStatusData?.projektStatusList.items.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="mt-1 text-[15px] text-gray-900">{p.projektStatus.name}</div>
                 )}
               </div>
               <div>
