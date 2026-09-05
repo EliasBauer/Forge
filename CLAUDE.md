@@ -30,7 +30,8 @@ Gezielt (im Container): `pytest tests/pfad/test_x.py` (Backend) · `npm --prefix
 
 ## Commit
 `git commit`; über `devcontainer exec` (dann laufen die pre-commit-Hooks im Container korrekt). **Niemals `--no-verify`** — das überspringt genau die Prüfung, die grün sein soll.
-Bei jedem Task-Commit die zugehörige Plan-Datei (`docs/specs/plans/<task>.md`) mit in `git add` aufnehmen — sonst werden die abgehakten Boxen nie mitcommittet.
+Commit die Specs-Datei die von superpowers generiert wird.
+Bei jedem Task-Commit die zugehörige Plan-Datei mit in `git add` aufnehmen — sonst werden die abgehakten Boxen nie mitcommittet.
 
 ## Compose-Smoke-Test (ganzer Stack, auf dem HOST)
 Zweck: prüfen, ob die *zusammengebaute* App startet — nicht Code ändern. Läuft roh auf dem Host, NICHT über devcontainer/exec.

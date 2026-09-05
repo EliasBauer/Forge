@@ -2,17 +2,17 @@
 
 ## Ziel
 
-Die Suche auf der Projektliste ([ProjektListePage.tsx](../../frontend/src/pages/ProjektListePage.tsx)) filtert
+Die Suche auf der Projektliste ([ProjektListePage.tsx](../../../frontend/src/pages/ProjektListePage.tsx)) filtert
 heute rein clientseitig über die bereits geladenen (max. 100) Projekte. Sie wird auf die
 Volltext-Suche des GeneralManager-Frameworks (§11 der GM-Skill-Referenz) umgestellt, produktiv
 über Meilisearch. Meilisearch läuft bereits als Service in
-[docker-compose.yml](../../docker/docker-compose.yml), ist aber bisher nicht angebunden.
+[docker-compose.yml](../../../docker/docker-compose.yml), ist aber bisher nicht angebunden.
 
 ## Ist-Zustand
 
 - `ProjektListePage.tsx` lädt via `GET_PROJEKTE` (`projektList(pageSize: 100)`) alle Projekte und
   filtert per `Array.filter` auf `name`, `auftragsnummer`, `projektleiter` (Substring, lowercase).
-- Kein `SearchConfig` auf `Projekt` ([src/apps/projekt/models/projekt.py](../../src/apps/projekt/models/projekt.py)).
+- Kein `SearchConfig` auf `Projekt` ([src/apps/projekt/models/projekt.py](../../../src/apps/projekt/models/projekt.py)).
 - Kein Such-Backend in `GENERAL_MANAGER`-Settings konfiguriert.
 - `meilisearch`-Python-Client ist keine Dependency.
 - Devcontainer (`.devcontainer/devcontainer.json`) setzt kein `.env`, nur `FORGE_ENV=dev` — läuft
@@ -20,7 +20,7 @@ Volltext-Suche des GeneralManager-Frameworks (§11 der GM-Skill-Referenz) umgest
 
 ## Backend-Auswahl: dev vs. produktiv
 
-Gleiches Muster wie `CACHES`/`CHANNEL_LAYERS` in [settings.py:97-124](../../src/forge/settings.py):
+Gleiches Muster wie `CACHES`/`CHANNEL_LAYERS` in [settings.py:97-124](../../../src/forge/settings.py):
 Entscheidung anhand Vorhandensein der Env-Var, nicht anhand `FORGE_ENV`.
 
 ```python
@@ -62,7 +62,7 @@ existiert bereits, Nachrüsten ist ein reines Settings-Flag, falls es mal eng wi
 
 ## SearchConfig auf `Projekt`
 
-In [src/apps/projekt/models/projekt.py](../../src/apps/projekt/models/projekt.py), indexiert
+In [src/apps/projekt/models/projekt.py](../../../src/apps/projekt/models/projekt.py), indexiert
 dieselben Felder, die heute clientseitig gefiltert werden:
 
 ```python
@@ -118,7 +118,7 @@ bei Bedarf nachrüstbar.
 
 ## Frontend
 
-In [ProjektListePage.tsx](../../frontend/src/pages/ProjektListePage.tsx):
+In [ProjektListePage.tsx](../../../frontend/src/pages/ProjektListePage.tsx):
 
 - Neue GraphQL-Query gegen den GM-`search`-Root-Query:
   ```graphql
