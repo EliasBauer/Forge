@@ -8,7 +8,7 @@
 
 **Tech Stack:** Django 5 / GeneralManager 0.76.0 / GraphQL (graphene-django) / React + Apollo Client 4 / Vitest + `@testing-library/react` + `@apollo/client/testing`.
 
-**Spec:** [docs/specs/projektliste-pagination.md](../projektliste-pagination.md)
+**Spec:** [docs/specs/projektliste-pagination.md](../specs/2026-08-28-projektliste-pagination.md)
 
 ## Global Constraints
 

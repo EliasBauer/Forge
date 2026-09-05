@@ -87,8 +87,9 @@ forge/
 ├── docker/             # Dockerfile + docker-compose.yml
 ├── nginx/              # nginx.conf (Reverse Proxy)
 ├── tests/              # Integrations- und System-Tests (cross-cutting)
-├── docs/               # Dokumentation
-├── specs/              # Feature-Specs und Todo
+├── docs/                             # Dokumentation
+│   ├── specs/                        # Feature-Specs je Domain (+ designs/ für Claude.ai-Handoffs)
+│   └── superpowers/                  # Superpowers-Artefakte: plans/ und specs/ pro Task
 ├── pyproject.toml
 └── .pre-commit-config.yaml
 ```

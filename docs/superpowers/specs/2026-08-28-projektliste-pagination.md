@@ -15,11 +15,11 @@ Cap dort unkritisch ist.
 
 ## Ist-Zustand
 
-- `GET_PROJEKTE` ([queries.ts:3-38](../../frontend/src/graphql/queries.ts#L3-L38)):
+- `GET_PROJEKTE` ([queries.ts:3-38](../../../frontend/src/graphql/queries.ts#L3-L38)):
   `projektList(pageSize: 100)`, kein `page`-Arg, kein `sortBy`.
-- `SEARCH_PROJEKTE` ([queries.ts:40-75](../../frontend/src/graphql/queries.ts#L40-L75)):
+- `SEARCH_PROJEKTE` ([queries.ts:40-75](../../../frontend/src/graphql/queries.ts#L40-L75)):
   `search(query: $query, index: "global", types: ["Projekt"], pageSize: 20)`, kein `page`-Arg.
-- `sortProjekte()` ([ProjektListePage.tsx:134](../../frontend/src/pages/ProjektListePage.tsx#L134)):
+- `sortProjekte()` ([ProjektListePage.tsx:134](../../../frontend/src/pages/ProjektListePage.tsx#L134)):
   reines Client-Array-Sort über die jeweils geladene Ergebnismenge. 5 Spalten sind heute
   klickbar sortierbar: Auftragsnr., Name, Projektleiter, Offerte (`offerteSumme`), WV +
   Zusätze (`summeWvPlus`).
@@ -28,7 +28,7 @@ Cap dort unkritisch ist.
 - Initial-Load bleibt bewusst über `GET_PROJEKTE`, nicht `SEARCH_PROJEKTE` — das ist die
   einzige Query, die an `PROJEKT_LISTE_SUBSCRIPTION` hängt (Live-Update bei Änderungen durch
   Kolleg:innen). Diese Trennung ist unverändert korrekt und **nicht** Teil dieser Spec.
-- Der Suche-Index heißt aktuell `"global"` ([projekt.py:80](../../src/apps/projekt/models/projekt.py#L80)).
+- Der Suche-Index heißt aktuell `"global"` ([projekt.py:80](../../../src/apps/projekt/models/projekt.py#L80)).
   Referenziert an drei Stellen im Repo: Backend-Config (`projekt.py`), Frontend-Query
   (`queries.ts`) und ein Backend-Test (`tests/test_graphql_queries.py:119`, `_QUERY_SEARCH_PROJEKTE`).
 
@@ -36,13 +36,13 @@ Cap dort unkritisch ist.
 
 - `projektList` unterstützt `page`, `pageSize`, `sort_by` (Liste von
   `{ManagerName}SortByOptions`-Enum-Werten) und `reverse: Boolean`, sowie
-  `pageInfo { totalCount totalPages currentPage pageSize }` ([graphql.py](../../.venv/lib/python3.12/site-packages/general_manager/api/graphql.py)).
+  `pageInfo { totalCount totalPages currentPage pageSize }` ([graphql.py](../../../.venv/lib/python3.12/site-packages/general_manager/api/graphql.py)).
   Reine String-`orderBy`-Args gibt es in dieser Version **nicht** — GraphQL-seitig sind
   Enum-Werte, keine Strings, zu verwenden (unquoted, Python-Attributname z. B.
   `auftragsnummer`). `reverse: true` kehrt die (aufsteigende) Standardrichtung des
   gewählten Sortierfelds um.
 - `search` unterstützt `page`, `page_size` sowie `total` im Ergebnis
-  ([graphql_search.py](../../.venv/lib/python3.12/site-packages/general_manager/api/graphql_search.py)).
+  ([graphql_search.py](../../../.venv/lib/python3.12/site-packages/general_manager/api/graphql_search.py)).
   `sort_by`/`sort_desc` existieren ebenfalls, werden hier aber nicht verwendet, da die Suche
   keine User-Sortierung mehr braucht (sortiert weiterhin nach Relevanz-Score).
 - `types: ["Projekt"]` im `search`-Aufruf ist kein Boilerplate, sondern grenzt die Suche
@@ -52,7 +52,7 @@ Cap dort unkritisch ist.
   es ohne `types`-Filter Treffer, für die kein Fragment matcht (leere Felder). Bleibt daher
   unverändert bestehen.
 - Der `IndexConfig.name` ist zugleich die physische Meilisearch-Index-UID
-  ([backends/meilisearch.py](../../.venv/lib/python3.12/site-packages/general_manager/search/backends/meilisearch.py)).
+  ([backends/meilisearch.py](../../../.venv/lib/python3.12/site-packages/general_manager/search/backends/meilisearch.py)).
   Eine Umbenennung ändert also den tatsächlichen Index, nicht nur ein Label — nach dem Deploy
   ist ein Reindex nötig (siehe unten).
 - Der Backend-Test `tests/test_graphql_queries.py:119` (`_QUERY_SEARCH_PROJEKTE`) muss im
@@ -75,7 +75,7 @@ und `DESC_DEFAULT` werden komplett aus `ProjektListePage.tsx` entfernt.
 
 ## Backend-Änderung
 
-Einzige Änderung in [projekt.py](../../src/apps/projekt/models/projekt.py): Index umbenennen.
+Einzige Änderung in [projekt.py](../../../src/apps/projekt/models/projekt.py): Index umbenennen.
 
 ```python
 class SearchConfig:
