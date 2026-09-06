@@ -18,24 +18,6 @@ export const PROJEKT_DETAIL_SUBSCRIPTION = gql`
   subscription ProjektUpdated($id: ID!) {
     onProjektChange(id: $id) {
       action
-      item {
-        id
-        name
-        auftragsnummer
-        offerteSumme {
-          value
-          unit
-        }
-        wvSumme {
-          value
-          unit
-        }
-        projektStatus {
-          id
-          name
-        }
-        projektleiter
-      }
     }
   }
 `;

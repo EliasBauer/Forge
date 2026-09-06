@@ -899,6 +899,27 @@ subscription {
 > werden; Bulk-Operationen fassen Benachrichtigungen in einem Batch-Kontext zusammen
 > (`bulk_data_change_notifications`), statt pro Zeile ein Event zu feuern.
 
+> **Achtung — `SynchronousOnlyOperation` bei `item`-Feldern (Forge-Erfahrung):**
+> Der WebSocket-Consumer führt `graphql.subscribe()` direkt im async Event-Loop aus (Daphne/Channels).
+> Fragt `item { ... }` ein Feld ab, dessen zugrunde liegende Relation auf der Django-Instanz noch
+> nicht geladen ist, löst das eine synchrone DB-Query aus — egal ob es sich um eine
+> GM-zu-GM-Relation handelt (GMs `_general_manager_accessor`/`raw_id_manager` baut eine frische
+> Manager-Instanz per `manager.get(pk=...)`) oder um eine simple Django-FK zu einem
+> nicht-GM-Model wie `auth.User` (Djangos `ForwardManyToOneDescriptor` lädt lazy nach). Beide Pfade
+> landen im selben `async_unsafe`-Guard und werfen `django.core.exceptions.SynchronousOnlyOperation`.
+> GM fängt das pro Feld ab (`AttributeEvaluationError`, geloggt als „interface operation error" /
+> „attribute evaluation failed") — das betroffene Feld kommt als `null` mit Fehler zurück, der Rest
+> des Events geht durch.
+>
+> Zwei Absicherungen, die das in der Praxis meiden:
+> - Im `item`-Selection-Set nur Felder abfragen, die bereits eager geladen sind (z. B. via
+>   `select_related(...)` auf dem Django-`Manager`, den das Interface über `objects = ...` setzt),
+>   oder die Subscription auf reine Skalare/`action` beschränken und die eigentlichen Daten per
+>   normalem `refetch()` (HTTP-Query, läuft nicht im rohen Event-Loop) nachladen.
+> - Einen custom `Manager` mit `get_queryset().select_related("feld")` auf dem `Interface` setzen,
+>   damit die Relation schon in der ursprünglichen (synchronen) Fetch-Query mitkommt und spätere
+>   Zugriffe nur noch `_state.fields_cache` lesen, statt lazy nachzuladen.
+
 ---
 
 ## 11) Search
@@ -1319,6 +1340,7 @@ server: { proxy: { "/graphql": "http://localhost:8000" } }
 | `cache="auto"` Fehler                                    | Modus in 0.42.0 entfernt                                         | `cache="run"` (Default) oder `cache="dependency"`                                                        |
 | `Float cannot represent non numeric value`               | Frontend schickt String statt Zahl                              | `parseFloat(val.replace(",", "."))`                                                                      |
 | Vite zeigt nichts im Container                           | Vite lauscht nur auf localhost                                  | `npm run dev -- --host`                                                                                  |
+| `SynchronousOnlyOperation` in Subscription-Log            | `item`-Feld greift auf un-vorgeladene Relation zu (GM-Manager-FK oder plain Django-FK) im async Consumer | Relation per `select_related(...)` auf dem `Interface`-`Manager` vorladen, oder Feld aus `item` entfernen und per `refetch()` nachladen (§10) |
 
 ### Decimal-Float-Fix in Interface
 
