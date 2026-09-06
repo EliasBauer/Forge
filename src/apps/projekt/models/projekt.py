@@ -24,6 +24,9 @@ if TYPE_CHECKING:
 
 class _ProjectManager(Manager):  # type: ignore[type-arg]
     def get_queryset(self) -> QuerySet[Any]:
+        # N+1-Vermeidung: projektleiter (User-FK) wird bei jeder Zeile in
+        # projektList/projekt(id) gelesen; ohne select_related eine Extra-Query
+        # pro Zeile.
         return super().get_queryset().select_related("projektleiter")
 
 

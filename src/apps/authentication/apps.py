@@ -1,9 +1,10 @@
+import importlib
+
 from django.apps import AppConfig
 
 
 class AuthenticationConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
     name = "apps.authentication"
 
     def ready(self) -> None:
-        import apps.authentication.permission  # noqa: F401
+        importlib.import_module("apps.authentication.permission")
