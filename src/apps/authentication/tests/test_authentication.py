@@ -189,3 +189,80 @@ class CurrentUserViewTest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.json())
+
+
+class CurrentUserCapabilitiesTest(TestCase):
+    def _gql(self) -> dict[str, object]:
+        import json
+
+        response = self.client.post(
+            "/graphql/",
+            data=json.dumps(
+                {
+                    "query": """
+                    query {
+                      me {
+                        username
+                        capabilities {
+                          canCreateProjekt
+                          canManageStundensaetze
+                          canViewFinanzen
+                        }
+                      }
+                    }
+                    """
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()  # type: ignore[no-any-return]
+
+    def test_anonymous_alle_capabilities_false(self) -> None:
+        result = self._gql()
+        self.assertEqual(result["data"]["me"]["username"], "")  # type: ignore[index]
+        caps = result["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": False,
+                "canManageStundensaetze": False,
+                "canViewFinanzen": False,
+            },
+        )
+
+    def test_admin_alle_capabilities_true(self) -> None:
+        from django.contrib.auth.models import Group
+
+        user = User.objects.create_user("admincaps", password="x")
+        group, _ = Group.objects.get_or_create(name="Admin")
+        user.groups.add(group)
+        self.client.force_login(user)
+        result = self._gql()
+        self.assertEqual(result["data"]["me"]["username"], "admincaps")  # type: ignore[index]
+        caps = result["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": True,
+                "canManageStundensaetze": True,
+                "canViewFinanzen": True,
+            },
+        )
+
+    def test_monteur_darf_nur_nichts(self) -> None:
+        from django.contrib.auth.models import Group
+
+        user = User.objects.create_user("monteurcaps", password="x")
+        group, _ = Group.objects.get_or_create(name="Monteur")
+        user.groups.add(group)
+        self.client.force_login(user)
+        caps = self._gql()["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": False,
+                "canManageStundensaetze": False,
+                "canViewFinanzen": False,
+            },
+        )
