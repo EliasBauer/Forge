@@ -41,7 +41,7 @@ export default function App() {
           <Route
             path="/projekte/neu"
             element={
-              <ProtectedRoute allowedGroups={["Admin", "Projektleiter"]}>
+              <ProtectedRoute requiredCapability="canCreateProjekt">
                 <ProjektNeuPage />
               </ProtectedRoute>
             }
@@ -57,7 +57,7 @@ export default function App() {
           <Route
             path="/stundensaetze"
             element={
-              <ProtectedRoute allowedGroups={["Admin", "Projektleiter"]}>
+              <ProtectedRoute requiredCapability="canManageStundensaetze">
                 <StundensaetzePage />
               </ProtectedRoute>
             }
