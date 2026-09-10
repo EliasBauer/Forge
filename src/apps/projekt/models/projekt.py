@@ -42,7 +42,7 @@ class Projekt(GeneralManager):
     wv_summe: Measurement | None
     projekt_status: ProjektStatus
 
-    kostenposition_list: Bucket[KostenPosition]
+    kosten_positionen_list: Bucket[KostenPosition]
 
     class Interface(DatabaseInterface):
         objects = _ProjectManager()
