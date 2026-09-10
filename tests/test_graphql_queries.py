@@ -54,7 +54,7 @@ _QUERY_PROJEKT_LISTE = """
           offerteSumme { value unit }
           wvSumme { value unit }
           projektStatus { name }
-          projektleiter
+          projektleiter { id username }
           projektKennzahlenList {
             items {
               summeWvPlus { value unit }
@@ -77,7 +77,7 @@ _QUERY_PROJEKT_DETAIL = """
         offerteSumme { value unit }
         wvSumme { value unit }
         projektStatus { name }
-        projektleiter
+        projektleiter { id username }
         projektKennzahlenList {
           items {
             summeOfferteKosten { value unit }

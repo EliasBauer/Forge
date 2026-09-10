@@ -129,7 +129,7 @@ class ProjektModelTest(TestCase):
             projektleiter=str(user.pk),
             ignore_permission=True,
         )
-        self.assertEqual(proj.projektleiter.pk, user.pk)  # type: ignore[union-attr]
+        self.assertEqual(proj.projektleiter.id, user.pk)  # type: ignore[union-attr]
 
     def test_create_ohne_projektleiter(self) -> None:
         proj = Projekt.create(
@@ -154,7 +154,7 @@ class ProjektModelTest(TestCase):
             ignore_permission=True,
         )
         updated = proj.update(projektleiter=str(user.pk), ignore_permission=True)
-        self.assertEqual(updated.projektleiter.pk, user.pk)  # type: ignore[union-attr]
+        self.assertEqual(updated.projektleiter.id, user.pk)  # type: ignore[union-attr]
         cleared = updated.update(projektleiter=None, ignore_permission=True)
         self.assertIsNone(cleared.projektleiter)
 

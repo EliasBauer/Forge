@@ -14,6 +14,7 @@ from apps.authentication.permission import (
     _permission_is_mechanic,
     _permission_is_project_leader,
     _permission_is_viewer,
+    _permission_never,
 )
 
 
@@ -87,6 +88,12 @@ class PermissionIsMonteurTest(TestCase):
 
     def test_returns_false_for_no_group(self) -> None:
         self.assertFalse(_permission_is_mechanic(MagicMock(), _make_user(None), []))
+
+
+class PermissionNeverTest(TestCase):
+    def test_returns_false_immer(self) -> None:
+        self.assertFalse(_permission_never(MagicMock(), _make_user("Admin"), []))
+        self.assertFalse(_permission_never(MagicMock(), _make_user(None), []))
 
 
 class LoginViewTest(TestCase):
