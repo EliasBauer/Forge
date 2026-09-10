@@ -61,6 +61,15 @@ class CalculationPermission(AdditiveManagerPermission):
         )
 
 
+@register_permission("never")
+def _permission_never(
+    _instance: PermissionDataManager[Any] | GeneralManager | GeneralManagerMeta,
+    _user: AbstractBaseUser | AnonymousUser,
+    _config: list[str],
+) -> bool:
+    return False
+
+
 @register_permission("isMonteur")
 def _permission_is_mechanic(
     _instance: PermissionDataManager[Any] | GeneralManager | GeneralManagerMeta,
