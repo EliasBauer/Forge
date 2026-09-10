@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing/react";
+import { ApolloClient } from "@apollo/client";
 import { gql } from "@apollo/client/core";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider, useAuth } from "./AuthContext";
 import { ME } from "../graphql/queries";
@@ -10,6 +11,16 @@ function Probe() {
   const { user, loading } = useAuth();
   if (loading) return <p>lade</p>;
   return <p>{user ? `eingeloggt:${user.username}` : "ausgeloggt"}</p>;
+}
+
+function ProbeMitLogout() {
+  const { user, loading, logout } = useAuth();
+  return (
+    <div>
+      <p>{loading ? "lade" : user ? `eingeloggt:${user.username}` : "ausgeloggt"}</p>
+      <button onClick={() => void logout()}>logout</button>
+    </div>
+  );
 }
 
 const meAdminMock = {
@@ -44,7 +55,18 @@ const meAnonymMock = {
   },
 };
 
+const meErrorMock = {
+  request: { query: ME },
+  error: new Error("Netzwerkfehler beim me-Query"),
+};
+
 describe("AuthContext", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("setzt user bei nichtleerem username", async () => {
     render(
       <MockedProvider mocks={[meAdminMock]}>
@@ -65,5 +87,44 @@ describe("AuthContext", () => {
       </MockedProvider>,
     );
     await waitFor(() => screen.getByText("ausgeloggt"));
+  });
+
+  it("löst loading trotz fehlgeschlagenem me-Query auf und bleibt nicht hängen", async () => {
+    render(
+      <MockedProvider mocks={[meErrorMock]}>
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      </MockedProvider>,
+    );
+    // "lade" darf nicht dauerhaft stehen bleiben (Finding: hängender
+    // Login-Screen bei fehlgeschlagenem me-Query) — refreshUser() fängt
+    // den Fehler jetzt ab und setzt user auf null.
+    await waitFor(() => screen.getByText("ausgeloggt"));
+    expect(screen.queryByText("lade")).not.toBeInTheDocument();
+  });
+
+  it("ruft client.clearStore() beim Logout auf (Cross-User-Cache-Leak-Schutz)", async () => {
+    const clearStoreSpy = vi.spyOn(ApolloClient.prototype, "clearStore");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <MockedProvider mocks={[meAdminMock]}>
+        <AuthProvider>
+          <ProbeMitLogout />
+        </AuthProvider>
+      </MockedProvider>,
+    );
+    await waitFor(() => screen.getByText("eingeloggt:admin"));
+
+    screen.getByText("logout").click();
+
+    await waitFor(() => screen.getByText("ausgeloggt"));
+    expect(fetchMock).toHaveBeenCalledWith("/api/logout/", { method: "POST" });
+    expect(clearStoreSpy).toHaveBeenCalled();
   });
 });

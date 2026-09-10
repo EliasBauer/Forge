@@ -25,6 +25,7 @@ def _register_history_if_needed(model: type[Model]) -> None:
             m2m_fields=[f.name for f in model._meta.local_many_to_many],
             records_class=DatabaseAwareHistoricalRecords,
             use_base_model_db=True,
+            excluded_fields=["password"] if model is User else [],
         )
 
 
@@ -86,3 +87,9 @@ class Benutzer(GeneralManager):
         is_superuser = {"read": ["isAdminGroup"]}
         user_permissions_list = {"read": ["isAdminGroup"]}
         log_entry_list = {"read": ["isAdminGroup"]}
+        is_staff = {"read": ["isAdminGroup"]}
+        email = {"read": ["isAdminGroup"]}
+        first_name = {"read": ["isAdminGroup"]}
+        last_name = {"read": ["isAdminGroup"]}
+        last_login = {"read": ["isAdminGroup"]}
+        date_joined = {"read": ["isAdminGroup"]}

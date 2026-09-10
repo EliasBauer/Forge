@@ -40,10 +40,32 @@ _QUERY_BENUTZER = """
     }
 """
 
+_QUERY_BENUTZER_PERSOENLICHE_DATEN = """
+    query BenutzerDetail($id: ID!) {
+      benutzer(id: $id) {
+        id
+        username
+        email
+        isStaff
+        firstName
+        lastName
+        lastLogin
+        dateJoined
+      }
+    }
+"""
+
 
 class BenutzerFieldVisibilityTest(TestCase):
     def setUp(self) -> None:
-        self.target = User.objects.create_user(username="ziel", password="geheim123")
+        self.target = User.objects.create_user(
+            username="ziel",
+            password="geheim123",
+            email="ziel@example.com",
+            first_name="Zora",
+            last_name="Ziel",
+            is_staff=True,
+        )
 
     def _login_as(self, username: str, groups: list[str]) -> None:
         user = User.objects.create_user(username, password="x")
@@ -76,6 +98,40 @@ class BenutzerFieldVisibilityTest(TestCase):
         self.assertIsNone(result["data"]["benutzer"]["isSuperuser"])
         self.assertIsNone(result["data"]["benutzer"]["userPermissionsList"])
         self.assertIsNone(result["data"]["benutzer"]["logEntryList"])
+
+    def test_persoenliche_daten_nur_fuer_admin_sichtbar(self) -> None:
+        self._login_as("admin5", ["Admin"])
+        result = _gql(
+            self.client,
+            _QUERY_BENUTZER_PERSOENLICHE_DATEN,
+            {"id": str(self.target.pk)},
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        benutzer = result["data"]["benutzer"]
+        self.assertEqual(benutzer["email"], "ziel@example.com")
+        self.assertTrue(benutzer["isStaff"])
+        self.assertEqual(benutzer["firstName"], "Zora")
+        self.assertEqual(benutzer["lastName"], "Ziel")
+        self.assertIsNotNone(benutzer["dateJoined"])
+
+    def test_persoenliche_daten_fuer_betrachter_null(self) -> None:
+        self._login_as("betrachter4", ["Betrachter"])
+        result = _gql(
+            self.client,
+            _QUERY_BENUTZER_PERSOENLICHE_DATEN,
+            {"id": str(self.target.pk)},
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        benutzer = result["data"]["benutzer"]
+        self.assertIsNone(benutzer["email"])
+        self.assertIsNone(benutzer["isStaff"])
+        self.assertIsNone(benutzer["firstName"])
+        self.assertIsNone(benutzer["lastName"])
+        self.assertIsNone(benutzer["lastLogin"])
+        self.assertIsNone(benutzer["dateJoined"])
+        # username bleibt für jeden Eingeloggten sichtbar (unveränderte
+        # Basis-Sichtbarkeit, nur die persönlichen Daten werden gegated).
+        self.assertEqual(benutzer["username"], "ziel")
 
     def test_username_ist_fuer_eingeloggte_sichtbar(self) -> None:
         self._login_as("betrachter3", ["Betrachter"])

@@ -40,19 +40,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function refreshUser(): Promise<void> {
-    const { data } = await client.query<MeQueryData>({
-      query: ME,
-      fetchPolicy: "network-only",
-    });
-    if (data?.me.username) {
-      setUser({
-        id: nextClientSideId++,
-        username: data.me.username,
-        capabilities: data.me.capabilities,
+  // Gibt den geladenen User zurück (oder null), statt nur intern den State
+  // zu setzen — login() nutzt den Rückgabewert, um einen fehlgeschlagenen
+  // me-Query (REST-Login war erfolgreich, GraphQL-Query aber nicht) von
+  // einem regulären "nicht eingeloggt" zu unterscheiden. Wirft NIE — ein
+  // Netzwerkfehler/500/Schema-Mismatch degradiert auf "ausgeloggt", statt
+  // login() bzw. den Mount-Effekt mit einer unhandled rejection hängen zu
+  // lassen (der Login-Screen blieb sonst dauerhaft im Spinner-Zustand).
+  async function refreshUser(): Promise<AuthUser | null> {
+    try {
+      const { data } = await client.query<MeQueryData>({
+        query: ME,
+        fetchPolicy: "network-only",
       });
-    } else {
+      if (data?.me.username) {
+        const nextUser: AuthUser = {
+          id: nextClientSideId++,
+          username: data.me.username,
+          capabilities: data.me.capabilities,
+        };
+        setUser(nextUser);
+        return nextUser;
+      }
       setUser(null);
+      return null;
+    } catch {
+      setUser(null);
+      return null;
     }
   }
 
@@ -71,16 +85,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ username, password }),
     });
     const data = await r.json();
-    if (data.success) {
-      await refreshUser();
-      return null;
+    if (!data.success) {
+      return (data.error as string) ?? "Anmeldung fehlgeschlagen.";
     }
-    return (data.error as string) ?? "Anmeldung fehlgeschlagen.";
+    // Cache leeren, bevor der neue User geladen wird — sonst könnten hier
+    // (Tab-übergreifender Re-Login als anderer User) noch Query-Ergebnisse
+    // des vorherigen Users im InMemoryCache stehen.
+    await client.clearStore();
+    const nextUser = await refreshUser();
+    if (!nextUser) {
+      // REST-Login war erfolgreich, aber der me-Query ist gescheitert
+      // (Netzwerkfehler/500/Schema-Mismatch) — nicht kommentarlos auf
+      // "ausgeloggt" zurückfallen, sondern das der Nutzerin erklären.
+      return "Anmeldung erfolgreich, aber Benutzerdaten konnten nicht geladen werden. Bitte Seite neu laden.";
+    }
+    return null;
   }
 
   async function logout(): Promise<void> {
     await fetch("/api/logout/", { method: "POST" });
     setUser(null);
+    await client.clearStore();
   }
 
   return (

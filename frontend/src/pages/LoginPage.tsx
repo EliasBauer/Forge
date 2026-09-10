@@ -14,12 +14,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const err = await login(username, password);
-    setLoading(false);
-    if (err) {
-      setError(err);
-    } else {
-      navigate("/projekte", { replace: true });
+    try {
+      const err = await login(username, password);
+      if (err) {
+        setError(err);
+      } else {
+        navigate("/projekte", { replace: true });
+      }
+    } catch {
+      // login() selbst degradiert intern (refreshUser wirft nie); dieser
+      // Fallback fängt nur unerwartete Fehler vor der REST-Anfrage ab
+      // (z. B. fetch/JSON-Parse), damit der Spinner in keinem Fall hängen
+      // bleibt.
+      setError("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setLoading(false);
     }
   }
 
