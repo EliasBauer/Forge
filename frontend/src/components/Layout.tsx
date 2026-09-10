@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { canManageStundensaetze } from "../utils/permissions";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -32,7 +31,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/projekte" className={navLinkClass} style={navLinkStyle}>
               Projekte
             </NavLink>
-            {canManageStundensaetze(user) && (
+            {user.capabilities.canManageStundensaetze && (
               <NavLink to="/stundensaetze" className={navLinkClass} style={navLinkStyle}>
                 Stundensätze
               </NavLink>

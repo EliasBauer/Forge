@@ -1,12 +1,12 @@
 import { Navigate } from "react-router-dom";
-import { useAuth, type UserGroup } from "../contexts/AuthContext";
+import { useAuth, type AuthCapabilities } from "../contexts/AuthContext";
 
 type Props = {
   children: React.ReactNode;
-  allowedGroups?: UserGroup[];
+  requiredCapability?: keyof AuthCapabilities;
 };
 
-export default function ProtectedRoute({ children, allowedGroups }: Props) {
+export default function ProtectedRoute({ children, requiredCapability }: Props) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children, allowedGroups }: Props) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedGroups && !allowedGroups.some((g) => user.groups.includes(g))) {
+  if (requiredCapability && !user.capabilities[requiredCapability]) {
     return <Navigate to="/projekte" replace />;
   }
 

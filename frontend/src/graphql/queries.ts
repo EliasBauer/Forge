@@ -19,7 +19,7 @@ export const GET_PROJEKTE = gql`
           id
           name
         }
-        projektleiter
+        projektleiter { id username }
         projektKennzahlenList {
           items {
             summeWvPlus {
@@ -60,7 +60,7 @@ export const SEARCH_PROJEKTE = gql`
             id
             name
           }
-          projektleiter
+          projektleiter { id username }
           projektKennzahlenList {
             items {
               summeWvPlus {
