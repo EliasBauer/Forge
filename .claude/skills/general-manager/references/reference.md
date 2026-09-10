@@ -6,11 +6,17 @@
 >
 > Upstream-Doku: https://timkleindick.github.io/general_manager/
 > Repo: https://github.com/TimKleindick/general_manager
-> Aktuelle Version: 0.76.0
+> Aktuelle Version: 0.79.3
 >
-> Diese Doku wurde gegen den v0.76.0-Quellcode verifiziert (nicht nur gegen die Doku-Site).
+> Diese Doku wurde gegen den v0.79.3-Quellcode verifiziert (nicht nur gegen die Doku-Site).
 > Versionshinweise im Text (z. B. „ab 0.68.0") markieren, in welchem Release sich ein
 > Verhalten geändert oder ein Feature Einzug gehalten hat.
+>
+> **Änderungen ggü. 0.76.0:** neues **Excel-Interface** (§16, ab 0.78.0, öffentliche API/Doku
+> ab 0.79.0) · GraphQL-**Group-Sums aggregieren Text-Werte jetzt _unique_** (§9, ab 0.79.2) ·
+> Chat-/NLI-Subsystem stark gehärtet, bleibt aber _planned_/instabil (§19). Der Rest von
+> 0.77–0.79.3 sind interne Bugfixes (Cache-Invalidierung, materialisierte Annotationen,
+> Constraint-Erhalt) ohne Änderung der dokumentierten API.
 
 ---
 
@@ -31,13 +37,14 @@
 13. [History, Audit & Temporale Abfragen (As-of)](#13-history-audit--temporale-abfragen-as-of)
 14. [Observability / Logging](#14-observability--logging)
 15. [RequestInterface](#15-requestinterface)
-16. [Workflow-Automation](#16-workflow-automation)
-17. [File-Uploads](#17-file-uploads)
-18. [Chat / NLI-Subsystem](#18-chat--nli-subsystem)
-19. [INSTALLED_APPS-Reihenfolge](#19-installed_apps-reihenfolge)
-20. [CSRF & Frontend-Anbindung](#20-csrf--frontend-anbindung)
-21. [Häufige Gotchas](#21-häufige-gotchas)
-22. [Weiterführende Upstream-Doku](#22-weiterführende-upstream-doku)
+16. [Excel-Interface](#16-excel-interface)
+17. [Workflow-Automation](#17-workflow-automation)
+18. [File-Uploads](#18-file-uploads)
+19. [Chat / NLI-Subsystem](#19-chat--nli-subsystem)
+20. [INSTALLED_APPS-Reihenfolge](#20-installed_apps-reihenfolge)
+21. [CSRF & Frontend-Anbindung](#21-csrf--frontend-anbindung)
+22. [Häufige Gotchas](#22-häufige-gotchas)
+23. [Weiterführende Upstream-Doku](#23-weiterführende-upstream-doku)
 
 ---
 
@@ -55,11 +62,13 @@ GeneralManager erweitert Django um eine deklarative Schicht aus vier Kernkompone
   - `ReadOnlyInterface` – statische Daten (aus `_data`-Liste)
   - `CalculationInterface` – berechnete Werte ohne DB
   - `RequestInterface` – Daten von externen HTTP-Services
+  - `ExcelInterface` – Excel-Arbeitsmappe mit geteiltem In-Memory-Mirror (ab 0.78.0, §16)
 
 - **Bucket** – Typisierte Collection von Managern (ähnlich Queryset).
   Unterstützt `filter()`, `exclude()`, `sort()`, `group_by()`, Union (`|`),
   Projektionen (`values()`/`values_list()`) und run-gecachte Indizes (`index_by()`). Lazy.
-  Konkrete Subtypen: `DatabaseBucket`, `RequestBucket`, `CalculationBucket`, `GroupBucket`.
+  Konkrete Subtypen: `DatabaseBucket`, `RequestBucket`, `CalculationBucket`, `GroupBucket`,
+  `ExcelBucket`.
 
 - **Dependency Tracker** – Jede Datenänderung emittiert Signale. Der Tracker mappt
   Attributzugriffe auf Cache-Keys und invalidiert abhängige Einträge automatisch.
@@ -570,7 +579,7 @@ gültiges Filter-Feld). Ohne `CalculationPermission` liefern `projektKennzahlenL
 
 > **Versionsstand:** In 0.45.0 als weiterhin nötig verifiziert. Die statischen
 > Permission-Optimierungen ab 0.7x betreffen den Kurzschluss-Pfad, nicht den
-> id-Instance-Check auf Calculation-Buckets. **Nach dem Upgrade auf 0.76.0 kurz
+> id-Instance-Check auf Calculation-Buckets. **Nach dem Upgrade auf 0.79.3 kurz
 > gegenprüfen** (an *einem* Calculation-Manager `CalculationPermission` weglassen,
 > List-Query als normaler User ausführen) — dies ist Forge-Code, kein Framework-Code,
 > und lässt sich nur am laufenden System sicher bestätigen.
@@ -841,6 +850,13 @@ query { positionList(filter: { projekt: { auftragsnummer: "2026-001" } }) { item
 query { projektList(filter: { positionen: { any: { status: "offen" } } }) { items { id } } }
 ```
 
+### Aggregationen / Group-Sums (ab 0.79.2)
+
+> **Text-Werte in Group-Sums werden _unique_ aggregiert.** Summiert eine Aggregation
+> (Group-By-Sum) über ein Text-Feld, fasst GM gleiche Werte zusammen statt sie mit
+> Duplikaten aneinanderzuhängen. Bei textbasierten Aggregat-Ausgaben also **nicht** mit
+> wiederholten Einträgen rechnen; für Zähl-/Summen-Semantik über Text entsprechend planen.
+
 ### Fehler-Contract (ab 0.7x)
 
 GM hat einen **expliziten öffentlichen GraphQL-Fehler-Contract**: erwartbare Fehler werden
@@ -899,7 +915,8 @@ subscription {
 > werden; Bulk-Operationen fassen Benachrichtigungen in einem Batch-Kontext zusammen
 > (`bulk_data_change_notifications`), statt pro Zeile ein Event zu feuern.
 
-> **Achtung — `SynchronousOnlyOperation` bei `item`-Feldern (Forge-Erfahrung):**
+> **Achtung — `SynchronousOnlyOperation` bei `item`-Feldern (verifizierter GM-Bug, betrifft
+> sowohl `onProjektChange` als auch `onProjektClassChange` gleichermassen, Stand 0.76.0–0.79.3):**
 > Der WebSocket-Consumer führt `graphql.subscribe()` direkt im async Event-Loop aus (Daphne/Channels).
 > Fragt `item { ... }` ein Feld ab, dessen zugrunde liegende Relation auf der Django-Instanz noch
 > nicht geladen ist, löst das eine synchrone DB-Query aus — egal ob es sich um eine
@@ -918,7 +935,17 @@ subscription {
 >   normalem `refetch()` (HTTP-Query, läuft nicht im rohen Event-Loop) nachladen.
 > - Einen custom `Manager` mit `get_queryset().select_related("feld")` auf dem `Interface` setzen,
 >   damit die Relation schon in der ursprünglichen (synchronen) Fetch-Query mitkommt und spätere
->   Zugriffe nur noch `_state.fields_cache` lesen, statt lazy nachzuladen.
+>   Zugriffe nur noch `_state.fields_cache` lesen, statt lazy nachzuladen. Das greift auch für
+>   GM-zu-GM-Relationen: `_general_manager_accessor`s `getter()` prüft `fields_cache` zuerst und
+>   nimmt bei Treffer `_from_trusted_orm_instance(...)` statt `raw_id_manager(...)` — keine Query,
+>   kein Crash.
+>
+> GM hat dieses Async/Sync-Problem für Subscriptions bereits einmal gelöst (0.73.1: Permission-Checks
+> laufen seitdem off-event-loop), aber nicht konsistent auf den Attribut-Resolver selbst angewendet
+> (`raw_id_manager`/`build_manager` in `field_descriptors.py`) — das macht es zu einem echten
+> GM-Bug, kein Forge-Konfigurationsfehler. Kein Fix dafür in 0.77.0–0.79.3 gefunden (Stand
+> 2026-09-06) — ggf. upstream melden (`TimKleindick/general_manager`), bevor jemand erneut
+> GM-zu-GM-Relationsfelder in ein `item`-Selection-Set einer Subscription aufnimmt.
 
 ---
 
@@ -1055,7 +1082,8 @@ die den Datensatz gelesen haben, werden invalidiert (`warm_up`-Properties danach
 
 **Produktion:** Geteiltes Cache-Backend (Redis). Der Dependency-Index ist ab 0.52.0 geshardet
 und die Invalidierung koordiniert; der Run-Cache-Speicher wird ab 0.69.x beschränkt/prozessweit
-evakuiert (transparent für die Nutzung).
+evakuiert (transparent für die Nutzung). Die Invalidierung gebündelter Batches ist ab 0.78.0
+zusätzlich gefenced (Race-Fix), Excel-Cache-Spiegel synchronisieren koordiniert (§16).
 
 ---
 
@@ -1171,7 +1199,97 @@ Nicht als generischen HTTP-Client verwenden — `RequestInterface` ist ressource
 
 ---
 
-## 16) Workflow-Automation
+## 16) Excel-Interface
+
+Neuer Interface-Typ ab **0.78.0** (öffentliche API/Doku ab 0.79.0). `ExcelInterface` bindet
+einen Manager an eine Excel-Arbeitsmappe und hält einen **gemeinsam genutzten, cache-gestützten
+In-Memory-Mirror** der Zeilen. Gedacht für Daten, die Fachanwender in Excel pflegen, die aber im
+GM-Modell typisiert, abfragbar und verknüpfbar sein sollen.
+
+### Import
+
+```python
+from general_manager import (
+    ExcelInterface,
+    ExcelField, ExcelCharField, ExcelIntegerField, ExcelDecimalField,
+)
+```
+
+### Manager definieren
+
+```python
+from decimal import Decimal
+
+
+class Wechselkurs(GeneralManager):
+    waehrung: str
+    kurs: Decimal
+
+    class Interface(ExcelInterface):
+        # Feld-Deklarationen (typisierte Helfer bevorzugen):
+        waehrung = ExcelCharField(max_length=3, unique=True)
+        kurs     = ExcelDecimalField(max_digits=12, decimal_places=6)
+
+        class Meta:
+            workbook = "data/kurse.xlsx"   # Pfad zur Mappe (Pflicht)
+            sheet    = "Kurse"             # Blattname
+            key      = "waehrung"          # MUSS eine deklarierte ExcelField benennen
+            header_row = 1                 # genau EINES von header_row ODER table
+            # table  = "KurseTabelle"      # (benannte Excel-Tabelle statt header_row)
+            # cache_alias = "default"      # optional
+            # cache_version = "1"          # optional (bei Schema-Wechsel erhöhen)
+```
+
+### `Meta` (→ `ExcelMeta`)
+
+| Feld            | Pflicht | Bedeutung                                                    |
+| --------------- | ------- | ------------------------------------------------------------ |
+| `workbook`      | ja      | Pfad zur .xlsx-Datei                                         |
+| `sheet`         | ja      | Blattname                                                    |
+| `key`           | ja      | Schlüsselspalte; **muss** eine deklarierte `ExcelField` benennen |
+| `table`         | *)      | benannte Excel-Tabelle als Datenquelle                       |
+| `header_row`    | *)      | 1-basierte Kopfzeile (`>= 1`)                                |
+| `cache_alias`   | nein    | Django-Cache-Alias (Default `"default"`)                     |
+| `cache_version` | nein    | Cache-Version (Default `"1"`)                                |
+
+*) **Genau eines** von `table` ODER `header_row` konfigurieren — nicht beides, nicht keines
+(sonst `ExcelConfigurationError: Configure exactly one of Meta.table or Meta.header_row`).
+`header_row` muss `>= 1` sein; `key` muss ein deklariertes `ExcelField` benennen — beides wird
+beim Start validiert.
+
+### Feld-Typen
+
+`ExcelField[T]` (generisch) oder die typisierten Helfer:
+
+- `ExcelCharField(max_length=None, …)`
+- `ExcelIntegerField(…)`
+- `ExcelDecimalField(max_digits=None, decimal_places=None, …)`
+
+Gemeinsame Optionen: `required=True`, `default=None`, `header=None` (abweichender Spaltentitel),
+`aliases=()` (alternative Spaltentitel), `unique=False`, `editable=True`, `parser=None`
+(Rohwert → Python), `dumper=None` (Python → Excel-Wert).
+
+### Abfrage & Sync (Classmethods)
+
+- `Manager.Interface.filter(**kwargs)` / `.exclude(**kwargs)` / `.all()` → `Bucket` (`ExcelBucket`;
+  Lookups laufen gegen die Excel-Felder, wie bei den übrigen Interfaces).
+- `Manager.Interface.sync_from_excel(force=False)` → `ExcelSyncDelta(created, updated, deleted)`
+  — liest die Mappe neu ein und aktualisiert den geteilten Mirror. `force=True` umgeht die
+  Fingerprint-Prüfung und liest in jedem Fall neu.
+
+### Verhalten & Gotchas
+
+- Der Mirror ist **prozessweit geteilt** und cache-gestützt (pro `workbook` gesperrt).
+  Änderungen an der Datei werden erst nach `sync_from_excel` bzw. bei geänderten Fingerprints
+  sichtbar.
+- `editable=True` erlaubt das Zurückschreiben in die Mappe (mit `dumper` für die Serialisierung);
+  `editable=False` macht ein Feld read-only.
+- FRISCH (0.78.0) und intern noch in Härtung (Cache-Synchronisation 0.78.0/0.79.0) — vor
+  Produktiv-Einsatz gegen die Upstream-Doku und das konkrete Storage/Cache-Backend abgleichen.
+
+---
+
+## 17) Workflow-Automation
 
 ```python
 GENERAL_MANAGER = {
@@ -1199,11 +1317,11 @@ python manage.py workflow_replay_dead_letters   # fehlgeschlagene nochmal versuc
 ```
 
 > **Verwandte periodische Commands (Celery Beat):** `search_reconcile` (Abschnitt 11),
-> `graphql_warmup` / `graphql_warmup_refresh_due` (Abschnitt 12), `chat_cleanup` (Abschnitt 18).
+> `graphql_warmup` / `graphql_warmup_refresh_due` (Abschnitt 12), `chat_cleanup` (Abschnitt 19).
 
 ---
 
-## 17) File-Uploads
+## 18) File-Uploads
 
 Ab 0.7x bringt GM eine **File-Upload-Pipeline** für Django `FileField`/`ImageField`, exponiert
 über typisierte GraphQL-Felder. Modell: Der Client fordert eine **Upload-Intent** an (Token),
@@ -1237,15 +1355,16 @@ Relevante Bausteine (alle top-level aus `general_manager` importierbar):
 Ablauf (vereinfacht): typisiertes GraphQL-Upload-Feld wird für das `FileField` generiert →
 Client holt eine **feldgebundene, einmalig nutzbare** Upload-Intent (Token, Permission-Preflight)
 → Datei wird über den Transport/Adapter hochgeladen (auch Proxy-Streaming möglich) → nach
-DB-Commit finalisiert; sichere Downloads über den Download-Adapter. Für den vollständigen Flow
-inkl. Storage-Adapter siehe Upstream-Doku.
+DB-Commit finalisiert; sichere Downloads über den Download-Adapter. Abgelaufene Intents räumt
+`python manage.py cleanup_upload_intents` auf. Für den vollständigen Flow inkl. Storage-Adapter
+siehe Upstream-Doku.
 
 > Da dies mehrere bewegliche Teile hat (Storage-Adapter, Tokens, Finalisierung), vor
 > Produktiv-Einsatz gegen die Upstream-Doku und die konkrete Storage-Backend-Konfiguration abgleichen.
 
 ---
 
-## 18) Chat / NLI-Subsystem
+## 19) Chat / NLI-Subsystem
 
 Ab 0.7x enthält GM ein optionales **Chat-/Natural-Language-Interface-Subsystem** (Paket
 `general_manager.chat`) mit Persistenz-Modellen (eigene Migrations) und Provider-Anbindung
@@ -1255,13 +1374,19 @@ Pending-Confirmation-Flow für Aktionen und einem Eval-Runner für Prompt-Zuverl
 - Wird beim App-Start verdrahtet und über die Public-Exports zugänglich gemacht.
 - Aufräum-Command: `python manage.py chat_cleanup`.
 
+> **Reifegrad (Stand 0.79.3):** Die Chat-API gilt weiterhin als **_planned_/instabil**. Die
+> Releases 0.77.0 und 0.79.1 brachten ausschließlich Hardening (gebundene Turn-Anzahl,
+> korrekte Provider-Usage-Abrechnung, Abbruch laufender WebSocket-Turns bei Disconnect,
+> Audit-/Scheduler-/Routing-Härtung) — **keine** stabile öffentliche Chat-API. Vor einer
+> Nutzung entsprechend mit Vorsicht behandeln.
+
 > **Scope-Hinweis:** Forge nutzt dieses Subsystem aktuell nicht. Es ist hier nur der
 > Vollständigkeit halber erwähnt — für Details zur Konfiguration (Provider, Persistenz,
 > Confirmation-Flow) die Upstream-Doku heranziehen, bevor man es aktiviert.
 
 ---
 
-## 19) INSTALLED_APPS-Reihenfolge
+## 20) INSTALLED_APPS-Reihenfolge
 
 > **Kritisch:** `django.contrib.admin` muss **vor** `general_manager` stehen.
 
@@ -1285,7 +1410,7 @@ GENERAL_MANAGER = {"AUTOCREATE_GRAPHQL": True, "GRAPHQL_URL": "graphql/"}
 
 ---
 
-## 20) CSRF & Frontend-Anbindung
+## 21) CSRF & Frontend-Anbindung
 
 ```python
 # forge/middleware.py
@@ -1311,11 +1436,11 @@ server: { proxy: { "/graphql": "http://localhost:8000" } }
 
 ---
 
-## 21) Häufige Gotchas
+## 22) Häufige Gotchas
 
 | Problem                                                  | Ursache                                                           | Lösung                                                                                                   |
 | -------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/admin/` → `NoReverseMatch: app_list`                   | `general_manager` vor `django.contrib.admin`                      | Django-Builtins zuerst (Abschnitt 19)                                                                    |
+| `/admin/` → `NoReverseMatch: app_list`                   | `general_manager` vor `django.contrib.admin`                      | Django-Builtins zuerst (Abschnitt 20)                                                                    |
 | `GraphQLPropertyReturnAnnotationError`                   | `@graph_ql_property` ohne `-> Typ` (ab 0.68.0 Pflicht)            | Return-Annotation ergänzen; sie treibt den GraphQL-Ausgabetyp                                            |
 | `Bitte höchstens 2 Dezimalstellen`                       | GM gibt `float` ans Model; `DecimalField` → IEEE-754-Präzision    | `full_clean()` in Interface überschreiben (siehe unten)                                                  |
 | `super()` in Interface-Methode schlägt fehl             | GM kopiert Methoden als plain functions; `__class__`-Cell falsch  | MRO manuell durchlaufen (siehe Decimal-Float-Fix)                                                        |
@@ -1336,6 +1461,8 @@ server: { proxy: { "/graphql": "http://localhost:8000" } }
 | Property/Hilfsmethode wird mehrfach berechnet            | Private Methoden werden nicht vom run-cache erfasst              | Abgeleitete `@graph_ql_property` andere Properties lesen lassen, `@cached(cache="run")` auf Helfer, oder `bucket.index_by()` |
 | `Measurement("50 cm")` liefert nicht das Erwartete       | Einzel-String → `from_string`                                    | `Measurement.from_string("50 cm")` bzw. `Measurement(50, "cm")`                                          |
 | `to_dataframe` wirft `ModuleNotFoundError`               | `pandas` ist optionale Dependency, nicht installiert            | `pandas` installieren (bzw. als Extra), dann DataFrame-Helfer nutzen                                     |
+| `Configure exactly one of Meta.table or Meta.header_row` | ExcelInterface: beides oder keines von `table`/`header_row` gesetzt | Genau EINES setzen; `header_row >= 1` (Abschnitt 16)                                                    |
+| Excel-Änderung nicht sichtbar                            | ExcelInterface-Mirror noch nicht neu eingelesen                 | `Manager.Interface.sync_from_excel()` (ggf. `force=True`) aufrufen (Abschnitt 16)                        |
 | Suche aktualisiert sich nicht nach Datenänderung         | Auto-Reindex in 0.55.0 entfernt; Index nur "dirty"              | `search_reconcile` laufen lassen (`--once` oder Celery Beat)                                             |
 | `cache="auto"` Fehler                                    | Modus in 0.42.0 entfernt                                         | `cache="run"` (Default) oder `cache="dependency"`                                                        |
 | `Float cannot represent non numeric value`               | Frontend schickt String statt Zahl                              | `parseFloat(val.replace(",", "."))`                                                                      |
@@ -1379,7 +1506,7 @@ class MeinModel(GeneralManager):
 
 ---
 
-## 22) Weiterführende Upstream-Doku
+## 23) Weiterführende Upstream-Doku
 
 - Architecture: https://timkleindick.github.io/general_manager/concepts/architecture/
 - Database Interfaces: https://timkleindick.github.io/general_manager/concepts/interfaces/db_based_interface/
