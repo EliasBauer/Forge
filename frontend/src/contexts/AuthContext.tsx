@@ -5,14 +5,23 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useApolloClient } from "@apollo/client/react";
+import { ME } from "../graphql/queries";
 
-export type UserGroup = "Admin" | "Projektleiter" | "Betrachter" | "Monteur";
+export type AuthCapabilities = {
+  canCreateProjekt: boolean;
+  canManageStundensaetze: boolean;
+  canViewFinanzen: boolean;
+};
 
 export type AuthUser = {
   id: number;
   username: string;
-  groups: UserGroup[];
-  isStaff: boolean;
+  capabilities: AuthCapabilities;
+};
+
+type MeQueryData = {
+  me: { username: string; capabilities: AuthCapabilities };
 };
 
 type AuthContextType = {
@@ -24,15 +33,32 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+let nextClientSideId = 1;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const client = useApolloClient();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function refreshUser(): Promise<void> {
+    const { data } = await client.query<MeQueryData>({
+      query: ME,
+      fetchPolicy: "network-only",
+    });
+    if (data?.me.username) {
+      setUser({
+        id: nextClientSideId++,
+        username: data.me.username,
+        capabilities: data.me.capabilities,
+      });
+    } else {
+      setUser(null);
+    }
+  }
+
   useEffect(() => {
-    fetch("/api/me/")
-      .then((r) => r.json())
-      .then((data: AuthUser | null) => setUser(data))
-      .finally(() => setLoading(false));
+    refreshUser().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function login(
@@ -46,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await r.json();
     if (data.success) {
-      setUser(data.user as AuthUser);
+      await refreshUser();
       return null;
     }
     return (data.error as string) ?? "Anmeldung fehlgeschlagen.";

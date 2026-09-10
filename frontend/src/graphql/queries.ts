@@ -217,3 +217,16 @@ export const GET_STUNDENSAETZE = gql`
     }
   }
 `;
+
+export const ME = gql`
+  query Me {
+    me {
+      username
+      capabilities {
+        canCreateProjekt
+        canManageStundensaetze
+        canViewFinanzen
+      }
+    }
+  }
+`;
