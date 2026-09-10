@@ -99,7 +99,14 @@ export const GET_PROJEKT = gql`
         id
         name
       }
-      projektleiter
+      projektleiter {
+        id
+        username
+      }
+      capabilities {
+        canUpdate
+        canDelete
+      }
       projektKennzahlenList {
         items {
           summeOfferteKosten {

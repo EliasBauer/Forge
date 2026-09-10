@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useSubscription } from "@apollo/client/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calculator, ChevronLeft, Database, Pencil } from "lucide-react";
 import Layout from "../components/Layout";
-import { GET_KOSTENART_IDS, GET_PROJEKT, GET_PROJEKT_STATUS_IDS } from "../graphql/queries";
+import { GET_KOSTENART_IDS, GET_PROJEKT, GET_PROJEKT_STATUS_IDS, PROJEKTLEITER } from "../graphql/queries";
 import {
   CREATE_KOSTEN_POSITION,
   DELETE_KOSTEN_POSITION,
@@ -14,7 +14,6 @@ import { PROJEKT_DETAIL_SUBSCRIPTION } from "../graphql/subscriptions";
 import { chf, pct, signedPct, type GQLMeasurement } from "../utils/format";
 import { getDeviation, DEV_STYLES, type DeviationLevel } from "../utils/deviation";
 import { useAuth } from "../contexts/AuthContext";
-import { canEdit, canViewFinancials } from "../utils/permissions";
 
 type KostenPosition = {
   id: string;
@@ -53,7 +52,8 @@ type Projekt = {
   offerteSumme: GQLMeasurement;
   wvSumme: GQLMeasurement | null;
   projektStatus: { id: string; name: string };
-  projektleiter: string | null;
+  projektleiter: { id: string; username: string } | null;
+  capabilities: { canUpdate: boolean; canDelete: boolean };
   projektKennzahlenList: { items: ProjektKennzahlen[] };
   kostenPositionenList: { items: KostenPosition[] };
   istWertList: { items: IstwertItem[] };
@@ -68,7 +68,8 @@ type KostenartIdItem = { id: string; schluessel: string };
 type KostenartIdsData = { kostenartList: { items: KostenartIdItem[] } };
 type ProjektStatusIdItem = { id: string; name: string };
 type ProjektStatusIdsData = { projektStatusList: { items: ProjektStatusIdItem[] } };
-type UserOption = { id: number; username: string };
+type UserOption = { id: string; username: string };
+type ProjektleiterData = { benutzerList: { items: UserOption[] } };
 type HeaderForm = { name: string; offerteSumme: string; wvSumme: string; projektleiter: string; projektStatus: string };
 
 const ART_LABELS: Record<string, string> = {
@@ -306,16 +307,20 @@ function ProjectVisualization({ rows }: { rows: VizRow[] }) {
 export default function ProjektDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const showFinancials = canViewFinancials(user);
-  const canEditData = canEdit(user);
+  const showFinancials = user?.capabilities.canViewFinanzen ?? false;
 
   const { data, loading, error, refetch } = useQuery<QueryData>(GET_PROJEKT, {
     variables: { id },
     skip: !id,
   });
+  const canEditData = data?.projekt?.capabilities.canUpdate ?? false;
 
   const { data: kostenartData } = useQuery<KostenartIdsData>(GET_KOSTENART_IDS);
   const { data: projektStatusData } = useQuery<ProjektStatusIdsData>(GET_PROJEKT_STATUS_IDS);
+  const { data: projektleiterData } = useQuery<ProjektleiterData>(PROJEKTLEITER, {
+    skip: !canEditData,
+  });
+  const users = projektleiterData?.benutzerList.items ?? [];
   const artIdMap = new Map<string, string>(
     kostenartData?.kostenartList.items.map((a) => [a.schluessel, a.id]) ?? [],
   );
@@ -336,16 +341,6 @@ export default function ProjektDetailPage() {
   } | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const skipPosBlurRef = useRef(false);
-  const [users, setUsers] = useState<UserOption[]>([]);
-
-  useEffect(() => {
-    if (canEditData) {
-      fetch("/api/users/")
-        .then((r) => (r.ok ? r.json() : []))
-        .then((d: UserOption[]) => setUsers(d))
-        .catch(() => {});
-    }
-  }, [canEditData]);
 
   const [updateProjekt, { loading: savingHeader }] =
     useMutation<UpdateProjektResult>(UPDATE_PROJEKT, {
@@ -423,8 +418,7 @@ export default function ProjektDetailPage() {
       name: p.name,
       offerteSumme: String(p.offerteSumme.value),
       wvSumme: p.wvSumme ? String(p.wvSumme.value) : "",
-      projektleiter: users.find((u) => u.username === p.projektleiter)
-        ? String(users.find((u) => u.username === p.projektleiter)!.id) : "",
+      projektleiter: p.projektleiter?.id ?? "",
       projektStatus: p.projektStatus.id,
     });
     setEditingHeader(true);
@@ -563,7 +557,7 @@ export default function ProjektDetailPage() {
                     {users.map((u) => <option key={u.id} value={String(u.id)}>{u.username}</option>)}
                   </select>
                 ) : (
-                  <div className="mt-1 text-[15px] text-gray-900">{p.projektleiter ?? "–"}</div>
+                  <div className="mt-1 text-[15px] text-gray-900">{p.projektleiter?.username ?? "–"}</div>
                 )}
               </div>
               <div>
