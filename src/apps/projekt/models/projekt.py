@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
-from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Manager, QuerySet
 from general_manager import (
@@ -14,8 +13,13 @@ from general_manager import (
 )
 from general_manager.bucket import Bucket
 from general_manager.measurement import Measurement, MeasurementField
+from general_manager.permission import (
+    GraphQLPermissionCapability,
+    permission_capability,
+)
 from general_manager.rule import Rule
 
+from apps.authentication.managers import Benutzer
 from apps.projekt.models.projekt_status import ProjektStatus
 
 if TYPE_CHECKING:
@@ -37,7 +41,7 @@ class Projekt(GeneralManager):
     name: str
     auftragsnummer: str
     jahr: int
-    projektleiter: User | None
+    projektleiter: Benutzer | None
     offerte_summe: Measurement
     wv_summe: Measurement | None
     projekt_status: ProjektStatus
@@ -80,6 +84,7 @@ class Projekt(GeneralManager):
         __create__ = ["isAdminGroup", "isProjektleiter"]
         __update__ = ["isAdminGroup", "isProjektleiter"]
         __delete__ = ["isAdminGroup", "isProjektleiter"]
+        graphql_capabilities: ClassVar[tuple[GraphQLPermissionCapability, ...]] = ()
 
         # auftragsnummer = {"update": ["isAdmin"]}
 
@@ -129,3 +134,22 @@ class Projekt(GeneralManager):
             ignore_permission=ignore_permission,
             **kwargs,
         )
+
+
+def _register_graphql_capabilities() -> None:
+    """Von ProjektConfig.ready() aufgerufen, NICHT auf Modulebene.
+
+    Projekt.Permission.graphql_capabilities = (...) auf Modulebene würde beim
+    Import von projekt.py über Projekt.Permission (Metaclass-Zugriff) GMs
+    Lazy-Attribute-Initialisierung auslösen, die den vollen App-Registry
+    braucht (apps.get_models()). Zur normalen Django-Laufzeit ist das kein
+    Problem (Modelle sind beim Import längst geladen) — mypys
+    django-stubs-Plugin importiert Model-Module aber in einer Reihenfolge,
+    in der die Registry noch nicht vollständig ist, und crasht dabei mit
+    einem INTERNAL ERROR. ready() läuft garantiert erst NACH dem Laden aller
+    Apps und wird von django-stubs nicht mit-ausgeführt.
+    """
+    Projekt.Permission.graphql_capabilities = (
+        permission_capability(Projekt, "update", name="canUpdate"),
+        permission_capability(Projekt, "delete", name="canDelete"),
+    )
