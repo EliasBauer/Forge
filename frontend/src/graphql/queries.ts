@@ -218,6 +218,17 @@ export const GET_STUNDENSAETZE = gql`
   }
 `;
 
+export const PROJEKTLEITER = gql`
+  query Projektleiter {
+    benutzerList(filter: { groupsList: { any: { name: "Projektleiter" } } }) {
+      items {
+        id
+        username
+      }
+    }
+  }
+`;
+
 export const ME = gql`
   query Me {
     me {

@@ -1,8 +1,9 @@
-import { useMutation } from "@apollo/client/react";
-import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "@apollo/client/react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { CREATE_PROJEKT } from "../graphql/mutations";
+import { PROJEKTLEITER } from "../graphql/queries";
 
 type MutationResult = {
   createProjekt: {
@@ -11,7 +12,8 @@ type MutationResult = {
   };
 };
 
-type UserOption = { id: number; username: string };
+type UserOption = { id: string; username: string };
+type ProjektleiterData = { benutzerList: { items: UserOption[] } };
 
 type FormState = {
   name: string;
@@ -43,14 +45,8 @@ export default function ProjektNeuPage() {
     projektleiter: "",
   });
   const [serverError, setServerError] = useState<string | null>(null);
-  const [users, setUsers] = useState<UserOption[]>([]);
-
-  useEffect(() => {
-    fetch("/api/users/")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: UserOption[]) => setUsers(data))
-      .catch(() => {});
-  }, []);
+  const { data: projektleiterData } = useQuery<ProjektleiterData>(PROJEKTLEITER);
+  const users = projektleiterData?.benutzerList.items ?? [];
 
   const [createProjekt, { loading }] = useMutation<MutationResult>(CREATE_PROJEKT, {
     refetchQueries: ["ProjektListe"],
