@@ -143,52 +143,18 @@ class LogoutViewTest(TestCase):
         self.assertTrue(response.json()["success"])
 
 
-class UsersViewTest(TestCase):
-    def setUp(self) -> None:
-        from django.contrib.auth.models import Group
+class RemovedRestEndpointsTest(TestCase):
+    def test_users_endpoint_existiert_nicht_mehr(self) -> None:
+        from django.urls import NoReverseMatch, reverse
 
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username="testuser", password="testpass123"
-        )
-        self.projektleiter = User.objects.create_user(
-            username="pl_user", password="testpass123"
-        )
-        group, _ = Group.objects.get_or_create(name="Projektleiter")
-        self.projektleiter.groups.add(group)
-        self.url = reverse("auth-users")
+        with self.assertRaises(NoReverseMatch):
+            reverse("auth-users")
 
-    def test_returns_only_projektleiter_when_authenticated(self) -> None:
-        self.client.force_login(self.user)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        usernames = [u["username"] for u in response.json()]
-        self.assertIn("pl_user", usernames)
-        self.assertNotIn("testuser", usernames)
+    def test_me_endpoint_existiert_nicht_mehr(self) -> None:
+        from django.urls import NoReverseMatch, reverse
 
-    def test_returns_401_when_unauthenticated(self) -> None:
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 401)
-
-
-class CurrentUserViewTest(TestCase):
-    def setUp(self) -> None:
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username="testuser", password="testpass123"
-        )
-        self.url = reverse("auth-me")
-
-    def test_returns_user_when_authenticated(self) -> None:
-        self.client.force_login(self.user)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["username"], "testuser")
-
-    def test_returns_null_when_unauthenticated(self) -> None:
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.json())
+        with self.assertRaises(NoReverseMatch):
+            reverse("auth-me")
 
 
 class CurrentUserCapabilitiesTest(TestCase):
