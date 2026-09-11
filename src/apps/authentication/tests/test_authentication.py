@@ -232,3 +232,20 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canViewFinanzen": False,
             },
         )
+
+    def test_projektleiter_alle_capabilities_true(self) -> None:
+        from django.contrib.auth.models import Group
+
+        user = User.objects.create_user("plcaps", password="x")
+        group, _ = Group.objects.get_or_create(name="Projektleiter")
+        user.groups.add(group)
+        self.client.force_login(user)
+        caps = self._gql()["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": True,
+                "canManageStundensaetze": True,
+                "canViewFinanzen": True,
+            },
+        )

@@ -7,6 +7,7 @@ from typing import Any
 
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
+from django.utils import timezone
 
 GRAPHQL_URL = "/graphql/"
 
@@ -66,6 +67,12 @@ class BenutzerFieldVisibilityTest(TestCase):
             last_name="Ziel",
             is_staff=True,
         )
+        # last_login ist standardmäßig null (nie eingeloggt) — für eine
+        # echte Sichtbarkeits-Prüfung braucht es einen bekannten Nicht-null-
+        # Wert, sonst würde die Betrachter-Assertion auf None auch dann
+        # grün sein, wenn das Feld gar nicht gegated wäre.
+        self.target.last_login = timezone.now()
+        self.target.save(update_fields=["last_login"])
 
     def _login_as(self, username: str, groups: list[str]) -> None:
         user = User.objects.create_user(username, password="x")
@@ -112,6 +119,7 @@ class BenutzerFieldVisibilityTest(TestCase):
         self.assertTrue(benutzer["isStaff"])
         self.assertEqual(benutzer["firstName"], "Zora")
         self.assertEqual(benutzer["lastName"], "Ziel")
+        self.assertIsNotNone(benutzer["lastLogin"])
         self.assertIsNotNone(benutzer["dateJoined"])
 
     def test_persoenliche_daten_fuer_betrachter_null(self) -> None:
@@ -176,6 +184,33 @@ class BenutzerWriteDeniedTest(TestCase):
 
         with self.assertRaises(PermissionError):
             Benutzer.create(username="x")
+
+    def test_update_ueber_graphql_verweigert(self) -> None:
+        uid = self.user.pk
+        result = _gql(
+            self.client,
+            f'mutation {{ updateBenutzer(id: {uid}, username: "y") {{ success }} }}',
+        )
+        self.assertIn("errors", result)
+
+    def test_update_ueber_python_verweigert(self) -> None:
+        from apps.authentication.managers import Benutzer
+
+        with self.assertRaises(PermissionError):
+            Benutzer(id=self.user.pk).update(username="y")
+
+    def test_delete_ueber_graphql_verweigert(self) -> None:
+        result = _gql(
+            self.client,
+            f"mutation {{ deleteBenutzer(id: {self.user.pk}) {{ success }} }}",
+        )
+        self.assertIn("errors", result)
+
+    def test_delete_ueber_python_verweigert(self) -> None:
+        from apps.authentication.managers import Benutzer
+
+        with self.assertRaises(PermissionError):
+            Benutzer(id=self.user.pk).delete()
 
 
 class HistoryRegistrationGuardTest(TestCase):

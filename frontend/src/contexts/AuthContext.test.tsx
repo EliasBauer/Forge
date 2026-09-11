@@ -14,6 +14,16 @@ function Probe() {
   return <p>{user ? `eingeloggt:${user.username}` : "ausgeloggt"}</p>;
 }
 
+function ProbeMitLogin() {
+  const { user, loading, login } = useAuth();
+  return (
+    <div>
+      <p>{loading ? "lade" : user ? `eingeloggt:${user.username}` : "ausgeloggt"}</p>
+      <button onClick={() => void login("admin", "geheim")}>login</button>
+    </div>
+  );
+}
+
 function ProbeMitLogout() {
   const { user, loading, logout } = useAuth();
   const [warning, setWarning] = useState<string | null>(null);
@@ -111,6 +121,38 @@ describe("AuthContext", () => {
     // den Fehler jetzt ab und setzt user auf null.
     await waitFor(() => screen.getByText("ausgeloggt"));
     expect(screen.queryByText("lade")).not.toBeInTheDocument();
+  });
+
+  it("leert den Apollo-Cache vor dem Nachladen des Users beim Login (Cross-User-Cache-Leak-Schutz)", async () => {
+    const clearStoreSpy = vi.spyOn(ApolloClient.prototype, "clearStore");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <MockedProvider mocks={[meAnonymMock, meAdminMock]}>
+        <AuthProvider>
+          <ProbeMitLogin />
+        </AuthProvider>
+      </MockedProvider>,
+    );
+    await waitFor(() => screen.getByText("ausgeloggt"));
+
+    screen.getByText("login").click();
+
+    // client.clearStore() läuft in login() VOR refreshUser() (sequentielle
+    // await-Kette in der Implementierung) — ohne das könnte ein frisch
+    // eingeloggter User stale Query-Ergebnisse eines vorherigen Users aus
+    // dem Cache serviert bekommen (Cross-User-Datenleck, dieselbe Klasse
+    // Finding wie beim Logout).
+    await waitFor(() => screen.getByText("eingeloggt:admin"));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/login/",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(clearStoreSpy).toHaveBeenCalled();
   });
 
   it("ruft client.clearStore() beim Logout auf (Cross-User-Cache-Leak-Schutz)", async () => {

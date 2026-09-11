@@ -51,7 +51,41 @@ class GruppeWriteDeniedTest(TestCase):
         group, _ = Group.objects.get_or_create(name="Admin")
         self.user.groups.add(group)
         self.client.force_login(self.user)
+        self.target_group, _ = Group.objects.get_or_create(name="Ziel-Gruppe")
 
     def test_create_ueber_graphql_verweigert(self) -> None:
         result = _gql(self.client, 'mutation { createGruppe(name: "Neu") { success } }')
         self.assertIn("errors", result)
+
+    def test_create_ueber_python_verweigert(self) -> None:
+        from apps.authentication.managers import Gruppe
+
+        with self.assertRaises(PermissionError):
+            Gruppe.create(name="Neu")
+
+    def test_update_ueber_graphql_verweigert(self) -> None:
+        gid = self.target_group.pk
+        result = _gql(
+            self.client,
+            f'mutation {{ updateGruppe(id: {gid}, name: "Anders") {{ success }} }}',
+        )
+        self.assertIn("errors", result)
+
+    def test_update_ueber_python_verweigert(self) -> None:
+        from apps.authentication.managers import Gruppe
+
+        with self.assertRaises(PermissionError):
+            Gruppe(id=self.target_group.pk).update(name="Anders")
+
+    def test_delete_ueber_graphql_verweigert(self) -> None:
+        result = _gql(
+            self.client,
+            f"mutation {{ deleteGruppe(id: {self.target_group.pk}) {{ success }} }}",
+        )
+        self.assertIn("errors", result)
+
+    def test_delete_ueber_python_verweigert(self) -> None:
+        from apps.authentication.managers import Gruppe
+
+        with self.assertRaises(PermissionError):
+            Gruppe(id=self.target_group.pk).delete()

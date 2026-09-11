@@ -459,7 +459,7 @@ Expected: alle PASS (voller Suite-Lauf, nicht nur die neuen Dateien — Step 11 
 Run: `devcontainer exec --workspace-folder . uv run --group dev mypy src tests`
 Expected: `Success: no issues found in N source files`
 
-Run: `devcontainer exec --workspace-folder . uv run --group dev ruff check . && uv run --group dev ruff format --check .`
+Run: `devcontainer exec --workspace-folder . uv run --group dev ruff check . && devcontainer exec --workspace-folder . uv run --group dev ruff format --check .`
 Expected: beide grün
 
 - [ ] **Step 14: Commit**
@@ -654,7 +654,7 @@ Expected: PASS (alle drei Tests)
 
 ```bash
 devcontainer exec --workspace-folder . uv run --group dev mypy src tests
-devcontainer exec --workspace-folder . uv run --group dev ruff check . && uv run --group dev ruff format --check .
+devcontainer exec --workspace-folder . uv run --group dev ruff check . && devcontainer exec --workspace-folder . uv run --group dev ruff format --check .
 devcontainer exec --workspace-folder . uv run --group dev pytest --no-cov
 ```
 Expected: alle grün
@@ -822,7 +822,7 @@ Expected: alle PASS, inkl. `ProjektCapabilitiesTest`
 
 ```bash
 devcontainer exec --workspace-folder . uv run --group dev mypy src tests
-devcontainer exec --workspace-folder . uv run --group dev ruff check . && uv run --group dev ruff format --check .
+devcontainer exec --workspace-folder . uv run --group dev ruff check . && devcontainer exec --workspace-folder . uv run --group dev ruff format --check .
 devcontainer exec --workspace-folder . uv run --group dev pytest --no-cov
 ```
 Expected: alle grün. Falls `mypy` mit `INTERNAL ERROR` abbricht: Step 3/4 falsch übernommen (Zuweisung landet doch auf Modulebene) — prüfen, dass `Projekt.Permission.graphql_capabilities = (...)` ausschließlich innerhalb von `_register_graphql_capabilities()` steht, aufgerufen aus `ready()`.
@@ -901,7 +901,7 @@ Expected: alle PASS
 
 ```bash
 devcontainer exec --workspace-folder . uv run --group dev mypy src tests
-devcontainer exec --workspace-folder . uv run --group dev ruff check . && uv run --group dev ruff format --check .
+devcontainer exec --workspace-folder . uv run --group dev ruff check . && devcontainer exec --workspace-folder . uv run --group dev ruff format --check .
 devcontainer exec --workspace-folder . uv run --group dev pytest --no-cov
 ```
 Expected: alle grün
