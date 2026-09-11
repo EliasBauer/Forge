@@ -1032,6 +1032,18 @@ export const ME = gql`
 
 Komplette neue Fassung von `frontend/src/contexts/AuthContext.tsx`:
 
+> **Nachträgliche Korrektur (nicht Teil der ursprünglichen Task-5-Ausführung):**
+> die Version unten enthält bereits drei Härtungen, die erst in der finalen
+> Whole-Branch-Review bzw. einer nachgelagerten CodeRabbit-Review gefunden
+> wurden — ursprünglich hatte `refreshUser()` kein `try/catch` (ein
+> fehlgeschlagener `me`-Query ließ den Login-Screen dauerhaft im
+> Spinner-Zustand hängen), `login()`/`logout()` leerten den Apollo-Cache
+> nicht (Cross-User-Datenleck bei Tab-übergreifendem Re-Login), und
+> `logout()` prüfte weder `response.ok` noch meldete es einen
+> fehlgeschlagenen Server-Logout an den Aufrufer zurück (blieb die Sitzung
+> serverseitig unbemerkt aktiv). Wer diese Task nachbaut, sollte direkt
+> diese Fassung verwenden, nicht die naive Erstversion.
+
 ```tsx
 import {
   createContext,
@@ -1063,7 +1075,11 @@ type AuthContextType = {
   user: AuthUser | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<string | null>;
-  logout: () => Promise<void>;
+  // Analog zu login(): null = Server hat die Abmeldung bestätigt (HTTP ok),
+  // ein String = die Abmeldung konnte serverseitig nicht bestätigt werden
+  // (Netzwerkfehler oder Nicht-2xx-Antwort) — der Aufrufer entscheidet, wie
+  // er das anzeigt. Lokaler State/Cache werden in JEDEM Fall geleert.
+  logout: () => Promise<string | null>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -1075,19 +1091,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function refreshUser(): Promise<void> {
-    const { data } = await client.query<MeQueryData>({
-      query: ME,
-      fetchPolicy: "network-only",
-    });
-    if (data.me.username) {
-      setUser({
-        id: nextClientSideId++,
-        username: data.me.username,
-        capabilities: data.me.capabilities,
+  // Gibt den geladenen User zurück (oder null), statt nur intern den State
+  // zu setzen — login() nutzt den Rückgabewert, um einen fehlgeschlagenen
+  // me-Query (REST-Login war erfolgreich, GraphQL-Query aber nicht) von
+  // einem regulären "nicht eingeloggt" zu unterscheiden. Wirft NIE — ein
+  // Netzwerkfehler/500/Schema-Mismatch degradiert auf "ausgeloggt", statt
+  // login() bzw. den Mount-Effekt mit einer unhandled rejection hängen zu
+  // lassen (der Login-Screen blieb sonst dauerhaft im Spinner-Zustand).
+  async function refreshUser(): Promise<AuthUser | null> {
+    try {
+      const { data } = await client.query<MeQueryData>({
+        query: ME,
+        fetchPolicy: "network-only",
       });
-    } else {
+      if (data?.me.username) {
+        const nextUser: AuthUser = {
+          id: nextClientSideId++,
+          username: data.me.username,
+          capabilities: data.me.capabilities,
+        };
+        setUser(nextUser);
+        return nextUser;
+      }
       setUser(null);
+      return null;
+    } catch {
+      setUser(null);
+      return null;
     }
   }
 
@@ -1106,16 +1136,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ username, password }),
     });
     const data = await r.json();
-    if (data.success) {
-      await refreshUser();
-      return null;
+    if (!data.success) {
+      return (data.error as string) ?? "Anmeldung fehlgeschlagen.";
     }
-    return (data.error as string) ?? "Anmeldung fehlgeschlagen.";
+    // Cache leeren, bevor der neue User geladen wird — sonst könnten hier
+    // (Tab-übergreifender Re-Login als anderer User) noch Query-Ergebnisse
+    // des vorherigen Users im InMemoryCache stehen.
+    await client.clearStore();
+    const nextUser = await refreshUser();
+    if (!nextUser) {
+      // REST-Login war erfolgreich, aber der me-Query ist gescheitert
+      // (Netzwerkfehler/500/Schema-Mismatch) — nicht kommentarlos auf
+      // "ausgeloggt" zurückfallen, sondern das der Nutzerin erklären.
+      return "Anmeldung erfolgreich, aber Benutzerdaten konnten nicht geladen werden. Bitte Seite neu laden.";
+    }
+    return null;
   }
 
-  async function logout(): Promise<void> {
-    await fetch("/api/logout/", { method: "POST" });
-    setUser(null);
+  async function logout(): Promise<string | null> {
+    let unconfirmed: string | null = null;
+    try {
+      const r = await fetch("/api/logout/", { method: "POST" });
+      if (!r.ok) {
+        // Server hat geantwortet, aber mit einem Fehlerstatus — die
+        // Session-Cookie-Invalidierung ist damit nicht bestätigt und könnte
+        // serverseitig noch aktiv sein.
+        unconfirmed =
+          "Abmeldung auf dem Server konnte nicht bestätigt werden. Die Sitzung könnte serverseitig noch aktiv sein.";
+      }
+    } catch {
+      // Netzwerkfehler: dieselbe Unsicherheit wie oben, nur früher im
+      // Request-Zyklus.
+      unconfirmed =
+        "Abmeldung auf dem Server war nicht erreichbar (Netzwerkfehler). Die Sitzung könnte serverseitig noch aktiv sein.";
+    } finally {
+      // Lokales Aufräumen läuft IMMER — auch bei einem unbestätigten
+      // Server-Logout. Sonst bliebe der User clientseitig "eingeloggt" und
+      // der Apollo-Cache mit seinen Daten stehen; das serverseitige Risiko
+      // wird stattdessen über den Rückgabewert an den Aufrufer gemeldet.
+      setUser(null);
+      await client.clearStore();
+    }
+    return unconfirmed;
   }
 
   return (
@@ -1133,6 +1195,13 @@ export function useAuth(): AuthContextType {
 ```
 
 Hinweis: `id` kommt aus `me` nicht mehr zurück (der Provider liefert nur `username` + `capabilities`, siehe Task 2 — `id` stand im Backend-Contract nie zur Verfügung). Da bisher nichts im Code `user.id` tatsächlich verwendet (geprüft: nur `ProjektListePage.test.tsx`s Mock setzt `id: 1`, kein Produktionscode liest es), wird hier eine client-seitige Zähler-ID als Platzhalter vergeben, rein um den bestehenden `AuthUser`-Typ mit `id: number` nicht zu brechen.
+
+Der geänderte Rückgabetyp von `logout()` verlangt auch Anpassungen außerhalb
+dieser Task: `Layout.tsx`s `handleLogout` muss den Rückgabewert abgreifen und
+bei einer Warnung `navigate("/login", { state: { logoutWarning } })` setzen,
+`LoginPage.tsx` muss `location.state.logoutWarning` lesen und anzeigen — beides
+ist zum Zeitpunkt dieser Task (vor Task 6/Layout) noch nicht vorhanden und
+wurde nachträglich ergänzt, nicht Teil des ursprünglichen Task-6-Plans.
 
 - [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
@@ -1598,7 +1667,12 @@ import { MockedProvider } from "@apollo/client/testing/react";
 import { describe, expect, it, vi } from "vitest";
 
 import ProjektDetailPage from "./ProjektDetailPage";
-import { GET_PROJEKT, GET_KOSTENART_IDS, GET_PROJEKT_STATUS_IDS } from "../graphql/queries";
+import {
+  GET_PROJEKT,
+  GET_KOSTENART_IDS,
+  GET_PROJEKT_STATUS_IDS,
+  PROJEKTLEITER,
+} from "../graphql/queries";
 import { PROJEKT_DETAIL_SUBSCRIPTION } from "../graphql/subscriptions";
 
 vi.mock("../contexts/AuthContext", () => ({
@@ -1651,12 +1725,26 @@ const subscriptionMock = {
   result: { data: { onProjektChange: { action: "noop" } } },
   delay: 1000 * 60 * 60,
 };
+// Nötig, sobald canUpdate: true ist: die Komponente feuert dann die
+// PROJEKTLEITER-Query (skip: !canEditData, siehe Step 4) — ohne passenden
+// Mock schlägt MockedProvider mit "no mock found"/stderr-Rauschen fehl
+// (reproduziert während der Implementierung).
+const projektleiterMock = {
+  request: { query: PROJEKTLEITER },
+  result: { data: { benutzerList: { items: [{ id: "5", username: "anna" }] } } },
+};
 
 function renderPage(capabilities: { canUpdate: boolean; canDelete: boolean }) {
   return render(
     <MemoryRouter initialEntries={["/projekte/1"]}>
       <MockedProvider
-        mocks={[projektMock(capabilities), kostenartMock, statusMock, subscriptionMock]}
+        mocks={[
+          projektMock(capabilities),
+          kostenartMock,
+          statusMock,
+          subscriptionMock,
+          projektleiterMock,
+        ]}
       >
         <Routes>
           <Route path="/projekte/:id" element={<ProjektDetailPage />} />

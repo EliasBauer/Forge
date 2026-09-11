@@ -28,7 +28,11 @@ type AuthContextType = {
   user: AuthUser | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<string | null>;
-  logout: () => Promise<void>;
+  // Analog zu login(): null = Server hat die Abmeldung bestätigt (HTTP ok),
+  // ein String = die Abmeldung konnte serverseitig nicht bestätigt werden
+  // (Netzwerkfehler oder Nicht-2xx-Antwort) — der Aufrufer entscheidet, wie
+  // er das anzeigt. Lokaler State/Cache werden in JEDEM Fall geleert.
+  logout: () => Promise<string | null>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -102,21 +106,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }
 
-  async function logout(): Promise<void> {
+  async function logout(): Promise<string | null> {
+    let unconfirmed: string | null = null;
     try {
-      await fetch("/api/logout/", { method: "POST" });
+      const r = await fetch("/api/logout/", { method: "POST" });
+      if (!r.ok) {
+        // Server hat geantwortet, aber mit einem Fehlerstatus — die
+        // Session-Cookie-Invalidierung ist damit nicht bestätigt und könnte
+        // serverseitig noch aktiv sein.
+        unconfirmed =
+          "Abmeldung auf dem Server konnte nicht bestätigt werden. Die Sitzung könnte serverseitig noch aktiv sein.";
+      }
     } catch {
-      // Server-Logout best effort: ein Netzwerkfehler hier wird bewusst
-      // verschluckt (kein Rethrow) — die Session-Cookie-Invalidierung auf
-      // dem Server ist wünschenswert, aber das lokale Aufräumen unten muss
-      // unabhängig davon laufen, siehe finally.
+      // Netzwerkfehler: dieselbe Unsicherheit wie oben, nur früher im
+      // Request-Zyklus.
+      unconfirmed =
+        "Abmeldung auf dem Server war nicht erreichbar (Netzwerkfehler). Die Sitzung könnte serverseitig noch aktiv sein.";
     } finally {
-      // Läuft immer — auch wenn der Server-Logout fehlschlägt. Sonst bliebe
-      // der User clientseitig "eingeloggt" und der Apollo-Cache mit seinen
-      // Daten stehen.
+      // Lokales Aufräumen läuft IMMER — auch bei einem unbestätigten
+      // Server-Logout. Sonst bliebe der User clientseitig "eingeloggt" und
+      // der Apollo-Cache mit seinen Daten stehen; das serverseitige Risiko
+      // wird stattdessen über den Rückgabewert an den Aufrufer gemeldet.
       setUser(null);
       await client.clearStore();
     }
+    return unconfirmed;
   }
 
   return (

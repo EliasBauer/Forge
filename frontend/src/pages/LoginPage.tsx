@@ -1,10 +1,16 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Von Layout.tsx nach einem Logout gesetzt, dessen Server-Bestätigung
+  // ausblieb (Netzwerkfehler/Nicht-2xx) — die lokale Session ist trotzdem
+  // sauber geleert, nur die serverseitige Invalidierung ist unbestätigt.
+  const logoutWarning =
+    (location.state as { logoutWarning?: string } | null)?.logoutWarning ?? null;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +79,11 @@ export default function LoginPage() {
               required
             />
           </div>
+          {logoutWarning && (
+            <p className="text-sm rounded-lg p-3 border border-gray-300 bg-gray-50 text-gray-600">
+              {logoutWarning}
+            </p>
+          )}
           {error && (
             <p
               className="text-sm rounded-lg p-3 border"
