@@ -96,7 +96,6 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from django.conf import settings
 from django.contrib.auth.models import Group, User
 from general_manager import (
     AdditiveManagerPermission,
@@ -107,20 +106,24 @@ from simple_history import register
 
 from general_manager.interface.utils.history import DatabaseAwareHistoricalRecords
 
-# Muss vor der Benutzer-Klassendefinition laufen: registriert die History
-# unter dem "apps.authentication"-App-Label. Ohne das würde GMs eigene
-# History-Registrierung greifen und HistoricalUser fälschlich unter dem
-# "auth"-App-Label (django.contrib.auth) landen — dort dürfen wir keine
-# eigene Migration ablegen. Verifiziert gegen general_manager 0.79.3:
-# ExistingModelResolutionCapability.ensure_history() ist danach ein No-op.
-if not hasattr(User._meta, "simple_history_manager_attribute"):
-    register(
-        User,
-        app="apps.authentication",
-        m2m_fields=[f.name for f in User._meta.local_many_to_many],
-        records_class=DatabaseAwareHistoricalRecords,
-        use_base_model_db=True,
-    )
+# Muss vor den Manager-Klassendefinitionen laufen: registriert die History
+# BEIDER Django-Modelle unter dem "apps.authentication"-App-Label — nicht nur
+# User. Grund: GMs ensure_history() läuft für JEDEN ExistingModelInterface-
+# Manager automatisch, also auch für Gruppe. Wird nur User hier
+# vorregistriert, versucht makemigrations für Group trotzdem eine Migration
+# nach .venv/.../django/contrib/auth/migrations/ zu schreiben (reproduziert
+# gegen general_manager 0.79.3 während der Implementierung — siehe Plan,
+# Korrektur 2). Mit beiden Modellen vorregistriert ist
+# ExistingModelResolutionCapability.ensure_history() für beide ein No-op.
+for _model in (User, Group):
+    if not hasattr(_model._meta, "simple_history_manager_attribute"):
+        register(
+            _model,
+            app="apps.authentication",
+            m2m_fields=[f.name for f in _model._meta.local_many_to_many],
+            records_class=DatabaseAwareHistoricalRecords,
+            use_base_model_db=True,
+        )
 
 
 class Gruppe(GeneralManager):
@@ -153,11 +156,13 @@ class Benutzer(GeneralManager):
     is_active: bool
 
     class Interface(ExistingModelInterface):
-        # settings.AUTH_USER_MODEL statt direktem User-Import: idiomatischer
-        # laut GM-Upstream-Beispiel, bleibt korrekt falls AUTH_USER_MODEL sich
-        # je ändert. Löst bei uns identisch zu django.contrib.auth.models.User
-        # auf (verifiziert).
-        model = settings.AUTH_USER_MODEL
+        # Direkter User-Klassenimport, NICHT settings.AUTH_USER_MODEL
+        # (String): Letzteres löst apps.get_model() zur Klassendefinitions-
+        # zeit aus, was mypys django-stubs-Plugin mit einem INTERNAL ERROR
+        # (AppRegistryNotReady) crasht — reproduziert während der
+        # Implementierung (siehe Plan, Korrektur 1). Mit der direkten Klasse
+        # entfällt der apps.get_model()-Aufruf komplett.
+        model = User
 
     class Permission(AdditiveManagerPermission):
         __read__ = ["isAuthenticated"]
@@ -208,32 +213,63 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from general_manager.permission import object_capability
 
 from apps.authentication.permission import _is_in_group
 
 
+def _user_or_none(user: object) -> AbstractBaseUser | None:
+    """Nur eingeloggte User weiterreichen — AnonymousUser zählt als "kein
+    User", geprüft BEVOR irgendeine Gruppen-Regel läuft.
+
+    Ohne diese Schranke wäre canViewFinanzen für nicht eingeloggte Requests
+    fälschlich True: `not _is_in_group(AnonymousUser, "Monteur")` ist True,
+    weil AnonymousUser in keiner Gruppe steckt — die "not Monteur"-Regel
+    greift dann versehentlich positiv (reproduziert während der
+    Implementierung). Das Frontend prüfte das bisher explizit über
+    `user !== null &&`.
+    """
+    if isinstance(user, AbstractBaseUser):
+        return user
+    return None
+
+
+def _can_create_projekt(_instance: object, user: object) -> bool:
+    resolved = _user_or_none(user)
+    if resolved is None:
+        return False
+    return _is_in_group(resolved, "Admin") or _is_in_group(resolved, "Projektleiter")
+
+
+def _can_manage_stundensaetze(_instance: object, user: object) -> bool:
+    resolved = _user_or_none(user)
+    if resolved is None:
+        return False
+    return _is_in_group(resolved, "Admin") or _is_in_group(resolved, "Projektleiter")
+
+
+def _can_view_finanzen(_instance: object, user: object) -> bool:
+    resolved = _user_or_none(user)
+    if resolved is None:
+        return False
+    return not _is_in_group(resolved, "Monteur")
+
+
 class CurrentUserCapabilities:
     graphql_fields: ClassVar[dict[str, type]] = {"username": str}
     graphql_capabilities = (
-        object_capability(
-            "canCreateProjekt",
-            lambda _u, user: (
-                _is_in_group(user, "Admin") or _is_in_group(user, "Projektleiter")
-            ),
-        ),
-        object_capability(
-            "canManageStundensaetze",
-            lambda _u, user: (
-                _is_in_group(user, "Admin") or _is_in_group(user, "Projektleiter")
-            ),
-        ),
-        object_capability(
-            "canViewFinanzen",
-            lambda _u, user: not _is_in_group(user, "Monteur"),
-        ),
+        object_capability("canCreateProjekt", _can_create_projekt),
+        object_capability("canManageStundensaetze", _can_manage_stundensaetze),
+        object_capability("canViewFinanzen", _can_view_finanzen),
     )
 ```
+
+Benannte `def`-Funktionen statt Lambdas: mit Lambdas crasht mypy strict mit
+`Argument 1 to "_is_in_group" has incompatible type "object"; expected
+"AbstractBaseUser | AnonymousUser"` (reproduziert), weil der von GM erwartete
+Evaluator-Typ `Callable[[object, object], bool]` ist — die `isinstance`-
+Schranke in `_user_or_none` engt `object` mypy-sauber ein.
 
 Kein `resolve_username` nötig — verifiziert per Probe gegen den generierten
 `Me`-Typ: fehlt ein `resolve_<feld>`, fällt GM auf `getattr(user, feldname)`
@@ -276,14 +312,41 @@ def ready(self) -> None:
 - `create()`/`update()`: die bestehende `projektleiter` → `projektleiter_id`
   Remapping-Logik bleibt unverändert (Mutation-Input nimmt weiterhin eine
   rohe ID als String entgegen, das war schon vor dieser Änderung so gelöst).
-- Nach der Klasse: Capability-Deklaration ergänzen:
+- `Permission.graphql_capabilities` als leeres `ClassVar` deklarieren; die
+  eigentliche Zuweisung passiert NICHT auf Modulebene, sondern in einer
+  Funktion, aufgerufen aus `ProjektConfig.ready()`:
 
 ```python
-Projekt.Permission.graphql_capabilities = (
-    permission_capability(Projekt, "update", name="canUpdate"),
-    permission_capability(Projekt, "delete", name="canDelete"),
-)
+class Permission(AdditiveManagerPermission):
+    __read__ = ["isAdminGroup", "isProjektleiter", "isBetrachter"]
+    __create__ = ["isAdminGroup", "isProjektleiter"]
+    __update__ = ["isAdminGroup", "isProjektleiter"]
+    __delete__ = ["isAdminGroup", "isProjektleiter"]
+    graphql_capabilities: ClassVar[tuple[GraphQLPermissionCapability, ...]] = ()
+
+
+def _register_graphql_capabilities() -> None:
+    """Von ProjektConfig.ready() aufgerufen, NICHT auf Modulebene.
+
+    Projekt.Permission.graphql_capabilities = (...) auf Modulebene würde beim
+    Import von projekt.py über Projekt.Permission (Metaclass-Zugriff) GMs
+    Lazy-Attribute-Initialisierung auslösen, die den vollen App-Registry
+    braucht (apps.get_models()). Zur normalen Django-Laufzeit ist das kein
+    Problem (Modelle sind beim Import längst geladen) — mypys
+    django-stubs-Plugin importiert Model-Module aber in einer Reihenfolge,
+    in der die Registry noch nicht vollständig ist, und crasht dabei mit
+    einem INTERNAL ERROR (reproduziert während der Implementierung, siehe
+    Plan, Korrektur 3). ready() läuft garantiert erst NACH dem Laden aller
+    Apps und wird von django-stubs nicht mit-ausgeführt.
+    """
+    Projekt.Permission.graphql_capabilities = (
+        permission_capability(Projekt, "update", name="canUpdate"),
+        permission_capability(Projekt, "delete", name="canDelete"),
+    )
 ```
+
+`apps/projekt/apps.py`s `ready()` importiert zusätzlich diese Funktion und
+ruft sie auf (analog zum `authentication`-App-Muster oben).
 
 **Entfernt:**
 

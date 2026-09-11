@@ -103,9 +103,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout(): Promise<void> {
-    await fetch("/api/logout/", { method: "POST" });
-    setUser(null);
-    await client.clearStore();
+    try {
+      await fetch("/api/logout/", { method: "POST" });
+    } catch {
+      // Server-Logout best effort: ein Netzwerkfehler hier wird bewusst
+      // verschluckt (kein Rethrow) — die Session-Cookie-Invalidierung auf
+      // dem Server ist wünschenswert, aber das lokale Aufräumen unten muss
+      // unabhängig davon laufen, siehe finally.
+    } finally {
+      // Läuft immer — auch wenn der Server-Logout fehlschlägt. Sonst bliebe
+      // der User clientseitig "eingeloggt" und der Apollo-Cache mit seinen
+      // Daten stehen.
+      setUser(null);
+      await client.clearStore();
+    }
   }
 
   return (
