@@ -127,4 +127,27 @@ describe("AuthContext", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/logout/", { method: "POST" });
     expect(clearStoreSpy).toHaveBeenCalled();
   });
+
+  it("räumt lokal auf (user + Cache), selbst wenn der Server-Logout fehlschlägt", async () => {
+    const clearStoreSpy = vi.spyOn(ApolloClient.prototype, "clearStore");
+    const fetchMock = vi.fn().mockRejectedValue(new Error("Netzwerkfehler"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <MockedProvider mocks={[meAdminMock]}>
+        <AuthProvider>
+          <ProbeMitLogout />
+        </AuthProvider>
+      </MockedProvider>,
+    );
+    await waitFor(() => screen.getByText("eingeloggt:admin"));
+
+    screen.getByText("logout").click();
+
+    // Der Server-Request schlägt fehl, aber user/Cache müssen trotzdem
+    // bereinigt werden (Finding: logout() ließ bei fehlschlagendem fetch
+    // sowohl setUser(null) als auch clearStore() aus).
+    await waitFor(() => screen.getByText("ausgeloggt"));
+    expect(clearStoreSpy).toHaveBeenCalled();
+  });
 });
