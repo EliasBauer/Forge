@@ -7,8 +7,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
   async function handleLogout() {
-    await logout();
-    navigate("/login", { replace: true });
+    const unconfirmed = await logout();
+    navigate("/login", {
+      replace: true,
+      state: unconfirmed ? { logoutWarning: unconfirmed } : undefined,
+    });
   }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
