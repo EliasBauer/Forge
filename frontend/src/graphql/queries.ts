@@ -248,6 +248,7 @@ export const ME = gql`
         canCreateProjekt
         canManageStundensaetze
         canViewFinanzen
+        canViewKostenPositionen
       }
     }
   }

@@ -742,7 +742,7 @@ Claude-Session: https://claude.ai/code/session_01VBU5FCdLVkYdtv9ThCqJdQ"
 - Consumes: `me { capabilities { canViewKostenPositionen } }` aus Task 3.
 - Produces: `AuthCapabilities` enthält `canViewKostenPositionen: boolean`; Task 5 liest sie über `useAuth()`.
 
-- [ ] **Step 1: Die fehlschlagenden Tests schreiben**
+- [x] **Step 1: Die fehlschlagenden Tests schreiben**
 
 In `frontend/src/pages/ProjektListePage.test.tsx` den Mock-Block (Zeilen 13-28) ersetzen durch eine über `vi.hoisted` bereitgestellte, pro Test veränderbare Capability-Struktur:
 
@@ -856,13 +856,13 @@ function DetailStub() {
 }
 ```
 
-- [ ] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
+- [x] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
 
 Run: `npm --prefix frontend test`
 
 Expected: FAIL — „navigiert bei Klick auf eine Zeile nicht in die Detailseite" scheitert, weil die Zeile weiterhin navigiert (`expected '/projekte/1' to be '/'`). Die beiden anderen neuen Tests sind grün.
 
-- [ ] **Step 3: `AuthCapabilities` erweitern**
+- [x] **Step 3: `AuthCapabilities` erweitern**
 
 In `frontend/src/contexts/AuthContext.tsx` den Typ (Zeilen 11-15) ersetzen durch:
 
@@ -875,7 +875,7 @@ export type AuthCapabilities = {
 };
 ```
 
-- [ ] **Step 4: Die `ME`-Query erweitern**
+- [x] **Step 4: Die `ME`-Query erweitern**
 
 In `frontend/src/graphql/queries.ts` die Konstante `ME` ersetzen durch:
 
@@ -895,7 +895,7 @@ export const ME = gql`
 `;
 ```
 
-- [ ] **Step 5: Die Detail-Route hinter `canViewFinanzen` legen**
+- [x] **Step 5: Die Detail-Route hinter `canViewFinanzen` legen**
 
 In `frontend/src/App.tsx` die Route `/projekte/:id` ersetzen durch:
 
@@ -912,7 +912,7 @@ In `frontend/src/App.tsx` die Route `/projekte/:id` ersetzen durch:
 
 `ProtectedRoute` leitet ohne die Capability nach `/projekte` um — dieses Verhalten existiert bereits und ist getestet.
 
-- [ ] **Step 6: Die Zeilen-Navigation an `canViewFinanzen` binden**
+- [x] **Step 6: Die Zeilen-Navigation an `canViewFinanzen` binden**
 
 In `frontend/src/pages/ProjektListePage.tsx` das `<tr>` der Datenzeilen (Zeilen 386-391) ersetzen durch:
 
@@ -943,13 +943,13 @@ und den Chevron in der Namensspalte (Zeilen 395-403) ersetzen durch:
                     </td>
 ```
 
-- [ ] **Step 7: Tests laufen lassen und grün sehen**
+- [x] **Step 7: Tests laufen lassen und grün sehen**
 
 Run: `npm --prefix frontend test`
 
 Expected: PASS — alle Frontend-Tests grün, inklusive der drei neuen.
 
-- [ ] **Step 8: Volles Gate und Commit**
+- [x] **Step 8: Volles Gate und Commit**
 
 ```bash
 pre-commit run --all-files
