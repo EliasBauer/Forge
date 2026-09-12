@@ -19,7 +19,7 @@ def _is_in_group(user: AbstractBaseUser | AnonymousUser, group_name: str) -> boo
     return bool(groups.filter(name=group_name).exists())
 
 
-@register_permission("isAdminGroup")
+@register_permission("isForgeAdmin")
 def _permission_is_admin(
     _instance: PermissionDataManager[Any] | GeneralManager | GeneralManagerMeta,
     user: AbstractBaseUser | AnonymousUser,
