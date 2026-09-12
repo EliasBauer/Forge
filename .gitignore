@@ -32,3 +32,6 @@ CONTEXT.md
 # Docker
 postgres-data/
 meilisearch-data/
+
+# Superpowers SDD-Arbeitsverzeichnis (Ledger, Briefs, Review-Pakete)
+.superpowers/
