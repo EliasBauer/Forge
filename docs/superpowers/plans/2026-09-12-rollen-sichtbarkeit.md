@@ -76,7 +76,7 @@ Schließt die Sicherheitslücke: `projektKennzahlenList` und `istWertList` sind 
   - `IstWert.Permission` und `ProjektKennzahlen.Permission` als innere Klassen (Subklassen von `CalculationPermission`) mit eigenem `__read__`.
   - Test-Basisklasse `RollenGraphQLTestBase` in `src/apps/projekt/tests/test_permissions_graphql.py` mit `self.projekt`, `self._login(gruppe: str) -> None` und `self._gql(query: str, variables: dict[str, Any] | None = None) -> Any` (gibt bereits `payload["data"]` zurück) — Task 2 baut darauf auf.
 
-- [ ] **Step 1: Die Test-Datei mit Basisklasse und den fehlschlagenden Calculation-Tests anlegen**
+- [x] **Step 1: Die Test-Datei mit Basisklasse und den fehlschlagenden Calculation-Tests anlegen**
 
 Create `src/apps/projekt/tests/test_permissions_graphql.py`:
 
@@ -211,13 +211,13 @@ class CalculationManagerSichtbarkeitTest(RollenGraphQLTestBase):
         self.assertNotEqual(self._ist_werte(), [])
 ```
 
-- [ ] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
+- [x] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_permissions_graphql.py --no-cov -q`
 
 Expected: FAIL — die vier „sieht keine"-Tests scheitern, weil `items` befüllt statt leer ist (`AssertionError: [{...}] != []`). Die drei „sieht"-Tests sind bereits grün; das ist erwartet und beweist, dass die Query funktioniert.
 
-- [ ] **Step 3: `CalculationPermission` wertet `__read__` statisch aus**
+- [x] **Step 3: `CalculationPermission` wertet `__read__` statisch aus**
 
 Ersetze in `src/apps/authentication/permission.py` die bestehende Klasse (Zeilen 49-61) durch:
 
@@ -250,7 +250,7 @@ class CalculationPermission(AdditiveManagerPermission):
 
 `ReadPermissionPlan` ist in dieser Datei bereits importiert — kein neuer Import nötig.
 
-- [ ] **Step 4: `IstWert` bekommt ein eigenes `__read__`**
+- [x] **Step 4: `IstWert` bekommt ein eigenes `__read__`**
 
 In `src/apps/projekt/calculation_manager/ist_wert.py` die Zeile `Permission = CalculationPermission` (Zeile 24) ersetzen durch:
 
@@ -259,7 +259,7 @@ In `src/apps/projekt/calculation_manager/ist_wert.py` die Zeile `Permission = Ca
         __read__ = ["isForgeAdmin", "isProjektleiter"]
 ```
 
-- [ ] **Step 5: `ProjektKennzahlen` bekommt ein eigenes `__read__`**
+- [x] **Step 5: `ProjektKennzahlen` bekommt ein eigenes `__read__`**
 
 In `src/apps/projekt/calculation_manager/projekt_kennzahlen.py` die Zeile `Permission = CalculationPermission` (Zeile 22) ersetzen durch:
 
@@ -268,13 +268,13 @@ In `src/apps/projekt/calculation_manager/projekt_kennzahlen.py` die Zeile `Permi
         __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
 ```
 
-- [ ] **Step 6: Tests laufen lassen und grün sehen**
+- [x] **Step 6: Tests laufen lassen und grün sehen**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_permissions_graphql.py --no-cov -q`
 
 Expected: PASS — 7 passed.
 
-- [ ] **Step 7: Unit-Tests für den Read-Plan schreiben**
+- [x] **Step 7: Unit-Tests für den Read-Plan schreiben**
 
 In `src/apps/authentication/tests/test_authentication.py` den Top-Level-Import erweitern:
 
@@ -317,13 +317,13 @@ class CalculationPermissionReadPlanTest(TestCase):
 
 Die Imports von `IstWert` stehen bewusst *in* den Methoden: `test_authentication.py` gehört zur `authentication`-App und soll beim Modul-Import nicht von `apps.projekt` abhängen.
 
-- [ ] **Step 8: Auth-Tests laufen lassen**
+- [x] **Step 8: Auth-Tests laufen lassen**
 
 Run: `uv run --group dev pytest src/apps/authentication/tests/test_authentication.py --no-cov -q`
 
 Expected: PASS — alle Tests der Datei grün, inklusive der zwei neuen.
 
-- [ ] **Step 9: Volles Gate und Commit**
+- [x] **Step 9: Volles Gate und Commit**
 
 ```bash
 pre-commit run --all-files

@@ -51,10 +51,21 @@ class CalculationPermission(AdditiveManagerPermission):
 
     GM's Instance-Check ruft queryset.filter(id__in=...) auf, was für
     CalculationBuckets fehlschlägt (kein 'id' im identification-dict).
-    Verifiziert in 0.45.0: Workaround bleibt notwendig.
+    Deshalb wird __read__ hier statisch ausgewertet — Gruppen-Regeln brauchen
+    keine Instanz: Unberechtigte bekommen deny_all, Berechtigte alle Zeilen
+    ohne Instanz-Check.
+
+    Ein Manager ohne eigenes __read__ erbt den Settings-Default und bleibt
+    damit für alle lesbar; Manager mit sensiblen Daten MÜSSEN __read__ setzen.
     """
 
     def get_read_permission_plan(self) -> ReadPermissionPlan:
+        if not self.check_operation_permission("read"):
+            return ReadPermissionPlan(
+                filters=[],
+                requires_instance_check=False,
+                decision="deny_all",
+            )
         return ReadPermissionPlan(
             filters=[{"filter": {}, "exclude": {}}],
             requires_instance_check=False,

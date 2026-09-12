@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -249,3 +249,35 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canViewFinanzen": True,
             },
         )
+
+
+class CalculationPermissionReadPlanTest(TestCase):
+    """CalculationPermission leitet den Read-Plan aus __read__ ab."""
+
+    def _user(self, gruppe: str) -> User:
+        user = User.objects.create_user(f"plan_{gruppe.lower()}", password="x")
+        group, _ = Group.objects.get_or_create(name=gruppe)
+        user.groups.add(group)
+        return user
+
+    def test_monteur_bekommt_deny_all(self) -> None:
+        from apps.projekt.calculation_manager import IstWert
+
+        plan = IstWert.Permission(
+            IstWert,  # type: ignore[arg-type]
+            self._user("Monteur"),
+        ).get_read_permission_plan()
+        self.assertEqual(plan.decision, "deny_all")
+        self.assertEqual(plan.filters, [])
+        self.assertFalse(plan.requires_instance_check)
+
+    def test_projektleiter_bekommt_alle_zeilen_ohne_instanz_check(self) -> None:
+        from apps.projekt.calculation_manager import IstWert
+
+        plan = IstWert.Permission(
+            IstWert,  # type: ignore[arg-type]
+            self._user("Projektleiter"),
+        ).get_read_permission_plan()
+        self.assertNotEqual(plan.decision, "deny_all")
+        self.assertEqual(plan.filters, [{"filter": {}, "exclude": {}}])
+        self.assertFalse(plan.requires_instance_check)
