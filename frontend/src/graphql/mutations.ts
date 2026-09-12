@@ -7,7 +7,7 @@ export const CREATE_PROJEKT = gql`
     $jahr: Int!
     $offerteSumme: MeasurementScalar!
     $wvSumme: MeasurementScalar
-    $projektleiter: String
+    $projektleiter: ID
   ) {
     createProjekt(
       name: $name
@@ -31,7 +31,7 @@ export const UPDATE_PROJEKT = gql`
     $name: String
     $offerteSumme: MeasurementScalar
     $wvSumme: MeasurementScalar
-    $projektleiter: String
+    $projektleiter: ID
     $projektStatus: ID
   ) {
     updateProjekt(
