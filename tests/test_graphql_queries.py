@@ -18,10 +18,17 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.projekt.models import Kostenart, KostenPosition, Projekt
+from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektStatus
 from apps.stunden.models import Stundensatz
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
+
+
+def _offen() -> ProjektStatus:
+    status = ProjektStatus.filter(name="Offen").first()
+    assert status is not None
+    return status
+
 
 GRAPHQL_URL = "/graphql/"
 
@@ -46,15 +53,18 @@ def _gql(
 
 _QUERY_PROJEKT_LISTE = """
     query ProjektListe {
-      projektList(pageSize: 100) {
+      projektList(
+        pageSize: 100
+        orderBy: [{ field: auftragsnummer, direction: DESC }]
+      ) {
         items {
           id
           auftragsnummer
           name
           offerteSumme { value unit }
           wvSumme { value unit }
-          projektStatus { name }
-          projektleiter
+          projektStatus { id name }
+          projektleiter { id username }
           projektKennzahlenList {
             items {
               summeWvPlus { value unit }
@@ -76,8 +86,9 @@ _QUERY_PROJEKT_DETAIL = """
         jahr
         offerteSumme { value unit }
         wvSumme { value unit }
-        projektStatus { name }
-        projektleiter
+        projektStatus { id name }
+        projektleiter { id username }
+        capabilities { canUpdate canDelete }
         projektKennzahlenList {
           items {
             summeOfferteKosten { value unit }
@@ -120,8 +131,18 @@ _QUERY_SEARCH_PROJEKTE = """
         results {
           ... on ProjektType {
             id
-            name
             auftragsnummer
+            name
+            offerteSumme { value unit }
+            wvSumme { value unit }
+            projektStatus { id name }
+            projektleiter { id username }
+            projektKennzahlenList {
+              items {
+                summeWvPlus { value unit }
+                summeIstKosten { value unit }
+              }
+            }
           }
         }
         total
@@ -140,6 +161,7 @@ class _SharedSetup(TestCase):
         )
         self.projekt = Projekt.create(
             ignore_permission=True,
+            projekt_status=_offen(),
             name="Testprojekt",
             auftragsnummer="T-2026-001",
             offerte_summe=Measurement(100_000, "CHF"),
@@ -228,6 +250,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
         with self.captureOnCommitCallbacks(execute=True):
             Projekt.create(
                 ignore_permission=True,
+                projekt_status=_offen(),
                 name="Lueftungsanlage Nord",
                 auftragsnummer="T-2026-042",
                 offerte_summe=Measurement(50_000, "CHF"),
@@ -287,6 +310,29 @@ class GraphQLQueryShapeTest(_SharedSetup):
         self.assertIn("apparate", schlussel)
         self.assertIn("regie", schlussel)
         self.assertEqual(len(items), 15)
+
+    # ------------------------------------------------------------------
+    # GET_PROJEKT_STATUS_IDS
+    # ------------------------------------------------------------------
+
+    def test_projekt_status_ids_shape(self) -> None:
+        result = _gql(
+            self.client,
+            """
+            query ProjektStatusIds {
+              projektStatusList {
+                items {
+                  id
+                  name
+                }
+              }
+            }
+            """,
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        items = result["data"]["projektStatusList"]["items"]
+        namen = {i["name"] for i in items}
+        self.assertEqual(namen, {"Offen", "In Arbeit", "Fertig"})
 
     # ------------------------------------------------------------------
     # GET_STUNDENSAETZE
@@ -373,3 +419,32 @@ class GraphQLPermissionTest(_SharedSetup):
             str(result.get("errors", "")),
             result.get("errors"),
         )
+
+
+class ProjektCapabilitiesTest(_SharedSetup):
+    def _login_as(self, username: str, groups: list[str]) -> None:
+        from django.contrib.auth.models import Group
+
+        user = User.objects.create_user(username, password="x")
+        for name in groups:
+            group, _ = Group.objects.get_or_create(name=name)
+            user.groups.add(group)
+        self.client.force_login(user)
+
+    def test_admin_darf_bearbeiten_und_loeschen(self) -> None:
+        self._login_as("adm_caps", ["Admin"])
+        result = _gql(
+            self.client, _QUERY_PROJEKT_DETAIL, variables={"id": str(self.projekt.id)}
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        caps = result["data"]["projekt"]["capabilities"]
+        self.assertEqual(caps, {"canUpdate": True, "canDelete": True})
+
+    def test_betrachter_darf_weder_bearbeiten_noch_loeschen(self) -> None:
+        self._login_as("betr_caps", ["Betrachter"])
+        result = _gql(
+            self.client, _QUERY_PROJEKT_DETAIL, variables={"id": str(self.projekt.id)}
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        caps = result["data"]["projekt"]["capabilities"]
+        self.assertEqual(caps, {"canUpdate": False, "canDelete": False})

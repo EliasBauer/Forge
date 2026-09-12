@@ -14,6 +14,7 @@ from apps.authentication.permission import (
     _permission_is_mechanic,
     _permission_is_project_leader,
     _permission_is_viewer,
+    _permission_never,
 )
 
 
@@ -89,6 +90,12 @@ class PermissionIsMonteurTest(TestCase):
         self.assertFalse(_permission_is_mechanic(MagicMock(), _make_user(None), []))
 
 
+class PermissionNeverTest(TestCase):
+    def test_returns_false_immer(self) -> None:
+        self.assertFalse(_permission_never(MagicMock(), _make_user("Admin"), []))
+        self.assertFalse(_permission_never(MagicMock(), _make_user(None), []))
+
+
 class LoginViewTest(TestCase):
     def setUp(self) -> None:
         self.client = Client()
@@ -136,49 +143,109 @@ class LogoutViewTest(TestCase):
         self.assertTrue(response.json()["success"])
 
 
-class UsersViewTest(TestCase):
-    def setUp(self) -> None:
+class RemovedRestEndpointsTest(TestCase):
+    def test_users_endpoint_existiert_nicht_mehr(self) -> None:
+        from django.urls import NoReverseMatch, reverse
+
+        with self.assertRaises(NoReverseMatch):
+            reverse("auth-users")
+
+    def test_me_endpoint_existiert_nicht_mehr(self) -> None:
+        from django.urls import NoReverseMatch, reverse
+
+        with self.assertRaises(NoReverseMatch):
+            reverse("auth-me")
+
+
+class CurrentUserCapabilitiesTest(TestCase):
+    def _gql(self) -> dict[str, object]:
+        import json
+
+        response = self.client.post(
+            "/graphql/",
+            data=json.dumps(
+                {
+                    "query": """
+                    query {
+                      me {
+                        username
+                        capabilities {
+                          canCreateProjekt
+                          canManageStundensaetze
+                          canViewFinanzen
+                        }
+                      }
+                    }
+                    """
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()  # type: ignore[no-any-return]
+
+    def test_anonymous_alle_capabilities_false(self) -> None:
+        result = self._gql()
+        self.assertEqual(result["data"]["me"]["username"], "")  # type: ignore[index]
+        caps = result["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": False,
+                "canManageStundensaetze": False,
+                "canViewFinanzen": False,
+            },
+        )
+
+    def test_admin_alle_capabilities_true(self) -> None:
         from django.contrib.auth.models import Group
 
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username="testuser", password="testpass123"
+        user = User.objects.create_user("admincaps", password="x")
+        group, _ = Group.objects.get_or_create(name="Admin")
+        user.groups.add(group)
+        self.client.force_login(user)
+        result = self._gql()
+        self.assertEqual(result["data"]["me"]["username"], "admincaps")  # type: ignore[index]
+        caps = result["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": True,
+                "canManageStundensaetze": True,
+                "canViewFinanzen": True,
+            },
         )
-        self.projektleiter = User.objects.create_user(
-            username="pl_user", password="testpass123"
+
+    def test_monteur_darf_nur_nichts(self) -> None:
+        from django.contrib.auth.models import Group
+
+        user = User.objects.create_user("monteurcaps", password="x")
+        group, _ = Group.objects.get_or_create(name="Monteur")
+        user.groups.add(group)
+        self.client.force_login(user)
+        caps = self._gql()["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": False,
+                "canManageStundensaetze": False,
+                "canViewFinanzen": False,
+            },
         )
+
+    def test_projektleiter_alle_capabilities_true(self) -> None:
+        from django.contrib.auth.models import Group
+
+        user = User.objects.create_user("plcaps", password="x")
         group, _ = Group.objects.get_or_create(name="Projektleiter")
-        self.projektleiter.groups.add(group)
-        self.url = reverse("auth-users")
-
-    def test_returns_only_projektleiter_when_authenticated(self) -> None:
-        self.client.force_login(self.user)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        usernames = [u["username"] for u in response.json()]
-        self.assertIn("pl_user", usernames)
-        self.assertNotIn("testuser", usernames)
-
-    def test_returns_401_when_unauthenticated(self) -> None:
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 401)
-
-
-class CurrentUserViewTest(TestCase):
-    def setUp(self) -> None:
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username="testuser", password="testpass123"
+        user.groups.add(group)
+        self.client.force_login(user)
+        caps = self._gql()["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": True,
+                "canManageStundensaetze": True,
+                "canViewFinanzen": True,
+            },
         )
-        self.url = reverse("auth-me")
-
-    def test_returns_user_when_authenticated(self) -> None:
-        self.client.force_login(self.user)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["username"], "testuser")
-
-    def test_returns_null_when_unauthenticated(self) -> None:
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.json())

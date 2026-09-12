@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.db import models
 from general_manager import (
     AdditiveManagerPermission,
@@ -7,20 +9,32 @@ from general_manager import (
     ReadOnlyInterface,
 )
 
+if TYPE_CHECKING:
+    from general_manager.bucket import Bucket
+
+    from apps.projekt.models.projekt import Projekt
+
 
 class ProjektStatus(GeneralManager):
     """Statische Liste der Projekt-Status (Offen, In Arbeit, Fertig)."""
 
-    id: int
-    name: str
-
     _data = [
-        {"name": "Offen"},
-        {"name": "In Arbeit"},
-        {"name": "Fertig"},
+        {"id": 1, "name": "Offen", "is_active": True},
+        {"id": 2, "name": "In Arbeit", "is_active": True},
+        {"id": 3, "name": "Fertig", "is_active": True},
     ]
 
+    id: int
+    is_active: bool
+    name: str
+
+    projekte_list: Bucket[Projekt]
+
+    def __str__(self) -> str:
+        return self.name
+
     class Interface(ReadOnlyInterface):
+        is_active = models.BooleanField(default=True)
         name = models.CharField(max_length=50, unique=True)
 
         class Meta:

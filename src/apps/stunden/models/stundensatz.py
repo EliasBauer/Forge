@@ -27,7 +27,7 @@ class Stundensatz(GeneralManager):
             rules = [Rule["Stundensatz"](lambda x: x.stundensatz > "0 CHF")]
 
     class Permission(AdditiveManagerPermission):
-        __read__ = ["isAdminGroup", "isProjektleiter", "isBetrachter"]
-        __create__ = ["isAdminGroup", "isProjektleiter"]
-        __update__ = ["isAdminGroup", "isProjektleiter"]
-        __delete__ = ["isAdminGroup", "isProjektleiter"]
+        __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
+        __create__ = ["isForgeAdmin", "isProjektleiter"]
+        __update__ = ["isForgeAdmin", "isProjektleiter"]
+        __delete__ = ["isForgeAdmin", "isProjektleiter"]

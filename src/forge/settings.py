@@ -166,6 +166,9 @@ GENERAL_MANAGER = {
         "UPDATE": ["isAuthenticated"],
         "DELETE": ["isAuthenticated"],
     },
+    "GRAPHQL_GLOBAL_CAPABILITIES_PROVIDER": (
+        "apps.authentication.graphql_capabilities.CurrentUserCapabilities"
+    ),
     "SEARCH_AUTO_REINDEX": True,
     "SEARCH_RECONCILE_ENABLED": True,
     "SEARCH_RECONCILE_INTERVAL_SECONDS": 30,
