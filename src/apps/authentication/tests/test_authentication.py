@@ -281,3 +281,14 @@ class CalculationPermissionReadPlanTest(TestCase):
         self.assertNotEqual(plan.decision, "deny_all")
         self.assertEqual(plan.filters, [{"filter": {}, "exclude": {}}])
         self.assertFalse(plan.requires_instance_check)
+
+    def test_admin_bekommt_alle_zeilen_ohne_instanz_check(self) -> None:
+        from apps.projekt.calculation_manager import IstWert
+
+        plan = IstWert.Permission(
+            IstWert,  # type: ignore[arg-type]
+            self._user("Admin"),
+        ).get_read_permission_plan()
+        self.assertNotEqual(plan.decision, "deny_all")
+        self.assertEqual(plan.filters, [{"filter": {}, "exclude": {}}])
+        self.assertFalse(plan.requires_instance_check)
