@@ -18,10 +18,17 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.projekt.models import Kostenart, KostenPosition, Projekt
+from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektStatus
 from apps.stunden.models import Stundensatz
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
+
+
+def _offen() -> ProjektStatus:
+    status = ProjektStatus.filter(name="Offen").first()
+    assert status is not None
+    return status
+
 
 GRAPHQL_URL = "/graphql/"
 
@@ -154,6 +161,7 @@ class _SharedSetup(TestCase):
         )
         self.projekt = Projekt.create(
             ignore_permission=True,
+            projekt_status=_offen(),
             name="Testprojekt",
             auftragsnummer="T-2026-001",
             offerte_summe=Measurement(100_000, "CHF"),
@@ -242,6 +250,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
         with self.captureOnCommitCallbacks(execute=True):
             Projekt.create(
                 ignore_permission=True,
+                projekt_status=_offen(),
                 name="Lueftungsanlage Nord",
                 auftragsnummer="T-2026-042",
                 offerte_summe=Measurement(50_000, "CHF"),

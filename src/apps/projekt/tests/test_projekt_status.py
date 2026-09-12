@@ -31,3 +31,8 @@ class ProjektStatusDatenTest(TestCase):
     def test_name_unique_constraint(self) -> None:
         with self.assertRaises(IntegrityError):
             _ProjektStatusModel.objects.create(name="Offen")
+
+    def test_str_gibt_name_zurueck(self) -> None:
+        status = ProjektStatus.filter(name="Offen").first()
+        assert status is not None
+        self.assertEqual(str(status), "Offen")
