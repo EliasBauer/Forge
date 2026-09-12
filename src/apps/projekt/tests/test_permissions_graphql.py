@@ -129,3 +129,8 @@ class CalculationManagerSichtbarkeitTest(RollenGraphQLTestBase):
         self._login("Projektleiter")
         self.assertNotEqual(self._kennzahlen(), [])
         self.assertNotEqual(self._ist_werte(), [])
+
+    def test_admin_sieht_kennzahlen_und_ist_werte(self) -> None:
+        self._login("Admin")
+        self.assertNotEqual(self._kennzahlen(), [])
+        self.assertNotEqual(self._ist_werte(), [])
