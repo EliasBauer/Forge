@@ -566,6 +566,10 @@ Import in `permission.py`, das von `apps.py` geladen wird.
 ```python
 class CalculationPermission(AdditiveManagerPermission):
     def get_read_permission_plan(self) -> ReadPermissionPlan:
+        if not self.check_operation_permission("read"):
+            return ReadPermissionPlan(
+                filters=[], requires_instance_check=False, decision="deny_all"
+            )
         return ReadPermissionPlan(
             filters=[{"filter": {}, "exclude": {}}],
             requires_instance_check=False,
@@ -576,6 +580,13 @@ Pflicht für jeden `CalculationInterface`-Manager: Der Instance-Check ruft inter
 `queryset.filter(id__in=...)` auf, was für CalculationBuckets fehlschlägt (`id` ist kein
 gültiges Filter-Feld). Ohne `CalculationPermission` liefern `projektKennzahlenList`,
 `istWertList` etc. bei normalen Nutzern `Unknown input field 'id' in filter`.
+
+> **Jeder Calculation-Manager mit sensiblen Daten braucht ein eigenes `__read__`.**
+> Ohne `__read__` greift der Settings-Default (`READ: ["public"]`) und der
+> Manager ist für jeden lesbar — auch anonym, auch wenn der Basis-Manager
+> (z. B. `Projekt`) längst eingeschränkt ist. `CalculationPermission` wertet
+> `__read__` statisch aus (Gruppen-Regeln brauchen keine Instanz) und liefert
+> Unberechtigten `deny_all`, also leere Listen.
 
 > **Versionsstand:** In 0.45.0 als weiterhin nötig verifiziert. Die statischen
 > Permission-Optimierungen ab 0.7x betreffen den Kurzschluss-Pfad, nicht den
