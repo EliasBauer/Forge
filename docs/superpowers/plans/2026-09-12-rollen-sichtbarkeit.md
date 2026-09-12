@@ -510,7 +510,7 @@ Claude-Session: https://claude.ai/code/session_01VBU5FCdLVkYdtv9ThCqJdQ"
 - Consumes: `Projekt.Permission` mit Attribut-Regel `offerte_summe` und `KostenPosition.Permission.__read__` aus Task 2.
 - Produces: `me { capabilities { canCreateProjekt canManageStundensaetze canViewFinanzen canViewKostenPositionen } }`. `canViewKostenPositionen` ist True für Admin und Projektleiter, False für Betrachter, Monteur und anonym.
 
-- [ ] **Step 1: Die fehlschlagenden Tests schreiben**
+- [x] **Step 1: Die fehlschlagenden Tests schreiben**
 
 In `src/apps/authentication/tests/test_authentication.py` in der Klasse `CurrentUserCapabilitiesTest` den Query-String in `_gql` um das neue Feld ergänzen:
 
@@ -624,13 +624,13 @@ Danach zwei neue Tests an die Klasse anhängen:
         )
 ```
 
-- [ ] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
+- [x] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
 
 Run: `uv run --group dev pytest src/apps/authentication/tests/test_authentication.py::CurrentUserCapabilitiesTest --no-cov -q`
 
 Expected: FAIL — GraphQL kennt das Feld `canViewKostenPositionen` nicht; die Antwort enthält `errors` mit `Cannot query field 'canViewKostenPositionen'`.
 
-- [ ] **Step 3: Capabilities aus den Permissions ableiten**
+- [x] **Step 3: Capabilities aus den Permissions ableiten**
 
 `src/apps/authentication/graphql_capabilities.py` vollständig ersetzen durch:
 
@@ -708,13 +708,13 @@ class CurrentUserCapabilities:
 
 Die Manager-Imports stehen bewusst **in** den Funktionen: dieses Modul wird über den Dotted-Path in `GRAPHQL_GLOBAL_CAPABILITIES_PROVIDER` geladen, und ein Modulebenen-Import von `apps.projekt.models` würde die App-Registry zu früh anfassen.
 
-- [ ] **Step 4: Tests laufen lassen und grün sehen**
+- [x] **Step 4: Tests laufen lassen und grün sehen**
 
 Run: `uv run --group dev pytest src/apps/authentication/tests/test_authentication.py --no-cov -q`
 
 Expected: PASS — alle Tests der Datei grün, inklusive der zwei neuen Rollen-Tests.
 
-- [ ] **Step 5: Volles Gate und Commit**
+- [x] **Step 5: Volles Gate und Commit**
 
 ```bash
 pre-commit run --all-files

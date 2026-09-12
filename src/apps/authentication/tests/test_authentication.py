@@ -173,6 +173,7 @@ class CurrentUserCapabilitiesTest(TestCase):
                           canCreateProjekt
                           canManageStundensaetze
                           canViewFinanzen
+                          canViewKostenPositionen
                         }
                       }
                     }
@@ -194,12 +195,11 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": False,
                 "canManageStundensaetze": False,
                 "canViewFinanzen": False,
+                "canViewKostenPositionen": False,
             },
         )
 
     def test_admin_alle_capabilities_true(self) -> None:
-        from django.contrib.auth.models import Group
-
         user = User.objects.create_user("admincaps", password="x")
         group, _ = Group.objects.get_or_create(name="Admin")
         user.groups.add(group)
@@ -213,12 +213,11 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": True,
                 "canManageStundensaetze": True,
                 "canViewFinanzen": True,
+                "canViewKostenPositionen": True,
             },
         )
 
     def test_monteur_darf_nur_nichts(self) -> None:
-        from django.contrib.auth.models import Group
-
         user = User.objects.create_user("monteurcaps", password="x")
         group, _ = Group.objects.get_or_create(name="Monteur")
         user.groups.add(group)
@@ -230,12 +229,27 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": False,
                 "canManageStundensaetze": False,
                 "canViewFinanzen": False,
+                "canViewKostenPositionen": False,
             },
         )
 
-    def test_projektleiter_alle_capabilities_true(self) -> None:
-        from django.contrib.auth.models import Group
+    def test_betrachter_sieht_finanzen_aber_keine_kostenpositionen(self) -> None:
+        user = User.objects.create_user("betrachtercaps", password="x")
+        group, _ = Group.objects.get_or_create(name="Betrachter")
+        user.groups.add(group)
+        self.client.force_login(user)
+        caps = self._gql()["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": False,
+                "canManageStundensaetze": False,
+                "canViewFinanzen": True,
+                "canViewKostenPositionen": False,
+            },
+        )
 
+    def test_projektleiter_sieht_alles_ausser_benutzerverwaltung(self) -> None:
         user = User.objects.create_user("plcaps", password="x")
         group, _ = Group.objects.get_or_create(name="Projektleiter")
         user.groups.add(group)
@@ -247,6 +261,7 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": True,
                 "canManageStundensaetze": True,
                 "canViewFinanzen": True,
+                "canViewKostenPositionen": True,
             },
         )
 
