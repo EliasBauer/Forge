@@ -205,3 +205,157 @@ class ProjektSichtbarkeitTest(RollenGraphQLTestBase):
 
     def test_anonym_sieht_keine_projekte(self) -> None:
         self.assertEqual(self._liste()["pageInfo"]["totalCount"], 0)
+
+
+CREATE_KOSTEN_POSITION = """
+mutation ($projekt: ID!, $art: ID!, $wert: MeasurementScalar) {
+  createKostenPosition(projekt: $projekt, art: $art, offerteKostenWert: $wert) {
+    success
+  }
+}
+"""
+
+UPDATE_KOSTEN_POSITION = """
+mutation ($id: Int!, $wert: MeasurementScalar) {
+  updateKostenPosition(id: $id, offerteKostenWert: $wert) { success }
+}
+"""
+
+DELETE_KOSTEN_POSITION = """
+mutation ($id: Int!) { deleteKostenPosition(id: $id) { success } }
+"""
+
+
+class KostenPositionMutationsTest(RollenGraphQLTestBase):
+    """Schreibzugriff auf Kostenpositionen je Rolle.
+
+    Diese Tests decken eine Lücke ab, die lange offenstand: über GraphQL konnte
+    ein Monteur Kostenpositionen anlegen. `__based_on__ = "projekt"` sah wie
+    Schutz aus, ist bei Create-Mutationen aber wirkungslos — die Mutation-Schicht
+    schreibt `projekt` vorher auf `projekt_id` um, die Delegation findet ihre
+    Basis nicht mehr und fällt auf DEFAULT_PERMISSIONS zurück (reference.md §5).
+    Die Suite war damals grün, weil alle Tests mit `ignore_permission=True`
+    schreiben und den GraphQL-Pfad nie berührten.
+
+    Deshalb prüfen die Negativ-Tests hier nicht nur den Fehlercode, sondern auch,
+    dass wirklich nichts in der Datenbank gelandet ist.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        freie_art = Kostenart.filter(schluessel="regulierung").first()
+        assert isinstance(freie_art, Kostenart)
+        self.freie_art = freie_art
+        vorhandene = KostenPosition.filter(projekt=self.projekt).first()
+        assert isinstance(vorhandene, KostenPosition)
+        self.vorhandene = vorhandene
+
+    def _mutation(self, query: str, variables: dict[str, Any]) -> tuple[bool, Any]:
+        """Gibt (erfolgreich, fehlercode-oder-None) zurück."""
+        response = self.client.post(
+            "/graphql/",
+            data=json.dumps({"query": query, "variables": variables}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        if "errors" in payload:
+            return False, payload["errors"][0].get("extensions", {}).get("code")
+        return True, None
+
+    def _anlegen(self) -> tuple[bool, Any]:
+        return self._mutation(
+            CREATE_KOSTEN_POSITION,
+            {
+                "projekt": str(self.projekt.id),
+                "art": str(self.freie_art.id),
+                "wert": "500.00 CHF",
+            },
+        )
+
+    def _anzahl_positionen(self) -> int:
+        return len(list(KostenPosition.filter(projekt=self.projekt)))
+
+    # ---------------- Anlegen ----------------
+
+    def test_monteur_darf_keine_kostenposition_anlegen(self) -> None:
+        self._login("Monteur")
+        vorher = self._anzahl_positionen()
+        erfolg, code = self._anlegen()
+        self.assertFalse(erfolg)
+        self.assertEqual(code, "PERMISSION_DENIED")
+        self.assertEqual(self._anzahl_positionen(), vorher)
+
+    def test_betrachter_darf_keine_kostenposition_anlegen(self) -> None:
+        self._login("Betrachter")
+        vorher = self._anzahl_positionen()
+        erfolg, code = self._anlegen()
+        self.assertFalse(erfolg)
+        self.assertEqual(code, "PERMISSION_DENIED")
+        self.assertEqual(self._anzahl_positionen(), vorher)
+
+    def test_anonym_darf_keine_kostenposition_anlegen(self) -> None:
+        vorher = self._anzahl_positionen()
+        erfolg, code = self._anlegen()
+        self.assertFalse(erfolg)
+        self.assertEqual(code, "PERMISSION_DENIED")
+        self.assertEqual(self._anzahl_positionen(), vorher)
+
+    def test_projektleiter_darf_kostenposition_anlegen(self) -> None:
+        self._login("Projektleiter")
+        vorher = self._anzahl_positionen()
+        erfolg, code = self._anlegen()
+        self.assertTrue(erfolg, f"unerwartet abgewiesen: {code}")
+        self.assertEqual(self._anzahl_positionen(), vorher + 1)
+
+    def test_admin_darf_kostenposition_anlegen(self) -> None:
+        self._login("Admin")
+        vorher = self._anzahl_positionen()
+        erfolg, code = self._anlegen()
+        self.assertTrue(erfolg, f"unerwartet abgewiesen: {code}")
+        self.assertEqual(self._anzahl_positionen(), vorher + 1)
+
+    # ---------------- Ändern ----------------
+
+    def test_monteur_darf_kostenposition_nicht_aendern(self) -> None:
+        self._login("Monteur")
+        erfolg, code = self._mutation(
+            UPDATE_KOSTEN_POSITION,
+            {"id": int(self.vorhandene.id), "wert": "999.00 CHF"},
+        )
+        self.assertFalse(erfolg)
+        self.assertEqual(code, "PERMISSION_DENIED")
+        unveraendert = KostenPosition(id=self.vorhandene.id)
+        assert unveraendert.offerte_kosten_wert is not None
+        self.assertEqual(
+            unveraendert.offerte_kosten_wert.magnitude, Decimal("20000.00")
+        )
+
+    def test_projektleiter_darf_kostenposition_aendern(self) -> None:
+        self._login("Projektleiter")
+        erfolg, code = self._mutation(
+            UPDATE_KOSTEN_POSITION,
+            {"id": int(self.vorhandene.id), "wert": "999.00 CHF"},
+        )
+        self.assertTrue(erfolg, f"unerwartet abgewiesen: {code}")
+
+    # ---------------- Löschen ----------------
+
+    def test_monteur_darf_kostenposition_nicht_loeschen(self) -> None:
+        self._login("Monteur")
+        vorher = self._anzahl_positionen()
+        erfolg, code = self._mutation(
+            DELETE_KOSTEN_POSITION, {"id": int(self.vorhandene.id)}
+        )
+        self.assertFalse(erfolg)
+        self.assertEqual(code, "PERMISSION_DENIED")
+        self.assertEqual(self._anzahl_positionen(), vorher)
+
+    def test_projektleiter_darf_kostenposition_loeschen(self) -> None:
+        self._login("Projektleiter")
+        vorher = self._anzahl_positionen()
+        erfolg, code = self._mutation(
+            DELETE_KOSTEN_POSITION, {"id": int(self.vorhandene.id)}
+        )
+        self.assertTrue(erfolg, f"unerwartet abgewiesen: {code}")
+        self.assertEqual(self._anzahl_positionen(), vorher - 1)
