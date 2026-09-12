@@ -80,13 +80,21 @@ class Projekt(GeneralManager):
             ]
 
     class Permission(AdditiveManagerPermission):
-        __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
+        __read__ = [
+            "isForgeAdmin",
+            "isProjektleiter",
+            "isBetrachter",
+            "isMonteur",
+        ]
         __create__ = ["isForgeAdmin", "isProjektleiter"]
         __update__ = ["isForgeAdmin", "isProjektleiter"]
         __delete__ = ["isForgeAdmin", "isProjektleiter"]
         graphql_capabilities: ClassVar[tuple[GraphQLPermissionCapability, ...]] = ()
 
         auftragsnummer = {"update": ["isAdmin"]}
+        # Monteure sehen Projekte, aber keine Finanzsummen.
+        offerte_summe = {"read": ["isForgeAdmin", "isProjektleiter", "isBetrachter"]}
+        wv_summe = {"read": ["isForgeAdmin", "isProjektleiter", "isBetrachter"]}
 
     class SearchConfig:
         indexes = [

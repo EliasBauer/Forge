@@ -55,6 +55,9 @@ class KostenPosition(GeneralManager):
 
     class Permission(AdditiveManagerPermission):
         __based_on__ = "projekt"
+        # Einzelne Kostenpositionen sehen nur Admin und Projektleiter;
+        # Betrachter bekommen nur die aggregierten ProjektKennzahlen.
+        __read__ = ["isForgeAdmin", "isProjektleiter"]
 
     # ------------------------------------------------------------------
     # Berechnete Eigenschaften
