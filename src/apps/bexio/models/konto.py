@@ -44,7 +44,7 @@ class Konto(GeneralManager):
             ordering = ["account_no"]
 
     class Permission(AdditiveManagerPermission):
-        __read__ = ["isAuthenticated"]
+        __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
         __create__ = ["isAdmin"]
         __update__ = ["isAdmin"]
         __delete__ = ["isAdmin"]

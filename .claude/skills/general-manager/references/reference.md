@@ -548,6 +548,35 @@ class Position(GeneralManager):
 Wenn `__based_on__` gesetzt: **beide** Permissions müssen True sein. Ist das delegierte
 Objekt zur Laufzeit `None`, greift der globale Default.
 
+> ### ⚠️ `__based_on__` schützt KEINE GraphQL-Mutationen
+>
+> Beim **Lesen** funktioniert die Delegation wie dokumentiert. Bei **Create über GraphQL**
+> ist sie wirkungslos — verifiziert in 0.79.3 gegen den Quellcode und am laufenden System:
+>
+> 1. `graphql_mutations.py` normalisiert jedes Relationsfeld vor der Permission-Prüfung:
+>    `normalized.setdefault(f"{key}_id", ...)` gefolgt von `normalized.pop(key)`. Aus
+>    `projekt` wird `projekt_id`, und `projekt` ist aus dem Payload **entfernt**.
+> 2. `check_create_permission` baut daraus einen `PermissionDataManager`. Dort liefert
+>    `getattr(pdm, "projekt")` jetzt `None`.
+> 3. Damit greift die dokumentierte Regel „delegiertes Objekt ist `None` → globaler Default":
+>    die Delegation wird **stillschweigend verworfen**, kein Fehler, keine Warnung.
+>
+> Messbar nebeneinander:
+>
+> | Payload-Schlüssel | `getattr(pdm, "projekt")` | Delegation | effektives `__create__` |
+> | ----------------- | ------------------------- | ---------- | ----------------------- |
+> | `projekt`         | `1`                       | greift     | Basis-Manager entscheidet |
+> | `projekt_id`      | `None`                    | **fällt weg** | globaler Default        |
+>
+> Über GraphQL kommt immer der zweite Fall an. Ein Manager, der sich für Schreibzugriffe
+> allein auf `__based_on__` verlässt, ist so streng wie `DEFAULT_PERMISSIONS` — nicht
+> strenger.
+>
+> **Forge-Regel: wir definieren immer explizit.** Jeder Manager schreibt `__read__`,
+> `__create__`, `__update__` und `__delete__` selbst hin — auch wenn `__based_on__` gesetzt
+> ist und auch wenn der Default „eigentlich passt". Der Default ist ein Netz für Fehler,
+> keine Konfiguration. Lesbar muss die Regel dort stehen, wo das Objekt definiert ist.
+
 ### Custom Permissions registrieren (Forge-spezifisch)
 
 ```python
@@ -1479,6 +1508,8 @@ server: { proxy: { "/graphql": "http://localhost:8000" } }
 | `Float cannot represent non numeric value`               | Frontend schickt String statt Zahl                              | `parseFloat(val.replace(",", "."))`                                                                      |
 | Vite zeigt nichts im Container                           | Vite lauscht nur auf localhost                                  | `npm run dev -- --host`                                                                                  |
 | `SynchronousOnlyOperation` in Subscription-Log            | `item`-Feld greift auf un-vorgeladene Relation zu (GM-Manager-FK oder plain Django-FK) im async Consumer | Relation per `select_related(...)` auf dem `Interface`-`Manager` vorladen, oder Feld aus `item` entfernen und per `refetch()` nachladen (§10) |
+| Unberechtigter darf per GraphQL anlegen, obwohl `__based_on__` gesetzt ist | Mutation-Schicht schreibt `projekt` → `projekt_id` um; Delegation findet die Basis nicht mehr, `None` → globaler Default greift | `__create__`/`__update__`/`__delete__` **explizit** am Manager deklarieren; `__based_on__` niemals als Schreibschutz verwenden (§5) |
+| Manager ohne eigenes `__read__` ist für jeden lesbar      | Settings-Default greift (`DEFAULT_PERMISSIONS`)                  | Jeder Manager deklariert seine vier Regeln selbst — Default ist Fehlernetz, keine Konfiguration (§5) |
 
 ### Decimal-Float-Fix in Interface
 

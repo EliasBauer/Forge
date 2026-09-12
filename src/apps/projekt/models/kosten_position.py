@@ -54,10 +54,10 @@ class KostenPosition(GeneralManager):
             unique_together = [("projekt", "art")]
 
     class Permission(AdditiveManagerPermission):
-        __based_on__ = "projekt"
-        # Einzelne Kostenpositionen sehen nur Admin und Projektleiter;
-        # Betrachter bekommen nur die aggregierten ProjektKennzahlen.
         __read__ = ["isForgeAdmin", "isProjektleiter"]
+        __create__ = ["isForgeAdmin", "isProjektleiter"]
+        __update__ = ["isForgeAdmin", "isProjektleiter"]
+        __delete__ = ["isForgeAdmin", "isProjektleiter"]
 
     # ------------------------------------------------------------------
     # Berechnete Eigenschaften
