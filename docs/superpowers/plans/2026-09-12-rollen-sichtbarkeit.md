@@ -1267,7 +1267,7 @@ Claude-Session: https://claude.ai/code/session_01VBU5FCdLVkYdtv9ThCqJdQ"
 - Consumes: das fertige Verhalten aus Task 1-5.
 - Produces: keine Code-Schnittstellen.
 
-- [ ] **Step 1: Rollenbeschreibung in `CONTEXT.md` präzisieren**
+- [x] **Step 1: Rollenbeschreibung in `CONTEXT.md` präzisieren**
 
 Die Zeilen 34-35 ersetzen durch:
 
@@ -1276,7 +1276,7 @@ Die Zeilen 34-35 ersetzen durch:
   - **Monteur** (2×) — Projektliste ohne Finanzspalten, kein Zugriff auf die Projektdetails; Stundenerfassung in Phase 2
 ```
 
-- [ ] **Step 2: `CalculationPermission` in der GM-Referenz aktualisieren**
+- [x] **Step 2: `CalculationPermission` in der GM-Referenz aktualisieren**
 
 In `.claude/skills/general-manager/references/reference.md` das Code-Beispiel im Abschnitt „### `CalculationPermission` (Forge-Pattern)" (Zeilen 566-573) ersetzen durch:
 
@@ -1306,7 +1306,7 @@ und direkt nach dem Absatz, der mit „Pflicht für jeden `CalculationInterface`
 > Unberechtigten `deny_all`, also leere Listen.
 ```
 
-- [ ] **Step 3: Volles Gate und Commit**
+- [x] **Step 3: Volles Gate und Commit**
 
 ```bash
 pre-commit run --all-files
