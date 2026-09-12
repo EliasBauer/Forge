@@ -1,5 +1,5 @@
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -7,17 +7,21 @@ import ProjektDetailPage from "./ProjektDetailPage";
 import { GET_PROJEKT, GET_KOSTENART_IDS, GET_PROJEKT_STATUS_IDS, PROJEKTLEITER } from "../graphql/queries";
 import { PROJEKT_DETAIL_SUBSCRIPTION } from "../graphql/subscriptions";
 
+const { mockCapabilities } = vi.hoisted(() => ({
+  mockCapabilities: {
+    canCreateProjekt: false,
+    canManageStundensaetze: false,
+    canViewFinanzen: true,
+    canViewKostenPositionen: true,
+  },
+}));
+
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({
     user: {
       id: 1,
       username: "betrachter",
-      capabilities: {
-        canCreateProjekt: false,
-        canManageStundensaetze: false,
-        canViewFinanzen: true,
-        canViewKostenPositionen: true,
-      },
+      capabilities: mockCapabilities,
     },
     loading: false,
     login: vi.fn(),
@@ -25,7 +29,11 @@ vi.mock("../contexts/AuthContext", () => ({
   }),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  mockCapabilities.canViewFinanzen = true;
+  mockCapabilities.canViewKostenPositionen = true;
+});
 
 function projektMock(capabilities: { canUpdate: boolean; canDelete: boolean }) {
   return {
@@ -42,9 +50,44 @@ function projektMock(capabilities: { canUpdate: boolean; canDelete: boolean }) {
           projektStatus: { id: "1", name: "Offen" },
           projektleiter: { id: "5", username: "anna" },
           capabilities,
-          projektKennzahlenList: { items: [] },
-          kostenPositionenList: { items: [] },
-          istWertList: { items: [] },
+          projektKennzahlenList: {
+            items: [
+              {
+                summeOfferteKosten: { value: 500, unit: "CHF" },
+                summeWvKosten: { value: 450, unit: "CHF" },
+                summeIstKosten: { value: 400, unit: "CHF" },
+                verbrauchsrate: 80,
+                deltaWvOff: { value: -50, unit: "CHF" },
+                deltaWvOffPct: -10,
+                deltaIstPlan: { value: -50, unit: "CHF" },
+                deltaIstPlanPct: -11.1,
+                summeWvPlus: { value: 450, unit: "CHF" },
+                bisherVerrechnet: { value: -400, unit: "CHF" },
+              },
+            ],
+          },
+          kostenPositionenList: {
+            items: [
+              {
+                id: "10",
+                art: { schluessel: "apparate" },
+                offerteKostenWert: { value: 500, unit: "CHF" },
+                offerteStunden: null,
+                wvKostenWert: { value: 450, unit: "CHF" },
+                wvKostenWertProzent: 100,
+                offerteKostenWertProzent: 100,
+              },
+            ],
+          },
+          istWertList: {
+            items: [
+              {
+                kostenart: { schluessel: "apparate" },
+                istKostenWert: { value: 400, unit: "CHF" },
+                istKostenWertProzent: 100,
+              },
+            ],
+          },
         },
       },
     },
@@ -93,5 +136,41 @@ describe("ProjektDetailPage – Bearbeiten-Button folgt projekt.capabilities.can
     renderPage({ canUpdate: false, canDelete: false });
     await screen.findByText("Testprojekt");
     expect(screen.queryByText("Bearbeiten")).not.toBeInTheDocument();
+  });
+});
+
+describe("ProjektDetailPage – Positionszeilen folgen canViewKostenPositionen", () => {
+  it("zeigt Positionszeilen, Legende und Diagramm, wenn die Capability gesetzt ist", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    await screen.findByText("Testprojekt");
+
+    // "Apparate" erscheint bewusst zweimal (Tabellenzeile + Diagrammbalken),
+    // wenn Positionen sichtbar sind — daher auf die Tabelle eingegrenzt.
+    expect(within(screen.getByRole("table")).getByText("Apparate")).toBeInTheDocument();
+    expect(screen.getByText("berechnet")).toBeInTheDocument();
+    expect(screen.getByText("Projektstatus auf einen Blick")).toBeInTheDocument();
+  });
+
+  it("versteckt Positionszeilen, Legende und Diagramm ohne die Capability", async () => {
+    mockCapabilities.canViewKostenPositionen = false;
+    renderPage({ canUpdate: false, canDelete: false });
+    await screen.findByText("Testprojekt");
+
+    expect(screen.queryByText("Apparate")).not.toBeInTheDocument();
+    expect(screen.queryByText("berechnet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Projektstatus auf einen Blick"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("zeigt Header-Summen und den Footer auch ohne Positionszeilen", async () => {
+    mockCapabilities.canViewKostenPositionen = false;
+    renderPage({ canUpdate: false, canDelete: false });
+    await screen.findByText("Testprojekt");
+
+    expect(screen.getByText("Offerte exkl. MwSt.")).toBeInTheDocument();
+    expect(screen.getByText("WV-Summe exkl. MwSt.")).toBeInTheDocument();
+    expect(screen.getByText("Summe der Kosten")).toBeInTheDocument();
+    expect(screen.getByText("Gewinn / Verlust")).toBeInTheDocument();
   });
 });
