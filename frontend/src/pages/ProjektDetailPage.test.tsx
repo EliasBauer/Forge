@@ -12,7 +12,12 @@ vi.mock("../contexts/AuthContext", () => ({
     user: {
       id: 1,
       username: "betrachter",
-      capabilities: { canCreateProjekt: false, canManageStundensaetze: false, canViewFinanzen: true },
+      capabilities: {
+        canCreateProjekt: false,
+        canManageStundensaetze: false,
+        canViewFinanzen: true,
+        canViewKostenPositionen: true,
+      },
     },
     loading: false,
     login: vi.fn(),
