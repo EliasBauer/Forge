@@ -356,7 +356,7 @@ Claude-Session: https://claude.ai/code/session_01VBU5FCdLVkYdtv9ThCqJdQ"
 - Consumes: `RollenGraphQLTestBase` mit `self.projekt`, `self._login(gruppe)`, `self._gql(query, variables)` aus Task 1.
 - Produces: `Projekt.Permission.__read__` enthält `"isMonteur"`; `Projekt.Permission.offerte_summe` und `.wv_summe` sind `{"read": [...]}`-Dicts; `KostenPosition.Permission.__read__` ist gesetzt.
 
-- [ ] **Step 1: Die fehlschlagenden Tests schreiben**
+- [x] **Step 1: Die fehlschlagenden Tests schreiben**
 
 Die beiden Query-Konstanten oben in `src/apps/projekt/tests/test_permissions_graphql.py` neben `IST_WERT_QUERY` ergänzen:
 
@@ -431,13 +431,13 @@ class ProjektSichtbarkeitTest(RollenGraphQLTestBase):
         self.assertEqual(self._liste()["pageInfo"]["totalCount"], 0)
 ```
 
-- [ ] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
+- [x] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_permissions_graphql.py::ProjektSichtbarkeitTest --no-cov -q`
 
 Expected: FAIL — `test_monteur_sieht_projekt_ohne_summen` scheitert mit `0 != 1` (Monteur sieht heute gar kein Projekt), `test_betrachter_sieht_summen_aber_keine_kostenpositionen` scheitert, weil `kostenPositionenList` befüllt ist.
 
-- [ ] **Step 3: `Projekt.Permission` erweitern**
+- [x] **Step 3: `Projekt.Permission` erweitern**
 
 In `src/apps/projekt/models/projekt.py` die Permission-Klasse (Zeilen 82-89) ersetzen durch:
 
@@ -460,7 +460,7 @@ In `src/apps/projekt/models/projekt.py` die Permission-Klasse (Zeilen 82-89) ers
         wv_summe = {"read": ["isForgeAdmin", "isProjektleiter", "isBetrachter"]}
 ```
 
-- [ ] **Step 4: `KostenPosition.Permission` erweitern**
+- [x] **Step 4: `KostenPosition.Permission` erweitern**
 
 In `src/apps/projekt/models/kosten_position.py` die Permission-Klasse (Zeilen 56-57) ersetzen durch:
 
@@ -472,19 +472,19 @@ In `src/apps/projekt/models/kosten_position.py` die Permission-Klasse (Zeilen 56
         __read__ = ["isForgeAdmin", "isProjektleiter"]
 ```
 
-- [ ] **Step 5: Tests laufen lassen und grün sehen**
+- [x] **Step 5: Tests laufen lassen und grün sehen**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_permissions_graphql.py --no-cov -q`
 
 Expected: PASS — 12 passed (7 aus Task 1 + 5 neue).
 
-- [ ] **Step 6: Die übrigen Backend-Tests laufen lassen**
+- [x] **Step 6: Die übrigen Backend-Tests laufen lassen**
 
 Run: `uv run --group dev pytest src/apps --no-cov -q`
 
 Expected: PASS. Falls ein bestehender Test scheitert, weil er als Monteur/Betrachter auf Kostenpositionen zugreift, ist das ein echter Verhaltenswechsel — den Test an das neue Sollverhalten anpassen, nicht die Permission aufweichen.
 
-- [ ] **Step 7: Volles Gate und Commit**
+- [x] **Step 7: Volles Gate und Commit**
 
 ```bash
 pre-commit run --all-files

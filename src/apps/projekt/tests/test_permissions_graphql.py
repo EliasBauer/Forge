@@ -37,6 +37,30 @@ query {
 }
 """
 
+PROJEKT_LISTE_QUERY = """
+query {
+  projektList {
+    items {
+      name
+      offerteSumme { value }
+      wvSumme { value }
+    }
+    pageInfo { totalCount }
+  }
+}
+"""
+
+PROJEKT_DETAIL_QUERY = """
+query ($id: ID!) {
+  projekt(id: $id) {
+    name
+    offerteSumme { value }
+    kostenPositionenList { items { id } }
+    projektKennzahlenList { items { summeOfferteKosten { value } } }
+  }
+}
+"""
+
 
 def _lade_kostenart_daten() -> None:
     _KostenartModel.objects.bulk_create(
@@ -134,3 +158,50 @@ class CalculationManagerSichtbarkeitTest(RollenGraphQLTestBase):
         self._login("Admin")
         self.assertNotEqual(self._kennzahlen(), [])
         self.assertNotEqual(self._ist_werte(), [])
+
+
+class ProjektSichtbarkeitTest(RollenGraphQLTestBase):
+    """Projektliste und -detail je Rolle."""
+
+    def _liste(self) -> Any:
+        return self._gql(PROJEKT_LISTE_QUERY)["projektList"]
+
+    def _detail(self) -> Any:
+        return self._gql(PROJEKT_DETAIL_QUERY, {"id": str(self.projekt.id)})["projekt"]
+
+    def test_monteur_sieht_projekt_ohne_summen(self) -> None:
+        self._login("Monteur")
+        liste = self._liste()
+        self.assertEqual(liste["pageInfo"]["totalCount"], 1)
+        item = liste["items"][0]
+        self.assertEqual(item["name"], "Sichtbarkeitsprojekt")
+        self.assertIsNone(item["offerteSumme"])
+        self.assertIsNone(item["wvSumme"])
+
+    def test_monteur_sieht_keine_kostenpositionen(self) -> None:
+        self._login("Monteur")
+        self.assertEqual(self._detail()["kostenPositionenList"]["items"], [])
+
+    def test_betrachter_sieht_summen_aber_keine_kostenpositionen(self) -> None:
+        self._login("Betrachter")
+        detail = self._detail()
+        self.assertEqual(detail["offerteSumme"]["value"], 100000.0)
+        self.assertEqual(detail["kostenPositionenList"]["items"], [])
+        self.assertNotEqual(detail["projektKennzahlenList"]["items"], [])
+
+    def test_projektleiter_sieht_alles(self) -> None:
+        self._login("Projektleiter")
+        detail = self._detail()
+        self.assertEqual(detail["offerteSumme"]["value"], 100000.0)
+        self.assertNotEqual(detail["kostenPositionenList"]["items"], [])
+        self.assertNotEqual(detail["projektKennzahlenList"]["items"], [])
+
+    def test_admin_sieht_alles(self) -> None:
+        self._login("Admin")
+        detail = self._detail()
+        self.assertEqual(detail["offerteSumme"]["value"], 100000.0)
+        self.assertNotEqual(detail["kostenPositionenList"]["items"], [])
+        self.assertNotEqual(detail["projektKennzahlenList"]["items"], [])
+
+    def test_anonym_sieht_keine_projekte(self) -> None:
+        self.assertEqual(self._liste()["pageInfo"]["totalCount"], 0)
