@@ -55,6 +55,7 @@ _MUTATION_CREATE_PROJEKT = """
       $offerteSumme: MeasurementScalar!
       $wvSumme: MeasurementScalar
       $projektleiter: ID
+      $projektStatus: ID!
     ) {
       createProjekt(
         name: $name
@@ -63,6 +64,7 @@ _MUTATION_CREATE_PROJEKT = """
         offerteSumme: $offerteSumme
         wvSumme: $wvSumme
         projektleiter: $projektleiter
+        projektStatus: $projektStatus
       ) {
         success
         Projekt { id }
@@ -165,6 +167,8 @@ class GraphQLMutationShapeTest(TestCase):
     # ------------------------------------------------------------------
 
     def test_create_projekt(self) -> None:
+        offen = ProjektStatus.filter(name="Offen").first()
+        assert offen is not None
         result = _gql(
             self.client,
             _MUTATION_CREATE_PROJEKT,
@@ -175,6 +179,7 @@ class GraphQLMutationShapeTest(TestCase):
                 "offerteSumme": "10000 CHF",
                 "wvSumme": "9000 CHF",
                 "projektleiter": str(self.projektleiter.id),
+                "projektStatus": str(offen.id),
             },
         )
         self.assertNotIn("errors", result, result.get("errors"))
@@ -184,6 +189,7 @@ class GraphQLMutationShapeTest(TestCase):
     def test_update_projekt(self) -> None:
         projekt = Projekt.create(
             ignore_permission=True,
+            projekt_status=ProjektStatus.filter(name="Offen").first(),
             name="Vor Update",
             auftragsnummer="MUT-002",
             offerte_summe=Measurement(10_000, "CHF"),
@@ -212,6 +218,7 @@ class GraphQLMutationShapeTest(TestCase):
     def test_create_update_delete_kosten_position(self) -> None:
         projekt = Projekt.create(
             ignore_permission=True,
+            projekt_status=ProjektStatus.filter(name="Offen").first(),
             name="KP-Test",
             auftragsnummer="MUT-003",
             offerte_summe=Measurement(10_000, "CHF"),

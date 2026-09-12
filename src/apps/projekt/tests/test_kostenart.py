@@ -63,3 +63,8 @@ class KostenartDatenTest(TestCase):
         art = Kostenart.filter(schluessel="gemeinkosten").first()
         assert isinstance(art, Kostenart)
         self.assertEqual(art.reihenfolge, 15)
+
+    def test_str_gibt_name_zurueck(self) -> None:
+        art = Kostenart.filter(schluessel="apparate").first()
+        assert art is not None
+        self.assertEqual(str(art), "Apparate")
