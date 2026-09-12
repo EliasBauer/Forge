@@ -46,14 +46,17 @@ def _gql(
 
 _QUERY_PROJEKT_LISTE = """
     query ProjektListe {
-      projektList(pageSize: 100) {
+      projektList(
+        pageSize: 100
+        orderBy: [{ field: auftragsnummer, direction: DESC }]
+      ) {
         items {
           id
           auftragsnummer
           name
           offerteSumme { value unit }
           wvSumme { value unit }
-          projektStatus { name }
+          projektStatus { id name }
           projektleiter { id username }
           projektKennzahlenList {
             items {
@@ -76,7 +79,7 @@ _QUERY_PROJEKT_DETAIL = """
         jahr
         offerteSumme { value unit }
         wvSumme { value unit }
-        projektStatus { name }
+        projektStatus { id name }
         projektleiter { id username }
         capabilities { canUpdate canDelete }
         projektKennzahlenList {
@@ -121,8 +124,18 @@ _QUERY_SEARCH_PROJEKTE = """
         results {
           ... on ProjektType {
             id
-            name
             auftragsnummer
+            name
+            offerteSumme { value unit }
+            wvSumme { value unit }
+            projektStatus { id name }
+            projektleiter { id username }
+            projektKennzahlenList {
+              items {
+                summeWvPlus { value unit }
+                summeIstKosten { value unit }
+              }
+            }
           }
         }
         total
@@ -288,6 +301,29 @@ class GraphQLQueryShapeTest(_SharedSetup):
         self.assertIn("apparate", schlussel)
         self.assertIn("regie", schlussel)
         self.assertEqual(len(items), 15)
+
+    # ------------------------------------------------------------------
+    # GET_PROJEKT_STATUS_IDS
+    # ------------------------------------------------------------------
+
+    def test_projekt_status_ids_shape(self) -> None:
+        result = _gql(
+            self.client,
+            """
+            query ProjektStatusIds {
+              projektStatusList {
+                items {
+                  id
+                  name
+                }
+              }
+            }
+            """,
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        items = result["data"]["projektStatusList"]["items"]
+        namen = {i["name"] for i in items}
+        self.assertEqual(namen, {"Offen", "In Arbeit", "Fertig"})
 
     # ------------------------------------------------------------------
     # GET_STUNDENSAETZE
