@@ -8,3 +8,4 @@ class AuthenticationConfig(AppConfig):
 
     def ready(self) -> None:
         importlib.import_module("apps.authentication.permission")
+        importlib.import_module("apps.authentication.managers")

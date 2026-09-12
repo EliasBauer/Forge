@@ -46,7 +46,11 @@ forge/
 │   ├── forge/                       # Django-Projekt (settings, urls, asgi, wsgi)
 │   └── apps/
 │       ├── authentication/          # Login, Gruppen, Berechtigungen
+│       │   ├── managers.py          # Benutzer/Gruppe GM-Manager (Wrapper um User/Group)
+│       │   ├── models.py            # History-Model-Anker (simple_history für User/Group)
+│       │   ├── graphql_capabilities.py # globaler me.capabilities-Provider
 │       │   ├── management/commands/ # create_groups.py, setup_dev_data.py
+│       │   ├── migrations/
 │       │   └── tests/
 │       ├── bexio/                   # Bexio-Spiegel (Konten, Lieferantenrechnungen)
 │       │   ├── models/              # konto.py, lieferantenrechnung.py
@@ -83,7 +87,7 @@ forge/
 │       ├── lib/apolloClient.ts
 │       ├── pages/                   # AufgabenPage, LoginPage, ProjektListePage,
 │       │                            # ProjektDetailPage, ProjektNeuPage, StundensaetzePage
-│       └── utils/                   # format.ts, deviation.ts, permissions.ts
+│       └── utils/                   # format.ts, deviation.ts
 ├── docker/             # Dockerfile + docker-compose.yml
 ├── nginx/              # nginx.conf (Reverse Proxy)
 ├── tests/              # Integrations- und System-Tests (cross-cutting)

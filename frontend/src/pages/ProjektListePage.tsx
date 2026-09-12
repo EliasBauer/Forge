@@ -8,7 +8,6 @@ import { PROJEKT_LISTE_SUBSCRIPTION } from "../graphql/subscriptions";
 import { chf, type GQLMeasurement } from "../utils/format";
 import { getDeviation, DEV_STYLES } from "../utils/deviation";
 import { useAuth } from "../contexts/AuthContext";
-import { canCreateProject, canViewFinancials } from "../utils/permissions";
 
 type Projekt = {
   id: string;
@@ -17,7 +16,7 @@ type Projekt = {
   offerteSumme: GQLMeasurement;
   wvSumme: GQLMeasurement | null;
   projektStatus: { id: string; name: string };
-  projektleiter: string | null;
+  projektleiter: { id: string; username: string } | null;
   projektKennzahlenList: { items: { summeWvPlus: GQLMeasurement | null; summeIstKosten: GQLMeasurement | null }[] };
 };
 
@@ -126,8 +125,8 @@ function DeviationCell({ wv, ist }: { wv: number | null; ist: number | null }) {
 export default function ProjektListePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const showFinancials = canViewFinancials(user);
-  const showCreateButton = canCreateProject(user);
+  const showFinancials = user?.capabilities.canViewFinanzen ?? false;
+  const showCreateButton = user?.capabilities.canCreateProjekt ?? false;
 
   const client = useApolloClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -403,7 +402,7 @@ export default function ProjektListePage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <Avatar name={p.projektleiter} />
+                      <Avatar name={p.projektleiter?.username ?? null} />
                     </td>
                     {showFinancials && (
                       <>

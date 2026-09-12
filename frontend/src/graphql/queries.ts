@@ -2,7 +2,11 @@ import { gql } from "@apollo/client/core";
 
 export const GET_PROJEKTE = gql`
   query ProjektListe($page: Int!) {
-    projektList(page: $page, pageSize: 20, sortBy: [auftragsnummer], reverse: true) {
+    projektList(
+      page: $page
+      pageSize: 20
+      orderBy: [{ field: auftragsnummer, direction: DESC }]
+    ) {
       items {
         id
         auftragsnummer
@@ -19,7 +23,7 @@ export const GET_PROJEKTE = gql`
           id
           name
         }
-        projektleiter
+        projektleiter { id username }
         projektKennzahlenList {
           items {
             summeWvPlus {
@@ -60,7 +64,7 @@ export const SEARCH_PROJEKTE = gql`
             id
             name
           }
-          projektleiter
+          projektleiter { id username }
           projektKennzahlenList {
             items {
               summeWvPlus {
@@ -99,7 +103,14 @@ export const GET_PROJEKT = gql`
         id
         name
       }
-      projektleiter
+      projektleiter {
+        id
+        username
+      }
+      capabilities {
+        canUpdate
+        canDelete
+      }
       projektKennzahlenList {
         items {
           summeOfferteKosten {
@@ -213,6 +224,30 @@ export const GET_STUNDENSAETZE = gql`
       }
       pageInfo {
         totalCount
+      }
+    }
+  }
+`;
+
+export const PROJEKTLEITER = gql`
+  query Projektleiter {
+    benutzerList(filter: { groupsList: { any: { name: "Projektleiter" } } }) {
+      items {
+        id
+        username
+      }
+    }
+  }
+`;
+
+export const ME = gql`
+  query Me {
+    me {
+      username
+      capabilities {
+        canCreateProjekt
+        canManageStundensaetze
+        canViewFinanzen
       }
     }
   }

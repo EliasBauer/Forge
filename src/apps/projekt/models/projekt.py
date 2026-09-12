@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
-from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Manager, QuerySet
 from general_manager import (
@@ -14,8 +13,13 @@ from general_manager import (
 )
 from general_manager.bucket import Bucket
 from general_manager.measurement import Measurement, MeasurementField
+from general_manager.permission import (
+    GraphQLPermissionCapability,
+    permission_capability,
+)
 from general_manager.rule import Rule
 
+from apps.authentication.managers import Benutzer
 from apps.projekt.models.projekt_status import ProjektStatus
 
 if TYPE_CHECKING:
@@ -37,7 +41,7 @@ class Projekt(GeneralManager):
     name: str
     auftragsnummer: str
     jahr: int
-    projektleiter: User | None
+    projektleiter: Benutzer | None
     offerte_summe: Measurement
     wv_summe: Measurement | None
     projekt_status: ProjektStatus
@@ -76,12 +80,13 @@ class Projekt(GeneralManager):
             ]
 
     class Permission(AdditiveManagerPermission):
-        __read__ = ["isAdminGroup", "isProjektleiter", "isBetrachter"]
-        __create__ = ["isAdminGroup", "isProjektleiter"]
-        __update__ = ["isAdminGroup", "isProjektleiter"]
-        __delete__ = ["isAdminGroup", "isProjektleiter"]
+        __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
+        __create__ = ["isForgeAdmin", "isProjektleiter"]
+        __update__ = ["isForgeAdmin", "isProjektleiter"]
+        __delete__ = ["isForgeAdmin", "isProjektleiter"]
+        graphql_capabilities: ClassVar[tuple[GraphQLPermissionCapability, ...]] = ()
 
-        # auftragsnummer = {"update": ["isAdmin"]}
+        auftragsnummer = {"update": ["isAdmin"]}
 
     class SearchConfig:
         indexes = [
@@ -95,37 +100,21 @@ class Projekt(GeneralManager):
             )
         ]
 
-    @classmethod
-    def create(
-        cls,
-        creator_id: int | None = None,
-        history_comment: str | None = None,
-        ignore_permission: bool = False,
-        **kwargs: Any,
-    ) -> Projekt:
-        if "projektleiter" in kwargs and kwargs["projektleiter"] is not None:
-            kwargs["projektleiter_id"] = int(kwargs.pop("projektleiter"))
-        if kwargs.get("projekt_status") is None:
-            kwargs["projekt_status"] = ProjektStatus.filter(name="Offen").first()
-        return super().create(
-            creator_id=creator_id,
-            history_comment=history_comment,
-            ignore_permission=ignore_permission,
-            **kwargs,
-        )
 
-    def update(
-        self,
-        creator_id: int | None = None,
-        history_comment: str | None = None,
-        ignore_permission: bool = False,
-        **kwargs: Any,
-    ) -> Projekt:
-        if "projektleiter" in kwargs and kwargs["projektleiter"] is not None:
-            kwargs["projektleiter_id"] = int(kwargs.pop("projektleiter"))
-        return super().update(
-            creator_id=creator_id,
-            history_comment=history_comment,
-            ignore_permission=ignore_permission,
-            **kwargs,
-        )
+def _register_graphql_capabilities() -> None:
+    """Von ProjektConfig.ready() aufgerufen, NICHT auf Modulebene.
+
+    Projekt.Permission.graphql_capabilities = (...) auf Modulebene würde beim
+    Import von projekt.py über Projekt.Permission (Metaclass-Zugriff) GMs
+    Lazy-Attribute-Initialisierung auslösen, die den vollen App-Registry
+    braucht (apps.get_models()). projekt.py wird aber von
+    apps/projekt/models/__init__.py importiert, und das passiert WÄHREND
+    Django noch mitten in apps.populate() steckt (AppConfig.import_models()
+    aller Apps läuft) — die Registry ist zu diesem Zeitpunkt garantiert noch
+    nicht vollständig, apps.get_models() wirft AppRegistryNotReady.
+    ready() läuft dagegen erst NACH dem Laden aller Apps.
+    """
+    Projekt.Permission.graphql_capabilities = (
+        permission_capability(Projekt, "update", name="canUpdate"),
+        permission_capability(Projekt, "delete", name="canDelete"),
+    )

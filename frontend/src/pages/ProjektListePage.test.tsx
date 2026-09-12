@@ -12,7 +12,15 @@ import { PROJEKT_LISTE_SUBSCRIPTION } from "../graphql/subscriptions";
 
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({
-    user: { id: 1, username: "admin", groups: ["Admin"], isStaff: true },
+    user: {
+      id: 1,
+      username: "admin",
+      capabilities: {
+        canCreateProjekt: true,
+        canManageStundensaetze: true,
+        canViewFinanzen: true,
+      },
+    },
     loading: false,
     login: vi.fn(),
     logout: vi.fn(),
@@ -27,7 +35,7 @@ function projekt(overrides: Record<string, unknown> = {}) {
     offerteSumme: { value: 10000, unit: "CHF" },
     wvSumme: { value: 9000, unit: "CHF" },
     projektStatus: { id: "2", name: "In Arbeit" },
-    projektleiter: "Max Muster",
+    projektleiter: { id: "9", username: "Max Muster" },
     projektKennzahlenList: {
       items: [{ summeWvPlus: { value: 9500, unit: "CHF" }, summeIstKosten: { value: 8000, unit: "CHF" } }],
     },

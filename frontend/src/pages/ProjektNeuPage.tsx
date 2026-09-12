@@ -1,8 +1,9 @@
-import { useMutation } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { CREATE_PROJEKT } from "../graphql/mutations";
+import { GET_PROJEKT_STATUS_IDS, PROJEKTLEITER } from "../graphql/queries";
 
 type MutationResult = {
   createProjekt: {
@@ -11,7 +12,11 @@ type MutationResult = {
   };
 };
 
-type UserOption = { id: number; username: string };
+type UserOption = { id: string; username: string };
+type ProjektleiterData = { benutzerList: { items: UserOption[] } };
+
+type ProjektStatusOption = { id: string; name: string };
+type ProjektStatusData = { projektStatusList: { items: ProjektStatusOption[] } };
 
 type FormState = {
   name: string;
@@ -20,6 +25,7 @@ type FormState = {
   offerteSumme: string;
   wvSumme: string;
   projektleiter: string;
+  projektStatus: string;
 };
 
 const inputClass =
@@ -41,16 +47,21 @@ export default function ProjektNeuPage() {
     offerteSumme: "",
     wvSumme: "",
     projektleiter: "",
+    projektStatus: "",
   });
   const [serverError, setServerError] = useState<string | null>(null);
-  const [users, setUsers] = useState<UserOption[]>([]);
+  const { data: projektleiterData } = useQuery<ProjektleiterData>(PROJEKTLEITER);
+  const users = projektleiterData?.benutzerList.items ?? [];
+  const { data: statusData } = useQuery<ProjektStatusData>(GET_PROJEKT_STATUS_IDS);
+  const statusOptions = statusData?.projektStatusList.items ?? [];
 
+  // Vorbelegung mit "Offen", sobald die Statusliste geladen ist.
   useEffect(() => {
-    fetch("/api/users/")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: UserOption[]) => setUsers(data))
-      .catch(() => {});
-  }, []);
+    if (form.projektStatus || statusOptions.length === 0) return;
+    const offen = statusOptions.find((s) => s.name === "Offen") ?? statusOptions[0];
+    setForm((prev) => ({ ...prev, projektStatus: offen.id }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusOptions]);
 
   const [createProjekt, { loading }] = useMutation<MutationResult>(CREATE_PROJEKT, {
     refetchQueries: ["ProjektListe"],
@@ -84,6 +95,10 @@ export default function ProjektNeuPage() {
       setServerError("Bitte ein gültiges Jahr eingeben (2000–2100).");
       return;
     }
+    if (!form.projektStatus) {
+      setServerError("Bitte einen Status auswählen.");
+      return;
+    }
     createProjekt({
       variables: {
         name: form.name,
@@ -92,6 +107,7 @@ export default function ProjektNeuPage() {
         offerteSumme,
         wvSumme: wvSumme ?? undefined,
         projektleiter: form.projektleiter || undefined,
+        projektStatus: form.projektStatus,
       },
     });
   }
@@ -215,6 +231,30 @@ export default function ProjektNeuPage() {
               className={inputClass}
               placeholder="0.00 (optional)"
             />
+          </div>
+
+          <div>
+            <label
+              htmlFor="projektStatus"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Status *
+            </label>
+            <select
+              id="projektStatus"
+              name="projektStatus"
+              required
+              value={form.projektStatus}
+              onChange={handleChange}
+              className={`${inputClass} bg-white`}
+              style={{ ["--tw-ring-color" as string]: "var(--forge-blue)" }}
+            >
+              {statusOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

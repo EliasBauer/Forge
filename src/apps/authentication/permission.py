@@ -19,7 +19,7 @@ def _is_in_group(user: AbstractBaseUser | AnonymousUser, group_name: str) -> boo
     return bool(groups.filter(name=group_name).exists())
 
 
-@register_permission("isAdminGroup")
+@register_permission("isForgeAdmin")
 def _permission_is_admin(
     _instance: PermissionDataManager[Any] | GeneralManager | GeneralManagerMeta,
     user: AbstractBaseUser | AnonymousUser,
@@ -59,6 +59,15 @@ class CalculationPermission(AdditiveManagerPermission):
             filters=[{"filter": {}, "exclude": {}}],
             requires_instance_check=False,
         )
+
+
+@register_permission("never")
+def _permission_never(
+    _instance: PermissionDataManager[Any] | GeneralManager | GeneralManagerMeta,
+    _user: AbstractBaseUser | AnonymousUser,
+    _config: list[str],
+) -> bool:
+    return False
 
 
 @register_permission("isMonteur")

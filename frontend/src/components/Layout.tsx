@@ -1,15 +1,17 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { canManageStundensaetze } from "../utils/permissions";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   async function handleLogout() {
-    await logout();
-    navigate("/login", { replace: true });
+    const unconfirmed = await logout();
+    navigate("/login", {
+      replace: true,
+      state: unconfirmed ? { logoutWarning: unconfirmed } : undefined,
+    });
   }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -32,7 +34,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/projekte" className={navLinkClass} style={navLinkStyle}>
               Projekte
             </NavLink>
-            {canManageStundensaetze(user) && (
+            {user.capabilities.canManageStundensaetze && (
               <NavLink to="/stundensaetze" className={navLinkClass} style={navLinkStyle}>
                 Stundensätze
               </NavLink>

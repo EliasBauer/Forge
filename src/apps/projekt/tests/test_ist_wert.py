@@ -13,7 +13,7 @@ from general_manager.measurement import Measurement
 
 from apps.bexio.models import Konto, Lieferantenrechnung
 from apps.projekt.calculation_manager import IstWert
-from apps.projekt.models import Kostenart, Projekt
+from apps.projekt.models import Kostenart, Projekt, ProjektStatus
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
 _KontoModel: Any = Konto.Interface._model  # type: ignore[misc]
@@ -71,12 +71,15 @@ class IstWertTest(TestCase):
     def setUp(self) -> None:
         User.objects.create_user("iw_tester", password="x")
         _lade_kostenart_daten()
+        offen = ProjektStatus.filter(name="Offen").first()
+        assert offen is not None
         self.projekt = Projekt.create(
             ignore_permission=True,
             name="IstWert-Projekt",
             auftragsnummer=_AUFTRAGSNUMMER,
             jahr=_TESTJAHR,
             offerte_summe=Measurement(Decimal("100000"), "CHF"),
+            projekt_status=offen,
         )
         self.konto_4001 = _konto("4001")
 
