@@ -15,7 +15,8 @@ class AufgabenStundensatz(GeneralManager):
     class Interface(CalculationInterface):
         pass
 
-    Permission = CalculationPermission
+    class Permission(CalculationPermission):
+        __read__ = ["isForgeAdmin", "isProjektleiter"]
 
     @graph_ql_property
     def fehlende_stundensatz_jahre(self) -> list[int]:
