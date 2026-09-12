@@ -979,7 +979,7 @@ Die Seite ist nach Task 4 nur noch für Rollen mit `canViewFinanzen` erreichbar.
 - Consumes: `AuthCapabilities.canViewKostenPositionen` aus Task 4.
 - Produces: keine neuen Schnittstellen.
 
-- [ ] **Step 1: Die fehlschlagenden Tests schreiben**
+- [x] **Step 1: Die fehlschlagenden Tests schreiben**
 
 In `frontend/src/pages/ProjektDetailPage.test.tsx` den Mock-Block (Zeilen 10-21) ersetzen durch:
 
@@ -1096,13 +1096,13 @@ describe("ProjektDetailPage – Positionszeilen folgen canViewKostenPositionen",
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
+- [x] **Step 2: Tests laufen lassen und das Scheitern bestätigen**
 
 Run: `npm --prefix frontend test`
 
 Expected: FAIL — „versteckt Positionszeilen, Legende und Diagramm ohne die Capability" scheitert, weil `Apparate` weiterhin gerendert wird (die Seite kennt `canViewKostenPositionen` noch nicht).
 
-- [ ] **Step 3: `showFinancials` durch `showPositionen` ersetzen**
+- [x] **Step 3: `showFinancials` durch `showPositionen` ersetzen**
 
 In `frontend/src/pages/ProjektDetailPage.tsx` Zeile 310 ersetzen:
 
@@ -1120,7 +1120,7 @@ und Zeile 388 ersetzen:
 > mehr existierendes `showFinancials` und kompiliert nicht. Das ist erwartet —
 > die Tests laufen erst wieder in Step 9.
 
-- [ ] **Step 4: Header-Summen immer rendern**
+- [x] **Step 4: Header-Summen immer rendern**
 
 Im Grid der Header-Card (Zeilen 581-609) exakt diese zwei Zeilen **löschen**:
 
@@ -1138,7 +1138,7 @@ und exakt diese zwei Zeilen **löschen**:
 
 Die drei dazwischenliegenden `<div>`-Blöcke (Offerte exkl. MwSt., WV-Summe exkl. MwSt., Plan-WV-Summe exkl. MwSt.) bleiben unverändert stehen und werden dadurch unbedingt gerendert. Die Einrückung der drei Blöcke um eine Ebene nach links ziehen.
 
-- [ ] **Step 5: Überschrift und Legende der Kostenpositionen-Card**
+- [x] **Step 5: Überschrift und Legende der Kostenpositionen-Card**
 
 Zeile 617 ersetzen durch:
 
@@ -1152,7 +1152,7 @@ und die Bedingung der Legende in Zeile 619 ersetzen durch:
               {showPositionen && (
 ```
 
-- [ ] **Step 6: Tabellenkopf entrümpeln**
+- [x] **Step 6: Tabellenkopf entrümpeln**
 
 Im `<thead>` direkt nach dem `<th>…Art</th>` exakt diese zwei Zeilen **löschen**:
 
@@ -1181,7 +1181,7 @@ Anschließend den kompletten folgenden Block mit den beiden Stunden-Spalten **l�
                     )}
 ```
 
-- [ ] **Step 7: Tabellenzeilen entrümpeln**
+- [x] **Step 7: Tabellenzeilen entrümpeln**
 
 In der Datenzeile im `<tbody>` direkt nach dem schließenden `</td>` der Art-Spalte exakt diese zwei Zeilen **löschen**:
 
@@ -1213,7 +1213,7 @@ Anschließend den kompletten folgenden Block **löschen**:
                         )}
 ```
 
-- [ ] **Step 8: Footer und Diagramm**
+- [x] **Step 8: Footer und Diagramm**
 
 Zeile 802 ersetzen durch:
 
@@ -1227,19 +1227,19 @@ und Zeile 889 ersetzen durch:
           {showPositionen && <ProjectVisualization rows={vizRows} />}
 ```
 
-- [ ] **Step 9: Tests laufen lassen und grün sehen**
+- [x] **Step 9: Tests laufen lassen und grün sehen**
 
 Run: `npm --prefix frontend test`
 
 Expected: PASS — alle Frontend-Tests grün, inklusive der drei neuen.
 
-- [ ] **Step 10: Typen und Lint prüfen**
+- [x] **Step 10: Typen und Lint prüfen**
 
 Run: `npm --prefix frontend run build`
 
 Expected: Erfolgreich — kein `TS6133` über ein ungenutztes `showFinancials` und kein ungenutzter Import. Falls doch, die betreffende Variable bzw. den Import entfernen.
 
-- [ ] **Step 11: Volles Gate und Commit**
+- [x] **Step 11: Volles Gate und Commit**
 
 ```bash
 pre-commit run --all-files
