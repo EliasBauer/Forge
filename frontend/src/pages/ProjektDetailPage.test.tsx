@@ -223,6 +223,15 @@ describe("ProjektDetailPage – Positionszeilen folgen canViewKostenPositionen",
     expect(screen.getByText("Summe der Kosten")).toBeInTheDocument();
     expect(screen.getByText("Gewinn / Verlust")).toBeInTheDocument();
   });
+
+  it("zeigt die Summen-Ist-Zelle ohne die Capability als reinen Text, nicht als Button", async () => {
+    mockCapabilities.canViewKostenPositionen = false;
+    renderPage({ canUpdate: false, canDelete: false });
+    await screen.findByText("Testprojekt");
+
+    expect(screen.queryByRole("button", { name: /950\.00/ })).not.toBeInTheDocument();
+    expect(screen.getByText("CHF 950.00")).toBeInTheDocument();
+  });
 });
 
 describe("ProjektDetailPage – Visualisierungskarten", () => {

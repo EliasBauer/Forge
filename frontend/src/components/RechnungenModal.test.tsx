@@ -88,6 +88,42 @@ describe("RechnungenModal", () => {
     expect(screen.getByRole("dialog")).toHaveFocus();
   });
 
+  it("fängt Tab am letzten Element zum ersten zurück", () => {
+    render(<RechnungenModal title="T" rows={rows} loading={false} error={null} onClose={vi.fn()} />);
+    const close = screen.getByRole("button", { name: "Schliessen" });
+    const netto = screen.getByRole("button", { name: /Netto/ });
+    netto.focus();
+    expect(netto).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(close).toHaveFocus();
+  });
+
+  it("fängt Shift+Tab am ersten Element zum letzten zurück", () => {
+    render(<RechnungenModal title="T" rows={rows} loading={false} error={null} onClose={vi.fn()} />);
+    const close = screen.getByRole("button", { name: "Schliessen" });
+    const netto = screen.getByRole("button", { name: /Netto/ });
+    close.focus();
+    expect(close).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(netto).toHaveFocus();
+  });
+
+  it("gibt den Fokus nach dem Schliessen an das auslösende Element zurück", () => {
+    const ausloeser = document.createElement("button");
+    ausloeser.textContent = "Öffnen";
+    document.body.appendChild(ausloeser);
+    ausloeser.focus();
+    expect(ausloeser).toHaveFocus();
+
+    const { unmount } = render(
+      <RechnungenModal title="T" rows={rows} loading={false} error={null} onClose={vi.fn()} />,
+    );
+    expect(screen.getByRole("dialog")).toHaveFocus();
+    unmount();
+    expect(ausloeser).toHaveFocus();
+    ausloeser.remove();
+  });
+
   it("schliesst per Klick auf das Overlay, aber nicht per Klick im Dialog", () => {
     const onClose = vi.fn();
     render(<RechnungenModal title="T" rows={rows} loading={false} error={null} onClose={onClose} />);
