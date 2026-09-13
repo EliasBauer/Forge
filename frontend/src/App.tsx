@@ -49,7 +49,7 @@ export default function App() {
           <Route
             path="/projekte/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredCapability="canViewFinanzen">
                 <ProjektDetailPage />
               </ProtectedRoute>
             }

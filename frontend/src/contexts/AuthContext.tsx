@@ -12,6 +12,7 @@ export type AuthCapabilities = {
   canCreateProjekt: boolean;
   canManageStundensaetze: boolean;
   canViewFinanzen: boolean;
+  canViewKostenPositionen: boolean;
 };
 
 export type AuthUser = {

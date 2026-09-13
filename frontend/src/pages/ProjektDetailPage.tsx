@@ -307,7 +307,7 @@ function ProjectVisualization({ rows }: { rows: VizRow[] }) {
 export default function ProjektDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const showFinancials = user?.capabilities.canViewFinanzen ?? false;
+  const showPositionen = user?.capabilities.canViewKostenPositionen ?? false;
 
   const { data, loading, error, refetch } = useQuery<QueryData>(GET_PROJEKT, {
     variables: { id },
@@ -385,7 +385,7 @@ export default function ProjektDetailPage() {
   const posMap = new Map(p ? p.kostenPositionenList.items.map((pos) => [pos.art.schluessel, pos]) : []);
   const istWertMap = new Map(p ? p.istWertList.items.map((item) => [item.kostenart.schluessel, item]) : []);
   const allReihen = KOSTEN_REIHENFOLGE.map((schluessel) => ({ schluessel, pos: posMap.get(schluessel) ?? null }));
-  const visibleReihen = showFinancials ? allReihen : allReihen.filter((r) => r.schluessel === "stunden");
+  const visibleReihen = showPositionen ? allReihen : [];
 
   const summeOfferteKosten = kennzahlen?.summeOfferteKosten?.value ?? 0;
   const summeWvKosten = kennzahlen?.summeWvKosten?.value ?? 0;
@@ -578,35 +578,31 @@ export default function ProjektDetailPage() {
                 <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Jahr</div>
                 <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{p.jahr}</div>
               </div>
-              {showFinancials && (
-                <>
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Offerte exkl. MwSt.</div>
-                    {editingHeader && headerForm ? (
-                      <input type="text" inputMode="decimal" value={headerForm.offerteSumme}
-                        onChange={(e) => setHeaderForm((f) => f ? { ...f, offerteSumme: e.target.value } : f)}
-                        onKeyDown={handleHeaderKeyDown} className={headerInputClass + " mt-1"} placeholder="0.00" />
-                    ) : (
-                      <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(p.offerteSumme)}</div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">WV-Summe exkl. MwSt.</div>
-                    {editingHeader && headerForm ? (
-                      <input type="text" inputMode="decimal" value={headerForm.wvSumme}
-                        onChange={(e) => setHeaderForm((f) => f ? { ...f, wvSumme: e.target.value } : f)}
-                        onKeyDown={handleHeaderKeyDown} className={headerInputClass + " mt-1"} placeholder="0.00 (optional)" />
-                    ) : (
-                      <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(p.wvSumme)}</div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Plan-WV-Summe exkl. MwSt.</div>
-                    {/* Plan-WV = WV-Summe until backend ready */}
-                    <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(p.wvSumme)}</div>
-                  </div>
-                </>
-              )}
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Offerte exkl. MwSt.</div>
+                {editingHeader && headerForm ? (
+                  <input type="text" inputMode="decimal" value={headerForm.offerteSumme}
+                    onChange={(e) => setHeaderForm((f) => f ? { ...f, offerteSumme: e.target.value } : f)}
+                    onKeyDown={handleHeaderKeyDown} className={headerInputClass + " mt-1"} placeholder="0.00" />
+                ) : (
+                  <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(p.offerteSumme)}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">WV-Summe exkl. MwSt.</div>
+                {editingHeader && headerForm ? (
+                  <input type="text" inputMode="decimal" value={headerForm.wvSumme}
+                    onChange={(e) => setHeaderForm((f) => f ? { ...f, wvSumme: e.target.value } : f)}
+                    onKeyDown={handleHeaderKeyDown} className={headerInputClass + " mt-1"} placeholder="0.00 (optional)" />
+                ) : (
+                  <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(p.wvSumme)}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Plan-WV-Summe exkl. MwSt.</div>
+                {/* Plan-WV = WV-Summe until backend ready */}
+                <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(p.wvSumme)}</div>
+              </div>
             </div>
           </div>
 
@@ -614,9 +610,9 @@ export default function ProjektDetailPage() {
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-[15px] font-semibold text-gray-900">
-                {showFinancials ? "Kostenpositionen" : "Stunden"}
+                Kostenpositionen
               </h2>
-              {showFinancials && (
+              {showPositionen && (
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-sm border border-gray-300 bg-white inline-block" />editierbar
@@ -636,44 +632,34 @@ export default function ProjektDetailPage() {
                 <thead>
                   <tr className="border-b border-gray-200 bg-white">
                     <th className="px-6 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-left w-[24%]">Art</th>
-                    {showFinancials && (
-                      <>
-                        <th className="px-3 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right" style={artDiv}>
-                          <span className="inline-flex items-center justify-end gap-1"><Pencil size={11} className="text-gray-400" />Soll-Offerte</span>
-                        </th>
-                        <th className={clsCalcH}>
-                          <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />%</span>
-                        </th>
-                        <th className={clsCalcH} style={pairDiv}>
-                          <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />Soll-WV</span>
-                        </th>
-                        <th className={clsCalcH}>
-                          <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />%</span>
-                        </th>
-                        <th className={clsCalcH} style={pairDiv}>
-                          <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />Plan-WV</span>
-                        </th>
-                        <th className={clsCalcH}>
-                          <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />%</span>
-                        </th>
-                        <th className={clsErpH} style={pairDiv}>
-                          <span className="inline-flex items-center justify-end gap-1.5">
-                            <Database size={11} />Ist
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-1 rounded"
-                              style={{ backgroundColor: "#dbeafe", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>ERP</span>
-                          </span>
-                        </th>
-                        <th className={clsErpH}>
-                          <span className="inline-flex items-center justify-end gap-1"><Database size={11} />%</span>
-                        </th>
-                      </>
-                    )}
-                    {!showFinancials && (
-                      <>
-                        <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right">Ist</th>
-                        <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right">Ist %</th>
-                      </>
-                    )}
+                    <th className="px-3 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right" style={artDiv}>
+                      <span className="inline-flex items-center justify-end gap-1"><Pencil size={11} className="text-gray-400" />Soll-Offerte</span>
+                    </th>
+                    <th className={clsCalcH}>
+                      <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />%</span>
+                    </th>
+                    <th className={clsCalcH} style={pairDiv}>
+                      <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />Soll-WV</span>
+                    </th>
+                    <th className={clsCalcH}>
+                      <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />%</span>
+                    </th>
+                    <th className={clsCalcH} style={pairDiv}>
+                      <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />Plan-WV</span>
+                    </th>
+                    <th className={clsCalcH}>
+                      <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />%</span>
+                    </th>
+                    <th className={clsErpH} style={pairDiv}>
+                      <span className="inline-flex items-center justify-end gap-1.5">
+                        <Database size={11} />Ist
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1 rounded"
+                          style={{ backgroundColor: "#dbeafe", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>ERP</span>
+                      </span>
+                    </th>
+                    <th className={clsErpH}>
+                      <span className="inline-flex items-center justify-end gap-1"><Database size={11} />%</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -720,86 +706,72 @@ export default function ProjektDetailPage() {
                           </span>
                         </td>
 
-                        {showFinancials && (
-                          <>
-                            {/* Soll-Offerte */}
-                            <td className={`px-3 py-1.5 text-right text-sm${isErtragsblock ? " bg-gray-50" : ""}`} style={artDiv}>
-                              {isErtragsblock ? (
-                                <span className="text-gray-300 select-none">–</span>
-                              ) : isStunden ? (
-                                <span className="text-gray-500 tabular-nums">{formatStunden(pos?.offerteStunden)}</span>
-                              ) : isEditingThisPos ? (
-                                <input
-                                  type="text" inputMode="decimal"
-                                  value={editingPos!.value}
-                                  onChange={(e) => setEditingPos((s) => s ? { ...s, value: e.target.value } : s)}
-                                  onKeyDown={handlePosKeyDown} onBlur={handlePosBlur}
-                                  autoFocus disabled={savingPos}
-                                  className="w-28 text-right border-2 rounded px-2 py-0.5 text-sm focus:outline-none"
-                                  style={{ borderColor: "var(--forge-blue)", boxShadow: "0 0 0 3px rgba(74,108,247,0.15)" }}
-                                  placeholder="0.00"
-                                />
-                              ) : canEditPos ? (
-                                <div
-                                  className="group inline-flex items-center justify-end gap-1 border border-gray-200 rounded px-2 py-0.5 cursor-text hover:border-blue-400 hover:bg-blue-50/40 transition-colors min-w-[7rem]"
-                                  onClick={() => { if (!editingPos) startEditPos(schluessel, pos); }}
-                                >
-                                  <span className="tabular-nums text-gray-900">{chf(sollOfferteVal)}</span>
-                                  <Pencil size={11} className="opacity-0 group-hover:opacity-60 text-gray-400 shrink-0 transition-opacity" />
-                                </div>
-                              ) : (
-                                <span className="tabular-nums text-gray-500">{chf(sollOfferteVal)}</span>
-                              )}
-                            </td>
+                        {/* Soll-Offerte */}
+                        <td className={`px-3 py-1.5 text-right text-sm${isErtragsblock ? " bg-gray-50" : ""}`} style={artDiv}>
+                          {isErtragsblock ? (
+                            <span className="text-gray-300 select-none">–</span>
+                          ) : isStunden ? (
+                            <span className="text-gray-500 tabular-nums">{formatStunden(pos?.offerteStunden)}</span>
+                          ) : isEditingThisPos ? (
+                            <input
+                              type="text" inputMode="decimal"
+                              value={editingPos!.value}
+                              onChange={(e) => setEditingPos((s) => s ? { ...s, value: e.target.value } : s)}
+                              onKeyDown={handlePosKeyDown} onBlur={handlePosBlur}
+                              autoFocus disabled={savingPos}
+                              className="w-28 text-right border-2 rounded px-2 py-0.5 text-sm focus:outline-none"
+                              style={{ borderColor: "var(--forge-blue)", boxShadow: "0 0 0 3px rgba(74,108,247,0.15)" }}
+                              placeholder="0.00"
+                            />
+                          ) : canEditPos ? (
+                            <div
+                              className="group inline-flex items-center justify-end gap-1 border border-gray-200 rounded px-2 py-0.5 cursor-text hover:border-blue-400 hover:bg-blue-50/40 transition-colors min-w-[7rem]"
+                              onClick={() => { if (!editingPos) startEditPos(schluessel, pos); }}
+                            >
+                              <span className="tabular-nums text-gray-900">{chf(sollOfferteVal)}</span>
+                              <Pencil size={11} className="opacity-0 group-hover:opacity-60 text-gray-400 shrink-0 transition-opacity" />
+                            </div>
+                          ) : (
+                            <span className="tabular-nums text-gray-500">{chf(sollOfferteVal)}</span>
+                          )}
+                        </td>
 
-                            {/* % Soll-Offerte */}
-                            <td className={clsCalc}>
-                              {pos === null || isErtragsblock || isStunden ? "–" : pct(pos.offerteKostenWertProzent)}
-                            </td>
+                        {/* % Soll-Offerte */}
+                        <td className={clsCalc}>
+                          {pos === null || isErtragsblock || isStunden ? "–" : pct(pos.offerteKostenWertProzent)}
+                        </td>
 
-                            {/* Soll-WV */}
-                            <td className={clsCalc} style={pairDiv}>{sollWvDisplay}</td>
+                        {/* Soll-WV */}
+                        <td className={clsCalc} style={pairDiv}>{sollWvDisplay}</td>
 
-                            {/* % Soll-WV */}
-                            <td className={clsCalc}>
-                              {pos === null || isErtragsblock || isStunden ? "–" : pct(pos.wvKostenWertProzent)}
-                            </td>
+                        {/* % Soll-WV */}
+                        <td className={clsCalc}>
+                          {pos === null || isErtragsblock || isStunden ? "–" : pct(pos.wvKostenWertProzent)}
+                        </td>
 
-                            {/* Plan-WV = WV */}
-                            <td className={clsCalc} style={pairDiv}>{sollWvDisplay}</td>
+                        {/* Plan-WV = WV */}
+                        <td className={clsCalc} style={pairDiv}>{sollWvDisplay}</td>
 
-                            {/* % Plan-WV */}
-                            <td className={clsCalc}>
-                              {pos === null || isErtragsblock || isStunden ? "–" : pct(pos.wvKostenWertProzent)}
-                            </td>
+                        {/* % Plan-WV */}
+                        <td className={clsCalc}>
+                          {pos === null || isErtragsblock || isStunden ? "–" : pct(pos.wvKostenWertProzent)}
+                        </td>
 
-                            {/* Ist — heatmap color */}
-                            <td className={istCls} style={pairDiv}>
-                              {devLevel === "over" || devLevel === "warn"
-                                ? <span className="inline-flex items-center gap-1"><span className="text-[10px]">⚠</span>{istDisplay}</span>
-                                : istDisplay}
-                            </td>
+                        {/* Ist — heatmap color */}
+                        <td className={istCls} style={pairDiv}>
+                          {devLevel === "over" || devLevel === "warn"
+                            ? <span className="inline-flex items-center gap-1"><span className="text-[10px]">⚠</span>{istDisplay}</span>
+                            : istDisplay}
+                        </td>
 
-                            {/* % Ist */}
-                            <td className={istCls}>{pct(istWert?.istKostenWertProzent ?? null)}</td>
-                          </>
-                        )}
-
-                        {!showFinancials && (
-                          <>
-                            <td className="px-4 py-2 text-right text-gray-700 tabular-nums">{istDisplay}</td>
-                            <td className="px-4 py-2 text-right tabular-nums font-medium"
-                              style={istWert?.istKostenWertProzent != null && istWert.istKostenWertProzent > 100 ? { color: "var(--forge-red)" } : {}}>
-                              {pct(istWert?.istKostenWertProzent ?? null)}
-                            </td>
-                          </>
-                        )}
+                        {/* % Ist */}
+                        <td className={istCls}>{pct(istWert?.istKostenWertProzent ?? null)}</td>
                       </tr>
                     );
                   })}
 
                   {/* ── Footer ── */}
-                  {showFinancials && p && (
+                  {p && (
                     <>
                       {/* 1. Summe der Kosten */}
                       <tr className="border-t-2 border-gray-300">
@@ -886,7 +858,7 @@ export default function ProjektDetailPage() {
           </div>
 
           {/* Visualisierung */}
-          {showFinancials && <ProjectVisualization rows={vizRows} />}
+          {showPositionen && <ProjectVisualization rows={vizRows} />}
         </>
       )}
 
