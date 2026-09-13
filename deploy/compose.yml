@@ -1,0 +1,731 @@
+name: ${COMPOSE_PROJECT_NAME:-forge}
+
+x-security-defaults: &security-defaults
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-secret-security-defaults: &secret-security-defaults
+  <<: *security-defaults
+  group_add:
+    - "${DEPLOY_GROUP_GID}"
+
+x-backend-environment: &backend-environment
+  FORGE_ENV: production
+  DJANGO_SETTINGS_MODULE: forge.settings
+  DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
+  ALLOWED_HOSTS: ${APP_DOMAIN},web,${APP_HOST_ALIASES:-localhost,127.0.0.1}
+  INTERNAL_METRICS_HOST: web
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://${APP_DOMAIN}}
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+  POSTGRES_CONN_MAX_AGE: ${POSTGRES_CONN_MAX_AGE:-0}
+  REDIS_URL: redis://redis:6379/0
+  MEILISEARCH_URL: http://meilisearch:7700
+  MEILISEARCH_MASTER_KEY_FILE: /run/secrets/meilisearch_api_key
+  BEXIO_ACCESS_TOKEN_FILE: /run/secrets/bexio_access_token
+  STATIC_ROOT: /static
+  MAINTENANCE_FLAG_FILE: /run/forge/maintenance
+  LOG_TO_STDOUT: "true"
+  PUSHGATEWAY_URL: ${PUSHGATEWAY_URL:-http://pushgateway:9091}
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-}
+  http_proxy: ${HTTP_PROXY:-}
+  https_proxy: ${HTTPS_PROXY:-}
+  no_proxy: ${NO_PROXY:-}
+
+x-backend-secrets: &backend-secrets
+  - django_secret_key
+  - postgres_password
+  - meilisearch_api_key
+  - bexio_access_token
+
+x-backend-volumes: &backend-volumes
+  - ${DATA_ROOT}/static:/static
+  - ${DATA_ROOT}/runtime:/run/forge:ro
+
+x-backend-build: &backend-build
+  context: ..
+  dockerfile: deploy/backend/Dockerfile
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - ${DATA_ROOT}/postgres:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    group_add:
+      - "${DEPLOY_GROUP_GID}"
+    security_opt:
+      - no-new-privileges:true
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.24.1-p1
+    entrypoint: ["/opt/forge/pgbouncer-entrypoint.sh"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-200}
+      PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+      PGBOUNCER_RESERVE_POOL_SIZE: ${PGBOUNCER_RESERVE_POOL_SIZE:-5}
+    secrets:
+      - postgres_password
+    volumes:
+      - ./pgbouncer/entrypoint.sh:/opt/forge/pgbouncer-entrypoint.sh:ro
+    networks:
+      - application
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U \"$${POSTGRES_USER}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - ${DATA_ROOT}/redis:/data
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.45.0
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        exec meilisearch --env production --http-addr 0.0.0.0:7700
+        --db-path /meili_data/data.ms
+        --experimental-enable-metrics
+        --master-key="$$(cat /run/secrets/meilisearch_api_key)"
+    secrets:
+      - meilisearch_api_key
+    volumes:
+      - ${DATA_ROOT}/meilisearch:/meili_data
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:7700/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+    group_add:
+      - "${DEPLOY_GROUP_GID}"
+    security_opt:
+      - no-new-privileges:true
+
+  django-migrate:
+    image: forge-backend:${IMAGE_TAG:-latest}
+    build: *backend-build
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        python manage.py check --deploy &&
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput &&
+        python manage.py create_groups
+    environment:
+      <<: *backend-environment
+      POSTGRES_HOST: postgres
+    secrets: *backend-secrets
+    volumes: *backend-volumes
+    networks:
+      - application
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+    restart: "no"
+    group_add:
+      - "${DEPLOY_GROUP_GID}"
+    security_opt:
+      - no-new-privileges:true
+
+  search-index:
+    image: forge-backend:${IMAGE_TAG:-latest}
+    build: *backend-build
+    profiles: ["deployment"]
+    command: ["python", "manage.py", "search_index", "--reindex"]
+    environment:
+      <<: *backend-environment
+      POSTGRES_HOST: postgres
+    secrets: *backend-secrets
+    volumes: *backend-volumes
+    networks:
+      - application
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    restart: "no"
+    <<: *secret-security-defaults
+
+  web:
+    image: forge-backend:${IMAGE_TAG:-latest}
+    build: *backend-build
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "forge.asgi:application"]
+    environment:
+      <<: *backend-environment
+      POSTGRES_HOST: pgbouncer
+    secrets: *backend-secrets
+    volumes: *backend-volumes
+    networks:
+      - application
+    depends_on:
+      django-migrate:
+        condition: service_completed_successfully
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--header", "Host: ${APP_DOMAIN}", "http://127.0.0.1:8000/health/live/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy:
+      replicas: ${WEB_REPLICAS:-2}
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  celery-worker:
+    image: forge-backend:${IMAGE_TAG:-latest}
+    build: *backend-build
+    command:
+      - celery
+      - -A
+      - forge
+      - worker
+      - --loglevel=INFO
+      - --queues=default,search.reconciliation
+      - --concurrency=${CELERY_CONCURRENCY:-2}
+    environment:
+      <<: *backend-environment
+      POSTGRES_HOST: pgbouncer
+    secrets: *backend-secrets
+    volumes: *backend-volumes
+    networks:
+      - application
+    depends_on:
+      django-migrate:
+        condition: service_completed_successfully
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      replicas: ${CELERY_REPLICAS:-1}
+    restart: unless-stopped
+    stop_grace_period: 2m
+    <<: *secret-security-defaults
+
+  celery-beat:
+    image: forge-backend:${IMAGE_TAG:-latest}
+    build: *backend-build
+    command:
+      - celery
+      - -A
+      - forge
+      - beat
+      - --loglevel=INFO
+      - --schedule=/data/celerybeat/celerybeat-schedule
+    environment:
+      <<: *backend-environment
+      POSTGRES_HOST: pgbouncer
+    secrets: *backend-secrets
+    volumes:
+      - ${DATA_ROOT}/celerybeat:/data/celerybeat
+    networks:
+      - application
+    depends_on:
+      django-migrate:
+        condition: service_completed_successfully
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      replicas: 1
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  nginx:
+    image: forge-nginx:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/nginx/Dockerfile
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      MONITORING_DOMAIN: ${MONITORING_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      TLS_CERT_FILE: /run/tls/tls.crt
+      TLS_KEY_FILE: /run/tls/tls.key
+      ADMIN_HTPASSWD_FILE: /run/secrets/admin_htpasswd
+    secrets:
+      - admin_htpasswd
+    volumes:
+      - ${TLS_CERT_FILE}:/run/tls/tls.crt:ro
+      - ${TLS_KEY_FILE}:/run/tls/tls.key:ro
+      - ${DATA_ROOT}/static:/static:ro
+      - ${DATA_ROOT}/runtime:/run/forge:ro
+    networks:
+      - ingress
+      - application
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--insecure", "--silent", "https://127.0.0.1/nginx-healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    group_add:
+      - "${DEPLOY_GROUP_GID}"
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-45d}
+      - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-10GB}
+      - --web.enable-remote-write-receiver
+    secrets:
+      - meilisearch_api_key
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${DATA_ROOT}/runtime/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
+      - ${DATA_ROOT}/runtime/prometheus/blackbox-targets.yml:/etc/prometheus/targets/blackbox-targets.yml:ro
+      - ${DATA_ROOT}/prometheus:/prometheus
+    networks:
+      - observability
+      - application
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  alertmanager:
+    image: prom/alertmanager:v0.33.0
+    profiles: ["observability"]
+    environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-}
+      http_proxy: ${HTTP_PROXY:-}
+      https_proxy: ${HTTPS_PROXY:-}
+      no_proxy: ${NO_PROXY:-}
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --data.retention=${ALERTMANAGER_RETENTION:-120h}
+      - --enable-feature=utf8-strict-mode
+    secrets:
+      - teams_workflow_url
+      - smtp_password
+    volumes:
+      - ${DATA_ROOT}/runtime/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${DATA_ROOT}/alertmanager:/alertmanager
+    networks:
+      - observability
+      - alerting-egress
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.28.0
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    networks:
+      - observability
+      - ingress
+      - application
+    restart: unless-stopped
+    <<: *security-defaults
+
+  grafana:
+    image: grafana/grafana:13.0.1-security-01
+    profiles: ["observability"]
+    environment:
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SERVER_DOMAIN: ${MONITORING_DOMAIN}
+      GF_SERVER_ROOT_URL: https://${MONITORING_DOMAIN}/
+    secrets:
+      - grafana_admin_password
+    volumes:
+      - ${DATA_ROOT}/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - observability
+      - ingress
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  loki:
+    image: grafana/loki:3.7.2
+    profiles: ["observability"]
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - ${DATA_ROOT}/loki:/loki
+    networks:
+      - observability
+    restart: unless-stopped
+    <<: *security-defaults
+
+  # Privileged host access is equivalent to host trust, even with a read-only Docker socket.
+  alloy:
+    image: grafana/alloy:v1.17.0
+    profiles: ["observability"]
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    privileged: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ${DATA_ROOT}/alloy:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - observability
+    depends_on:
+      loki:
+        condition: service_started
+      prometheus:
+        condition: service_started
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.11.1
+    profiles: ["observability"]
+    command:
+      - --path.rootfs=/host
+      - --collector.textfile.directory=/var/lib/node_exporter/textfile
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|run/credentials/.+)($|/)
+    pid: host
+    read_only: true
+    volumes:
+      - /:/host:ro,rslave
+      - ${DATA_ROOT}/runtime/node-exporter:/var/lib/node_exporter/textfile:ro
+    networks:
+      - observability
+    restart: unless-stopped
+    <<: *security-defaults
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.19.1
+    profiles: ["observability"]
+    command: ["--collector.long_running_transactions"]
+    environment:
+      DATA_SOURCE_URI: postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER}
+      DATA_SOURCE_PASS_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    networks:
+      - observability
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  pgbouncer-exporter:
+    image: prometheuscommunity/pgbouncer-exporter:v0.12.1
+    profiles: ["observability"]
+    entrypoint: ["/bin/sh", "/opt/forge/pgbouncer-exporter-entrypoint.sh"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      PGBOUNCER_HOST: pgbouncer
+      PGBOUNCER_PORT: "5432"
+    secrets:
+      - postgres_password
+    volumes:
+      - ./pgbouncer-exporter/entrypoint.sh:/opt/forge/pgbouncer-exporter-entrypoint.sh:ro
+    networks:
+      - observability
+      - application
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    restart: unless-stopped
+    <<: *secret-security-defaults
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.84.0
+    profiles: ["observability"]
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    networks:
+      - observability
+      - application
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    <<: *security-defaults
+
+  celery-exporter:
+    # Docker-Hub-Tag ist nur amd64; ghcr liefert amd64 + arm64.
+    image: ghcr.io/danihodovic/celery-exporter:0.12.2
+    profiles: ["observability"]
+    command: ["--broker-url=redis://redis:6379/0"]
+    networks:
+      - observability
+      - application
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    <<: *security-defaults
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.5.1
+    profiles: ["observability"]
+    command: ["--nginx.scrape-uri=http://nginx:8080/nginx_status"]
+    networks:
+      - observability
+      - application
+    depends_on:
+      nginx:
+        condition: service_healthy
+    restart: unless-stopped
+    <<: *security-defaults
+
+  pushgateway:
+    image: prom/pushgateway:v1.11.3
+    profiles: ["observability"]
+    volumes:
+      - ${DATA_ROOT}/pushgateway:/data
+    command: ["--persistence.file=/data/pushgateway.data"]
+    networks:
+      - application
+      - observability
+    restart: unless-stopped
+    <<: *security-defaults
+
+  pgadmin:
+    image: dpage/pgadmin4:9.15.0
+    profiles: ["administration"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD_FILE: /run/secrets/pgadmin_password
+      PGADMIN_DISABLE_POSTFIX: "true"
+      PGADMIN_LISTEN_PORT: "5050"
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
+      PGADMIN_CONFIG_LOGIN_BANNER: "'Authorized Forge administrators only'"
+      PGADMIN_CONFIG_PROXY_X_FOR_COUNT: "2"
+      PGADMIN_CONFIG_PROXY_X_HOST_COUNT: "1"
+      PGADMIN_CONFIG_PROXY_X_PROTO_COUNT: "1"
+      PGADMIN_CONFIG_PROXY_X_PORT_COUNT: "0"
+      PGADMIN_CONFIG_WTF_CSRF_SSL_STRICT: "False"
+    secrets:
+      - pgadmin_password
+    volumes:
+      - ${DATA_ROOT}/pgadmin:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    networks:
+      - ingress
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    cap_add:
+      - NET_BIND_SERVICE
+    <<: *secret-security-defaults
+
+  backup:
+    image: forge-backend:${IMAGE_TAG:-latest}
+    build: *backend-build
+    profiles: ["backup"]
+    entrypoint: ["/bin/sh", "/app/deploy/backup/backup.sh"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_HOST: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      BACKUP_ROOT: /backups/local
+      BACKUP_SHARE: /backups/share
+      PUSHGATEWAY_URL: ${PUSHGATEWAY_URL:-http://pushgateway:9091}
+      SOURCE_REVISION: ${SOURCE_REVISION:-unknown}
+    secrets:
+      - postgres_password
+    volumes:
+      - ${DATA_ROOT}/backups:/backups/local
+      - ${BACKUP_SHARE}:/backups/share
+    networks:
+      - data
+      - observability
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    stop_grace_period: 30s
+    <<: *secret-security-defaults
+
+  restore-postgres:
+    image: postgres:17-alpine
+    profiles: ["restore-verification"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      PGDATA: /restore/postgres/data
+    secrets:
+      - postgres_password
+    volumes:
+      - restore_postgres_data:/restore/postgres
+    networks:
+      - restore-verification
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: "no"
+    group_add:
+      - "${DEPLOY_GROUP_GID}"
+    security_opt:
+      - no-new-privileges:true
+
+  restore-verify:
+    image: forge-backend:${IMAGE_TAG:-latest}
+    build: *backend-build
+    profiles: ["restore-verification"]
+    entrypoint: ["/bin/sh", "/app/deploy/backup/restore-verify.sh"]
+    command: ["/restore/source"]
+    environment:
+      <<: *backend-environment
+      POSTGRES_HOST: restore-postgres
+    secrets: *backend-secrets
+    volumes:
+      - ${RESTORE_BACKUP}:/restore/source:ro
+      - ${DATA_ROOT}/restore-verification/files:/restore/files
+      - restore_postgres_data:/restore/postgres:ro
+    networks:
+      - restore-verification
+      - observability
+    depends_on:
+      restore-postgres:
+        condition: service_healthy
+    restart: "no"
+    stop_grace_period: 30s
+    <<: *secret-security-defaults
+
+networks:
+  ingress:
+  application:
+  data:
+  observability:
+    internal: false
+  alerting-egress:
+    internal: false
+  restore-verification:
+    internal: true
+
+volumes:
+  restore_postgres_data:
+
+secrets:
+  django_secret_key:
+    file: ./secrets/django_secret_key.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  meilisearch_api_key:
+    file: ./secrets/meilisearch_api_key.txt
+  bexio_access_token:
+    file: ./secrets/bexio_access_token.txt
+  admin_htpasswd:
+    file: ./secrets/admin_htpasswd.txt
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password.txt
+  pgadmin_password:
+    file: ./secrets/pgadmin_password.txt
+  teams_workflow_url:
+    file: ./secrets/teams_workflow_url.txt
+  smtp_password:
+    file: ${ALERT_SMTP_PASSWORD_FILE:-./secrets/smtp_password.txt}
