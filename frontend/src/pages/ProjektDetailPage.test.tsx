@@ -4,7 +4,7 @@ import { MockedProvider } from "@apollo/client/testing/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ProjektDetailPage from "./ProjektDetailPage";
-import { GET_PROJEKT, GET_KOSTENART_IDS, GET_PROJEKT_STATUS_IDS, PROJEKTLEITER } from "../graphql/queries";
+import { GET_PROJEKT, GET_KOSTENART_IDS, GET_PROJEKT_PHASE_IDS, PROJEKTLEITER } from "../graphql/queries";
 import { PROJEKT_DETAIL_SUBSCRIPTION } from "../graphql/subscriptions";
 
 const { mockCapabilities } = vi.hoisted(() => ({
@@ -47,7 +47,7 @@ function projektMock(capabilities: { canUpdate: boolean; canDelete: boolean }) {
           jahr: 2026,
           offerteSumme: { value: 1000, unit: "CHF" },
           wvSumme: null,
-          projektStatus: { id: "1", name: "Offen" },
+          projektPhase: { id: "1", name: "Offen" },
           projektleiter: { id: "5", username: "anna" },
           capabilities,
           projektKennzahlenList: {
@@ -98,9 +98,9 @@ const kostenartMock = {
   request: { query: GET_KOSTENART_IDS },
   result: { data: { kostenartList: { items: [] } } },
 };
-const statusMock = {
-  request: { query: GET_PROJEKT_STATUS_IDS },
-  result: { data: { projektStatusList: { items: [{ id: "1", name: "Offen" }] } } },
+const phaseMock = {
+  request: { query: GET_PROJEKT_PHASE_IDS },
+  result: { data: { projektPhaseList: { items: [{ id: "1", name: "Offen" }] } } },
 };
 const subscriptionMock = {
   request: { query: PROJEKT_DETAIL_SUBSCRIPTION, variables: { id: "1" } },
@@ -116,7 +116,7 @@ function renderPage(capabilities: { canUpdate: boolean; canDelete: boolean }) {
   return render(
     <MemoryRouter initialEntries={["/projekte/1"]}>
       <MockedProvider
-        mocks={[projektMock(capabilities), kostenartMock, statusMock, subscriptionMock, projektleiterMock]}
+        mocks={[projektMock(capabilities), kostenartMock, phaseMock, subscriptionMock, projektleiterMock]}
       >
         <Routes>
           <Route path="/projekte/:id" element={<ProjektDetailPage />} />

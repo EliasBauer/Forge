@@ -10,9 +10,9 @@ class ProjektAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
         "name",
         "projektleiter",
         "wv_summe",
-        "projekt_status",
+        "projekt_phase",
     )
-    list_filter = ("projekt_status",)
+    list_filter = ("projekt_phase",)
     search_fields = ("name", "auftragsnummer")
 
 

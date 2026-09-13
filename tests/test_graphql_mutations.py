@@ -21,7 +21,7 @@ from django.test import TestCase
 from general_manager.measurement import Measurement
 
 from apps.projekt.models import Kostenart, KostenPosition, Projekt
-from apps.projekt.models.projekt_status import ProjektStatus
+from apps.projekt.models.projekt_phase import ProjektPhase
 from apps.stunden.models import Stundensatz
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
@@ -55,7 +55,7 @@ _MUTATION_CREATE_PROJEKT = """
       $offerteSumme: MeasurementScalar!
       $wvSumme: MeasurementScalar
       $projektleiter: ID
-      $projektStatus: ID!
+      $projektPhase: ID!
     ) {
       createProjekt(
         name: $name
@@ -64,7 +64,7 @@ _MUTATION_CREATE_PROJEKT = """
         offerteSumme: $offerteSumme
         wvSumme: $wvSumme
         projektleiter: $projektleiter
-        projektStatus: $projektStatus
+        projektPhase: $projektPhase
       ) {
         success
         Projekt { id }
@@ -79,7 +79,7 @@ _MUTATION_UPDATE_PROJEKT = """
       $offerteSumme: MeasurementScalar
       $wvSumme: MeasurementScalar
       $projektleiter: ID
-      $projektStatus: ID
+      $projektPhase: ID
     ) {
       updateProjekt(
         id: $id
@@ -87,7 +87,7 @@ _MUTATION_UPDATE_PROJEKT = """
         offerteSumme: $offerteSumme
         wvSumme: $wvSumme
         projektleiter: $projektleiter
-        projektStatus: $projektStatus
+        projektPhase: $projektPhase
       ) {
         success
       }
@@ -167,7 +167,7 @@ class GraphQLMutationShapeTest(TestCase):
     # ------------------------------------------------------------------
 
     def test_create_projekt(self) -> None:
-        offen = ProjektStatus.filter(name="Offen").first()
+        offen = ProjektPhase.filter(name="Offen").first()
         assert offen is not None
         result = _gql(
             self.client,
@@ -179,7 +179,7 @@ class GraphQLMutationShapeTest(TestCase):
                 "offerteSumme": "10000 CHF",
                 "wvSumme": "9000 CHF",
                 "projektleiter": str(self.projektleiter.id),
-                "projektStatus": str(offen.id),
+                "projektPhase": str(offen.id),
             },
         )
         self.assertNotIn("errors", result, result.get("errors"))
@@ -189,15 +189,15 @@ class GraphQLMutationShapeTest(TestCase):
     def test_update_projekt(self) -> None:
         projekt = Projekt.create(
             ignore_permission=True,
-            projekt_status=ProjektStatus.filter(name="Offen").first(),
+            projekt_phase=ProjektPhase.filter(name="Offen").first(),
             name="Vor Update",
             auftragsnummer="MUT-002",
             offerte_summe=Measurement(10_000, "CHF"),
             wv_summe=Measurement(9_000, "CHF"),
             jahr=2026,
         )
-        status = ProjektStatus.filter(name="In Arbeit").first()
-        assert status is not None
+        phase = ProjektPhase.filter(name="In Arbeit").first()
+        assert phase is not None
         result = _gql(
             self.client,
             _MUTATION_UPDATE_PROJEKT,
@@ -205,7 +205,7 @@ class GraphQLMutationShapeTest(TestCase):
                 "id": projekt.id,
                 "name": "Nach Update",
                 "projektleiter": str(self.projektleiter.id),
-                "projektStatus": str(status.id),
+                "projektPhase": str(phase.id),
             },
         )
         self.assertNotIn("errors", result, result.get("errors"))
@@ -218,7 +218,7 @@ class GraphQLMutationShapeTest(TestCase):
     def test_create_update_delete_kosten_position(self) -> None:
         projekt = Projekt.create(
             ignore_permission=True,
-            projekt_status=ProjektStatus.filter(name="Offen").first(),
+            projekt_phase=ProjektPhase.filter(name="Offen").first(),
             name="KP-Test",
             auftragsnummer="MUT-003",
             offerte_summe=Measurement(10_000, "CHF"),

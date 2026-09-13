@@ -19,7 +19,7 @@ export const GET_PROJEKTE = gql`
           value
           unit
         }
-        projektStatus {
+        projektPhase {
           id
           name
         }
@@ -60,7 +60,7 @@ export const SEARCH_PROJEKTE = gql`
             value
             unit
           }
-          projektStatus {
+          projektPhase {
             id
             name
           }
@@ -99,7 +99,7 @@ export const GET_PROJEKT = gql`
         value
         unit
       }
-      projektStatus {
+      projektPhase {
         id
         name
       }
@@ -192,9 +192,9 @@ export const GET_KOSTENART_IDS = gql`
   }
 `;
 
-export const GET_PROJEKT_STATUS_IDS = gql`
-  query ProjektStatusIds {
-    projektStatusList {
+export const GET_PROJEKT_PHASE_IDS = gql`
+  query ProjektPhaseIds {
+    projektPhaseList {
       items {
         id
         name

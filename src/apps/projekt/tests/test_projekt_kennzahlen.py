@@ -13,7 +13,7 @@ from general_manager.measurement import Measurement
 
 from apps.bexio.models import Lieferantenrechnung
 from apps.projekt.calculation_manager import ProjektKennzahlen
-from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektStatus
+from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektPhase
 from apps.stunden.models import Stundensatz
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
@@ -33,10 +33,10 @@ def _lade_kostenart_daten() -> None:
     )
 
 
-def _offen() -> ProjektStatus:
-    status = ProjektStatus.filter(name="Offen").first()
-    assert status is not None
-    return status
+def _offen() -> ProjektPhase:
+    phase = ProjektPhase.filter(name="Offen").first()
+    assert phase is not None
+    return phase
 
 
 class ProjektKennzahlenTest(TestCase):
@@ -47,7 +47,7 @@ class ProjektKennzahlenTest(TestCase):
         _lade_kostenart_daten()
         self.projekt = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Berechnungsprojekt",
             auftragsnummer="2024-100",
             jahr=_TESTJAHR,
@@ -71,7 +71,7 @@ class ProjektKennzahlenTest(TestCase):
     def test_summe_wv_plus_gibt_null_wenn_wv_summe_none(self) -> None:
         proj = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Ohne WV",
             auftragsnummer="2024-101",
             jahr=_TESTJAHR,
@@ -167,7 +167,7 @@ class ProjektKennzahlenTest(TestCase):
     def test_summe_wv_kosten_null_wenn_wv_kosten_wert_none(self) -> None:
         proj_ohne_wv = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Ohne WV 2",
             auftragsnummer="2024-102",
             jahr=_TESTJAHR,

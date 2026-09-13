@@ -15,7 +15,7 @@ type Projekt = {
   name: string;
   offerteSumme: GQLMeasurement;
   wvSumme: GQLMeasurement | null;
-  projektStatus: { id: string; name: string };
+  projektPhase: { id: string; name: string };
   projektleiter: { id: string; username: string } | null;
   projektKennzahlenList: { items: { summeWvPlus: GQLMeasurement | null; summeIstKosten: GQLMeasurement | null }[] };
 };
@@ -378,7 +378,7 @@ export default function ProjektListePage() {
                     </>
                   )}
                   <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500">
-                    Status
+                    Phase
                   </th>
                 </tr>
               </thead>
@@ -422,7 +422,7 @@ export default function ProjektListePage() {
                       </>
                     )}
                     <td className="px-4 py-3">
-                      <StatusBadge status={p.projektStatus.name} />
+                      <StatusBadge status={p.projektPhase.name} />
                     </td>
                   </tr>
                 ))}

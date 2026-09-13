@@ -18,14 +18,14 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektStatus
+from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektPhase
 from apps.stunden.models import Stundensatz
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
 
 
-def _offen() -> ProjektStatus:
-    status = ProjektStatus.filter(name="Offen").first()
+def _offen() -> ProjektPhase:
+    status = ProjektPhase.filter(name="Offen").first()
     assert status is not None
     return status
 
@@ -63,7 +63,7 @@ _QUERY_PROJEKT_LISTE = """
           name
           offerteSumme { value unit }
           wvSumme { value unit }
-          projektStatus { id name }
+          projektPhase { id name }
           projektleiter { id username }
           projektKennzahlenList {
             items {
@@ -86,7 +86,7 @@ _QUERY_PROJEKT_DETAIL = """
         jahr
         offerteSumme { value unit }
         wvSumme { value unit }
-        projektStatus { id name }
+        projektPhase { id name }
         projektleiter { id username }
         capabilities { canUpdate canDelete }
         projektKennzahlenList {
@@ -135,7 +135,7 @@ _QUERY_SEARCH_PROJEKTE = """
             name
             offerteSumme { value unit }
             wvSumme { value unit }
-            projektStatus { id name }
+            projektPhase { id name }
             projektleiter { id username }
             projektKennzahlenList {
               items {
@@ -161,7 +161,7 @@ class _SharedSetup(TestCase):
         )
         self.projekt = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Testprojekt",
             auftragsnummer="T-2026-001",
             offerte_summe=Measurement(100_000, "CHF"),
@@ -203,7 +203,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
         self.assertIn("auftragsnummer", p)
         self.assertIn("offerteSumme", p)
         self.assertIn("projektKennzahlenList", p)
-        self.assertEqual(p["projektStatus"]["name"], "Offen")
+        self.assertEqual(p["projektPhase"]["name"], "Offen")
         kennzahlen = p["projektKennzahlenList"]["items"]
         self.assertEqual(len(kennzahlen), 1)
         self.assertIn("summeWvPlus", kennzahlen[0])
@@ -224,7 +224,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
         p = result["data"]["projekt"]
         self.assertIsNotNone(p)
         self.assertEqual(p["auftragsnummer"], "T-2026-001")
-        self.assertEqual(p["projektStatus"]["name"], "Offen")
+        self.assertEqual(p["projektPhase"]["name"], "Offen")
 
         # projektKennzahlenList — Kernfelder korrekt berechnet
         kennzahlen = p["projektKennzahlenList"]["items"]
@@ -250,7 +250,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
         with self.captureOnCommitCallbacks(execute=True):
             Projekt.create(
                 ignore_permission=True,
-                projekt_status=_offen(),
+                projekt_phase=_offen(),
                 name="Lueftungsanlage Nord",
                 auftragsnummer="T-2026-042",
                 offerte_summe=Measurement(50_000, "CHF"),
@@ -312,15 +312,15 @@ class GraphQLQueryShapeTest(_SharedSetup):
         self.assertEqual(len(items), 15)
 
     # ------------------------------------------------------------------
-    # GET_PROJEKT_STATUS_IDS
+    # GET_PROJEKT_PHASE_IDS
     # ------------------------------------------------------------------
 
-    def test_projekt_status_ids_shape(self) -> None:
+    def test_projekt_phase_ids_shape(self) -> None:
         result = _gql(
             self.client,
             """
-            query ProjektStatusIds {
-              projektStatusList {
+            query ProjektPhaseIds {
+              projektPhaseList {
                 items {
                   id
                   name
@@ -330,7 +330,7 @@ class GraphQLQueryShapeTest(_SharedSetup):
             """,
         )
         self.assertNotIn("errors", result, result.get("errors"))
-        items = result["data"]["projektStatusList"]["items"]
+        items = result["data"]["projektPhaseList"]["items"]
         namen = {i["name"] for i in items}
         self.assertEqual(namen, {"Offen", "In Arbeit", "Fertig"})
 

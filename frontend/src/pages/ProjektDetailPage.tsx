@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calculator, ChevronLeft, Database, Pencil } from "lucide-react";
 import Layout from "../components/Layout";
-import { GET_KOSTENART_IDS, GET_PROJEKT, GET_PROJEKT_STATUS_IDS, PROJEKTLEITER } from "../graphql/queries";
+import { GET_KOSTENART_IDS, GET_PROJEKT, GET_PROJEKT_PHASE_IDS, PROJEKTLEITER } from "../graphql/queries";
 import {
   CREATE_KOSTEN_POSITION,
   DELETE_KOSTEN_POSITION,
@@ -51,7 +51,7 @@ type Projekt = {
   jahr: number;
   offerteSumme: GQLMeasurement;
   wvSumme: GQLMeasurement | null;
-  projektStatus: { id: string; name: string };
+  projektPhase: { id: string; name: string };
   projektleiter: { id: string; username: string } | null;
   capabilities: { canUpdate: boolean; canDelete: boolean };
   projektKennzahlenList: { items: ProjektKennzahlen[] };
@@ -66,11 +66,11 @@ type CreateKostenPositionResult = { createKostenPosition: { success: boolean } }
 type DeleteKostenPositionResult = { deleteKostenPosition: { success: boolean } };
 type KostenartIdItem = { id: string; schluessel: string };
 type KostenartIdsData = { kostenartList: { items: KostenartIdItem[] } };
-type ProjektStatusIdItem = { id: string; name: string };
-type ProjektStatusIdsData = { projektStatusList: { items: ProjektStatusIdItem[] } };
+type ProjektPhaseIdItem = { id: string; name: string };
+type ProjektPhaseIdsData = { projektPhaseList: { items: ProjektPhaseIdItem[] } };
 type UserOption = { id: string; username: string };
 type ProjektleiterData = { benutzerList: { items: UserOption[] } };
-type HeaderForm = { name: string; offerteSumme: string; wvSumme: string; projektleiter: string; projektStatus: string };
+type HeaderForm = { name: string; offerteSumme: string; wvSumme: string; projektleiter: string; projektPhase: string };
 
 const ART_LABELS: Record<string, string> = {
   regie: "Regie",
@@ -316,7 +316,7 @@ export default function ProjektDetailPage() {
   const canEditData = data?.projekt?.capabilities.canUpdate ?? false;
 
   const { data: kostenartData } = useQuery<KostenartIdsData>(GET_KOSTENART_IDS);
-  const { data: projektStatusData } = useQuery<ProjektStatusIdsData>(GET_PROJEKT_STATUS_IDS);
+  const { data: projektPhaseData } = useQuery<ProjektPhaseIdsData>(GET_PROJEKT_PHASE_IDS);
   const { data: projektleiterData } = useQuery<ProjektleiterData>(PROJEKTLEITER, {
     skip: !canEditData,
   });
@@ -419,7 +419,7 @@ export default function ProjektDetailPage() {
       offerteSumme: String(p.offerteSumme.value),
       wvSumme: p.wvSumme ? String(p.wvSumme.value) : "",
       projektleiter: p.projektleiter?.id ?? "",
-      projektStatus: p.projektStatus.id,
+      projektPhase: p.projektPhase.id,
     });
     setEditingHeader(true);
     setMutationError(null);
@@ -437,7 +437,7 @@ export default function ProjektDetailPage() {
     const wvSumme = parseCHF(headerForm.wvSumme);
     if (!offerteSumme) { setMutationError("Bitte eine gültige Offerte-Summe eingeben."); return; }
     if (headerForm.wvSumme.trim() && !wvSumme) { setMutationError("Bitte eine gültige WV-Summe eingeben."); return; }
-    updateProjekt({ variables: { id: p.id, name: headerForm.name, offerteSumme, wvSumme: wvSumme ?? undefined, projektleiter: headerForm.projektleiter || undefined, projektStatus: headerForm.projektStatus || undefined } });
+    updateProjekt({ variables: { id: p.id, name: headerForm.name, offerteSumme, wvSumme: wvSumme ?? undefined, projektleiter: headerForm.projektleiter || undefined, projektPhase: headerForm.projektPhase || undefined } });
   }
 
   function startEditPos(schluessel: string, pos: KostenPosition | null) {
@@ -561,17 +561,17 @@ export default function ProjektDetailPage() {
                 )}
               </div>
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Status</div>
+                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Phase</div>
                 {editingHeader && headerForm ? (
-                  <select value={headerForm.projektStatus}
-                    onChange={(e) => setHeaderForm((f) => f ? { ...f, projektStatus: e.target.value } : f)}
+                  <select value={headerForm.projektPhase}
+                    onChange={(e) => setHeaderForm((f) => f ? { ...f, projektPhase: e.target.value } : f)}
                     className="text-[15px] text-gray-900 mt-1 border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none w-full text-sm">
-                    {projektStatusData?.projektStatusList.items.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                    {projektPhaseData?.projektPhaseList.items.map((phase) => (
+                      <option key={phase.id} value={phase.id}>{phase.name}</option>
                     ))}
                   </select>
                 ) : (
-                  <div className="mt-1 text-[15px] text-gray-900">{p.projektStatus.name}</div>
+                  <div className="mt-1 text-[15px] text-gray-900">{p.projektPhase.name}</div>
                 )}
               </div>
               <div>
