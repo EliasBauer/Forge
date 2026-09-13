@@ -359,16 +359,41 @@ export default function ProjektDetailPage() {
   const [rechnungenModal, setRechnungenModal] = useState<
     { title: string; schluessel: string | null } | null
   >(null);
-  // no-cache: die Rechnungen-Query fragt dasselbe Feld `projekt(id)` mit anderer
-  // Sub-Selection ab wie GET_PROJEKT ("ProjektDetail") — im normalisierten Cache
-  // würde ein Ergebnis das andere sonst teilweise überschreiben.
+  // no-cache: die Rechnungen-Query fragt dieselben Felder `projektKennzahlenList`/
+  // `istWertList` unter `projekt(id)` ab wie GET_PROJEKT ("ProjektDetail"), aber mit
+  // anderer Sub-Selection. Apollos normalisierter Cache identifiziert Felder über
+  // Feldname + Argumente (nicht über einen Alias — empirisch geprüft), und die
+  // `items`-Arrays tragen keine `id`, sind also nicht einzeln normalisierbar. Ein
+  // Schreiben würde das andere Ergebnis teilweise überschreiben (belegt: das zweite
+  // Ergebnis liess `summeOfferteKosten`/`istKostenWert` aus dem Cache verschwinden,
+  // sodass GET_PROJEKT als unvollständig galt und ungewollt neu geladen wurde).
+  // Ein Feld-Alias ändert daran nichts (Store-Key bleibt der reale Feldname). Eine
+  // globale `merge`-Feldpolicy auf `items` könnte technisch helfen, wirkt aber auf
+  // jede Query, die dieselben Felder berührt (u. a. ProjektListePage, SearchProjekte),
+  // und müsste sich auf die Reihenfolge der Listeneinträge verlassen (keine IDs) —
+  // bei künftiger Filterung/Paginierung ein stiller Falsch-Merge statt eines
+  // sichtbaren Fehlers. Deshalb no-cache statt globaler Cache-Konfiguration.
+  //
+  // Damit erneutes Öffnen trotzdem sofort da ist (kein Netz-Roundtrip, kein
+  // Lade-Flackern): einmal pro Projekt-`id` laden, danach aus `rechnungenQuery.data`
+  // bedienen, bis sich die `id` ändert (Navigation zu einem anderen Projekt).
+  const [rechnungenGeladenFuerId, setRechnungenGeladenFuerId] = useState<
+    string | undefined
+  >(undefined);
   const [ladeRechnungen, rechnungenQuery] = useLazyQuery<RechnungenData>(
     GET_PROJEKT_RECHNUNGEN,
     { fetchPolicy: "no-cache" },
   );
 
   function oeffneRechnungen(schluessel: string | null, title: string) {
-    void ladeRechnungen({ variables: { id } });
+    if (rechnungenGeladenFuerId !== id && !rechnungenQuery.loading) {
+      ladeRechnungen({ variables: { id } })
+        .then(() => setRechnungenGeladenFuerId(id))
+        // Fehler landen bereits in rechnungenQuery.error; ein Abbruch (z. B. beim
+        // Verlassen der Seite während des Ladens) soll hier nicht als unbehandelte
+        // Promise-Ablehnung auffallen — nächster Klick versucht es erneut.
+        .catch(() => {});
+    }
     setRechnungenModal({ title, schluessel });
   }
 
