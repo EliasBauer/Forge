@@ -793,7 +793,7 @@ sudo chgrp forge-deploy /srv/forge/data/runtime/node-exporter && sudo chmod 2775
 
 ### Task 11: Rollout auf `<operator>@<testserver>`
 
-- [ ] Host vorbereiten (Task-9-Block per ssh mit sudo), `/etc/hosts` auf dem Pi: `127.0.0.1 <testserver> monitoring.<testserver> db.<testserver>`; Zertifikat:
+- [x] Host vorbereiten (Task-9-Block per ssh mit sudo), `/etc/hosts` auf dem Pi: `127.0.0.1 <testserver> monitoring.<testserver> db.<testserver>`; Zertifikat:
 
 ```bash
 sudo openssl req -x509 -nodes -newkey rsa:4096 -sha256 -days 3650 -keyout /etc/forge/tls/privkey.pem -out /etc/forge/tls/fullchain.pem -subj "/CN=<testserver>" -addext "subjectAltName=DNS:<testserver>,DNS:monitoring.<testserver>,DNS:db.<testserver>,IP:<LAN-IP>"
@@ -801,9 +801,9 @@ sudo chmod 0600 /etc/forge/tls/privkey.pem; sudo chmod 0644 /etc/forge/tls/fullc
 ```
   Hinweis: nginx läuft als root im Container und liest den Key; die Datei bleibt 0600 root.
 - [x] `git clone -b implement_deploy https://github.com/EliasBauer/Forge.git ~/forge`; `deploy/.env` aus Beispiel (Domains `<testserver>`, `monitoring.<testserver>`, `db.<testserver>`; `CSRF_TRUSTED_ORIGINS=https://<testserver>`; `APP_HOST_ALIASES=localhost,127.0.0.1,<LAN-IP>`); Secrets per `openssl rand -base64 48 | tr -d '\n' > secrets/<name>.txt`, `admin_htpasswd.txt` = `printf 'admin:%s\n' "$(openssl passwd -apr1 "$PW")"`, `bexio_access_token.txt`, `teams_workflow_url.txt` leer (`install -m 0640 /dev/null`), `smtp_password.txt` leer; `chgrp forge-deploy .env secrets/*.txt; chmod 0640 …`. Erzeugte Admin-/Grafana-/pgAdmin-Passwörter dem Benutzer ausschließlich als Dateipfade nennen, nie im Chat ausgeben.
-- [ ] Neue SSH-Sitzung (Gruppe), `./scripts/validate-config.sh`, `./scripts/deploy.sh`, `./scripts/start-ops.sh`, `./scripts/compose.sh ps`.
-- [ ] Smoke vom Mac mit `curl --resolve`: `/health/live/`, `/health/ready/`, GraphQL-Probe, WebSocket-Handshake (`connection_init` → `connection_ack` per `python3 - websockets`-Skript oder `curl --include --http1.1 -H "Upgrade: websocket"` auf 101), `/api/login/` mit Superuser (`compose.sh exec web python manage.py createsuperuser --noinput` mit `DJANGO_SUPERUSER_*`), Grafana `/api/health`, pgAdmin Basic-Auth 401→200, Maintenance-Status, Backup-Profil, Restore-Verification, `maintenance.sh status`, Speicherverbrauch (`free -h`, `docker stats --no-stream`).
-- [ ] Erkenntnisse (falsche Eigentümer, fehlende Pakete, Timing) ins README/Preflight zurückspielen, committen, pushen, auf dem Pi `git pull` + erneut deployen, bis der dokumentierte Pfad ohne Handarbeit durchläuft.
+- [x] Neue SSH-Sitzung (Gruppe), `./scripts/validate-config.sh`, `./scripts/deploy.sh`, `./scripts/start-ops.sh`, `./scripts/compose.sh ps`.
+- [x] Smoke vom Mac mit `curl --resolve`: `/health/live/`, `/health/ready/`, GraphQL-Probe, WebSocket-Handshake (`connection_init` → `connection_ack` per `python3 - websockets`-Skript oder `curl --include --http1.1 -H "Upgrade: websocket"` auf 101), `/api/login/` mit Superuser (`compose.sh exec web python manage.py createsuperuser --noinput` mit `DJANGO_SUPERUSER_*`), Grafana `/api/health`, pgAdmin Basic-Auth 401→200, Maintenance-Status, Backup-Profil, Restore-Verification, `maintenance.sh status`, Speicherverbrauch (`free -h`, `docker stats --no-stream`).
+- [x] Erkenntnisse (falsche Eigentümer, fehlende Pakete, Timing) ins README/Preflight zurückspielen, committen, pushen, auf dem Pi `git pull` + erneut deployen, bis der dokumentierte Pfad ohne Handarbeit durchläuft.
 
 
 ## Rollout-Protokoll (2026-09-13, `<operator>@<testserver>`)
@@ -823,3 +823,5 @@ Funde, alle in den Branch zurückgespielt:
 Verifiziert (vom Mac per `curl --resolve`, WebSocket per Python-Client, Rest auf dem Pi): Health live/ready/maintenance 200, SPA + Logo + Admin-Static, `/admin/login/` 200, HTTP→HTTPS 308, unbekannter Host 404, Basic-Auth 401/200, `/api/login/` mit falschen Daten 401 und mit dem angelegten Admin 200, GraphQL-HealthProbe `{"data":{"__typename":"Query"}}`, WebSocket `connection_ack` + offene Subscription, Grafana health + 2 Datasources + 20 Dashboards in 3 Ordnern, Loki mit Logs aller 22 Services, 17 Prometheus-Targets `up`, pgAdmin hinter Basic-Auth 200, 3 Backups lokal + im Share mit gültigen Checksummen. Wartungsmodus nach Deploy beendet (`forge_maintenance_mode 0`, `forge_deployment_timestamp_seconds{revision="d1aad2a"}`).
 
 Zugangsdaten (nur auf dem Pi): `~/forge-admin-credentials.txt`.
+
+Abschluss-Check nach allen Korrekturen: 23 Container laufen, `probe_success` 1 für `public_https`, `public_graphql`, `meilisearch_health`, keine aktiven Alerts, Backup- und Restore-Verification-Metriken im Pushgateway (`backup_last_attempt_success 1`, `restore_verification_last_attempt_success 1`), Restore-Verification-Ressourcen gezielt entfernt.
