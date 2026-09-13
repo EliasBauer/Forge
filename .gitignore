@@ -30,6 +30,7 @@ CONTEXT.md
 .env
 deploy/.env
 deploy/.env.*
+!deploy/.env.example
 deploy/secrets/*.txt
 
 # Deploy (Runtime-Artefakte, siehe deploy/README.md)
