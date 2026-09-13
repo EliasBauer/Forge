@@ -70,6 +70,26 @@ Spalten (Soll-Offerte, Soll-WV, Plan-WV, Ist, %).
   `auftragsnummer = {"update": ["isAdmin"]}`.
 - `canCreateProjekt` und `canManageStundensaetze` bleiben unverändert.
 
+> **Nachtrag 2026-09-12 — dieser Geltungsbereich wurde nachträglich erweitert.**
+>
+> Der Final-Review deckte auf, dass die Beschränkung der Lesepfade allein das
+> Ziel nicht erreicht: `Lieferantenrechnung` stand auf `isAuthenticated`, und da
+> `IstWert` den Ist-Wert als `sum(betrag - steuer_berechnet)` je
+> `richtiger_titel` berechnet, ließen sich die gesperrten Werte aus dem Journal
+> rekonstruieren. Beim Gegenmessen kam ein zweiter, älterer Fund hinzu: über
+> GraphQL konnte ein Monteur Kostenpositionen **anlegen**, weil `__based_on__`
+> bei Create-Mutationen wirkungslos ist (Mechanismus in `reference.md` §5).
+>
+> Deshalb gilt jetzt zusätzlich, entgegen dem dritten Nicht-Ziel oben:
+> **Mutationen eines Monteurs auf `KostenPosition` werden mit
+> `PERMISSION_DENIED` abgewiesen und verändern keine Daten** — abgesichert in
+> `KostenPositionMutationsTest`, dessen Negativ-Tests zusätzlich den
+> Datenbestand prüfen. `KostenPosition` deklariert seine vier Regeln seitdem
+> explizit; `__based_on__` wurde entfernt.
+>
+> Das erste Nicht-Ziel (Stundenerfassung) und das zweite (projektabhängige
+> Sichtbarkeit) gelten unverändert.
+
 ## Design
 
 ### Backend — Permissions als einzige Quelle der Wahrheit
