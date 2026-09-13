@@ -80,7 +80,9 @@ uv run pre-commit run --all-files
 
 ## Deployment
 
-Produktions-Stack (Docker Compose, nginx, Observability): siehe `deploy/README.md`.
+Produktions-Stack (Docker Compose, nginx, Observability): Einstieg in
+`start_prod.md`, Erklärung in `explain_prod_setup.md`, Betriebshandbuch in
+`deploy/README.md`.
 
 ## Pre-commit Checks
 
