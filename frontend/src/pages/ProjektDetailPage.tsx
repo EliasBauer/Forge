@@ -496,7 +496,9 @@ export default function ProjektDetailPage() {
     const wvSumme = parseCHF(headerForm.wvSumme);
     if (!offerteSumme) { setMutationError("Bitte eine gültige Offerte-Summe eingeben."); return; }
     if (headerForm.wvSumme.trim() && !wvSumme) { setMutationError("Bitte eine gültige WV-Summe eingeben."); return; }
-    updateProjekt({ variables: { id: p.id, name: headerForm.name, offerteSumme, wvSumme: wvSumme ?? undefined, projektleiter: headerForm.projektleiter || undefined, projektPhase: headerForm.projektPhase || undefined } });
+    // GM >= 0.80.1 lässt weggelassene Argumente unverändert — ein geleertes Feld
+    // muss explizit null senden. projektPhase ist Pflicht und kann nicht geleert werden.
+    updateProjekt({ variables: { id: p.id, name: headerForm.name, offerteSumme, wvSumme, projektleiter: headerForm.projektleiter || null, projektPhase: headerForm.projektPhase || undefined } });
   }
 
   function startEditPos(schluessel: string, pos: KostenPosition | null) {

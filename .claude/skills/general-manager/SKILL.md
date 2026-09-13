@@ -1,11 +1,11 @@
 ---
 name: general-manager
-description: Verifizierte Patterns, Konventionen und API des GeneralManager-Frameworks (GM, v0.79.3) für das Forge-Backend. Nutze diese Skill IMMER bei Backend-Arbeit in Forge — beim Definieren oder Ändern von Manager-Klassen, Interfaces (Database/Existing/ReadOnly/Calculation/Request/Excel), Buckets/Filtern/Projektionen, Permissions (ABAC), Rules, Factories/Seeding, MeasurementField/DataFrames, der GraphQL-Autogenerierung, Subscriptions, Caching/Warm-up, Search, temporalen (As-of-)Abfragen, File-Uploads, dem Excel-Interface oder Workflow-Automation — auch wenn der Begriff "GeneralManager" nicht ausdrücklich fällt. Die GM-API weicht an vielen Stellen von Standard-Django ab; verlasse dich auf diese geprüfte Referenz statt auf Annahmen.
+description: Verifizierte Patterns, Konventionen und API des GeneralManager-Frameworks (GM, v0.80.4) für das Forge-Backend. Nutze diese Skill IMMER bei Backend-Arbeit in Forge — beim Definieren oder Ändern von Manager-Klassen, Interfaces (Database/Existing/ReadOnly/Calculation/Request/Excel), Buckets/Filtern/Projektionen, Permissions (ABAC), Rules, Factories/Seeding, MeasurementField/DataFrames, der GraphQL-Autogenerierung, Subscriptions, Caching/Warm-up, Search, temporalen (As-of-)Abfragen, File-Uploads, dem Excel-Interface oder Workflow-Automation — auch wenn der Begriff "GeneralManager" nicht ausdrücklich fällt. Die GM-API weicht an vielen Stellen von Standard-Django ab; verlasse dich auf diese geprüfte Referenz statt auf Annahmen.
 ---
 
 # GeneralManager (GM) — Forge Backend
 
-Geprüfte Referenz für das GM-Framework (v0.79.3, gegen Quellcode verifiziert), so wie Forge es nutzt.
+Geprüfte Referenz für das GM-Framework (v0.80.4, gegen Quellcode verifiziert), so wie Forge es nutzt.
 
 ## Goldene Regel: keine GM-API erfinden
 
@@ -36,6 +36,9 @@ Diese Fehler sind häufig und teuer — halte sie ohne Nachschlagen ein:
 - `MeasurementField` → `MeasurementType { value unit }`; Mutation-Input als String `"50000 CHF"`.
 - Strukturierte Property-Rückgaben werden zu GraphQL-Objekttypen (ab 0.68.0); Fehler kommen als strukturierter `PublicGraphQLError`-Contract.
 - **Group-Sums über Text-Felder aggregieren die Werte jetzt *unique*** (ab 0.79.2) — bei Aggregationen also nicht mit Duplikaten rechnen.
+- **Update-Mutations sind partiell** (ab 0.80.1): weggelassene Argumente/`undefined` lassen den gespeicherten Wert stehen, **nur explizites `null` leert** ein Feld. Frontend-Formulare für optionale Felder senden `null`, nicht `undefined` (§9).
+- **Subscriptions dürfen lazy Relationen im `item`-Selection-Set abfragen** (ab 0.79.5, Wert-Auflösung läuft off-event-loop). `select_related` bleibt für N+1 sinnvoll, ist aber kein Crash-Schutz mehr (§10).
+- **No-op-Updates schreiben nichts** (ab 0.79.6): kein `save()`, keine History-Zeile — Tests, die History zählen, brauchen eine echte Änderung oder `history_comment` (§13).
 
 ## Caching-Kurzregeln
 
@@ -67,17 +70,17 @@ Diese Fehler sind häufig und teuer — halte sie ohne Nachschlagen ein:
 
 ## Wann welchen Referenz-Abschnitt lesen
 
-`references/reference.md` (verifiziert, v0.79.3):
+`references/reference.md` (verifiziert, v0.80.4):
 
-- Manager / Interfaces / `@graph_ql_property` (Return-Annotation!) → §2
+- Manager / Interfaces / `@graph_ql_property` (Return-Annotation!) / ReadOnly-Startup-Sync (`READ_ONLY_SYNC_ON_STARTUP`, ab 0.80.0) → §2
 - CRUD, `get`-Shortcut, Soft-Delete → §3
 - Buckets, Filter, `values()`/`values_list()`, `index_by`/`index_many`, Relation-Sortierung, Dependency-Semantik → §4
 - Permissions (ABAC), `__based_on__`, CalculationPermission → §5
 - Rules / Validators (dotted Placeholders) → §6 · Factories / Seeding (`seed_manager_landscape`) → §7
 - MeasurementField + DataFrame-Export (`to_dataframe`/`from_dataframe`) → §8
-- GraphQL (Queries / Mutations / Relation-Filter / Output-Typen / Fehler-Contract / unique Text-Group-Sums) → §9 · Subscriptions → §10
-- Search (+ `search_reconcile`, Invalidierungs-Regeln, ab 0.55.0) → §11 · Caching & Warm-up → §12
-- History / Audit **& Temporale (As-of-) Abfragen** → §13 · Observability → §14 · RequestInterface → §15
+- GraphQL (Queries / **partielle Update-Mutations ab 0.80.1** / Relation-Filter / Output-Typen / Fehler-Contract / unique Text-Group-Sums) → §9 · Subscriptions (off-event-loop ab 0.79.5) → §10
+- Search (+ `search_reconcile`, Invalidierungs-Regeln, Meilisearch `task_timeout_in_ms`) → §11 · Caching & Warm-up → §12
+- History / Audit (No-op-Updates ohne History ab 0.79.6) **& Temporale (As-of-) Abfragen** → §13 · Observability → §14 · RequestInterface → §15
 - **Excel-Interface** (`Meta`/`ExcelField`/`sync_from_excel`, ab 0.78.0) → §16 · Workflow → §17
 - **File-Uploads → §18** · **Chat / NLI-Subsystem → §19** (API weiterhin *planned*/instabil — 0.77–0.79.1 brachten nur Hardening, keine stabile öffentliche API)
 - INSTALLED_APPS-Reihenfolge → §20 · CSRF / Frontend → §21 · **Gotchas-Tabelle → §22** · Upstream-Doku → §23

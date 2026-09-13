@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Forge – Projektcontrolling-App (und mehr) für Bexio Anwender."
 requires-python = ">=3.12"
 dependencies = [
-  "generalmanager==0.79.3",
+  "generalmanager==0.80.4",
   "daphne>=4.0",
   "psycopg[binary]>=3.1",
   "channels-redis>=4.0",
