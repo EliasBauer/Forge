@@ -401,6 +401,10 @@ services:
       - --config.file=/etc/blackbox_exporter/config.yml
     volumes:
       - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    # Die oeffentliche Probe muss den App-Namen aufloesen koennen, auch wenn er
+    # nur per mDNS/hosts bekannt ist: auf den Docker-Host (nginx) zeigen.
+    extra_hosts:
+      - "${APP_DOMAIN}:host-gateway"
     networks:
       - observability
       - ingress
