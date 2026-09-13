@@ -806,9 +806,19 @@ sudo chmod 0600 /etc/forge/tls/privkey.pem; sudo chmod 0644 /etc/forge/tls/fullc
 - [ ] Erkenntnisse (falsche Eigentümer, fehlende Pakete, Timing) ins README/Preflight zurückspielen, committen, pushen, auf dem Pi `git pull` + erneut deployen, bis der dokumentierte Pfad ohne Handarbeit durchläuft.
 
 
-## Rollout-Protokoll (2026-09-13)
+## Rollout-Protokoll (2026-09-13, `<operator>@<testserver>`)
 
-- Host-Vorbereitung auf `<testserver>` wartet auf Root: `sudo sh ~/forge-host-prep.sh` (Skript liegt auf dem Pi, Inhalt = README-Block + Zertifikat + chgrp/chmod von `.env`/Secrets).
-- `.env` und Secrets liegen unter `~/forge/deploy` (0600, nach dem Prep-Skript 0640 `forge-deploy`); Zugangsdaten für nginx-Basic-Auth, Grafana und pgAdmin in `~/forge-admin-credentials.txt` auf dem Pi.
-- Image-Vorbau (`docker compose build`/`pull` für alle Profile) läuft per nohup, Log `~/forge-prebuild.log`.
-- Gefunden und behoben: `.env.example` war durch `deploy/.env.*` gitignored (Commit 047039f); Blackbox-Probe braucht `extra_hosts: APP_DOMAIN:host-gateway` (Commit 30410d0).
+Ablauf: Host-Prep (Skript `~/forge-host-prep.sh`, per sudo durch den Benutzer) → Clone → `.env`/Secrets auf dem Pi → `validate-config.sh` → `deploy.sh` → `start-ops.sh` → Smoke-Tests → Backup → Restore-Verification.
+
+Funde, alle in den Branch zurückgespielt:
+- `.env.example` war durch `deploy/.env.*` gitignored → `!deploy/.env.example` (047039f).
+- Blackbox-Probe kann `.local`-Namen nicht auflösen → `extra_hosts: APP_DOMAIN:host-gateway` (30410d0); selbstsigniertes Zertifikat → `TLS_CERT_FILE` als CA-Datei im Blackbox-Container (fe107de).
+- nginx: `zone forge_web 64k` ist auf 16-KB-Seiten-Hosts (Pi 5) zu klein → 256k (d1aad2a).
+- `SOURCE_REVISION` aus `.env` überschrieb die Git-Revision → nur noch aus Git, auch für manuelle Backups über `compose.sh` (d1aad2a, fe107de).
+- TLS-Key muss für die Deploy-Gruppe lesbar sein (Preflight läuft als Operator) → Runbook (1ce59f9); auf dem Pi liegt das Testzertifikat deshalb unter `~/forge-tls`.
+- pgAdmin lehnt `.local`-Login-Adressen ab → Preflight-Check + Default `admin@forge-betrieb.de` (fe107de).
+- Raspberry Pi OS ohne Memory-Cgroup-Accounting: Container-Speichermetriken leer → Runbook „Bekannte Grenzen".
+
+Verifiziert (vom Mac per `curl --resolve`, WebSocket per Python-Client, Rest auf dem Pi): Health live/ready/maintenance 200, SPA + Logo + Admin-Static, `/admin/login/` 200, HTTP→HTTPS 308, unbekannter Host 404, Basic-Auth 401/200, `/api/login/` mit falschen Daten 401 und mit dem angelegten Admin 200, GraphQL-HealthProbe `{"data":{"__typename":"Query"}}`, WebSocket `connection_ack` + offene Subscription, Grafana health + 2 Datasources + 20 Dashboards in 3 Ordnern, Loki mit Logs aller 22 Services, 17 Prometheus-Targets `up`, pgAdmin hinter Basic-Auth 200, 3 Backups lokal + im Share mit gültigen Checksummen. Wartungsmodus nach Deploy beendet (`forge_maintenance_mode 0`, `forge_deployment_timestamp_seconds{revision="d1aad2a"}`).
+
+Zugangsdaten (nur auf dem Pi): `~/forge-admin-credentials.txt`.
