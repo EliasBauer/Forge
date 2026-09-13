@@ -1,0 +1,14 @@
+groups:
+  - name: forge-api-recording
+    interval: 30s
+    rules:
+      - record: forge:api_requests:rate5m
+        expr: sum by (api) (rate(forge_api_requests_total[5m]))
+      - record: forge:graphql_server_faults:rate5m
+        expr: sum(rate(graphql_errors_total{code=~"INTERNAL_SERVER_ERROR|unknown"}[5m]))
+      - record: forge:api_request_duration_seconds:p95_5m
+        expr: histogram_quantile(0.95, sum by (api, le) (rate(forge_api_request_duration_seconds_bucket[5m])))
+      - record: forge:graphql_request_duration_seconds:p95_5m
+        expr: histogram_quantile(0.95, sum by (operation_type, le) (rate(graphql_request_duration_seconds_bucket[5m])))
+      - record: forge:graphql_errors:ratio5m
+        expr: (sum(rate(graphql_requests_total{status="error"}[5m])) / sum(rate(graphql_requests_total[5m]))) and (sum(rate(graphql_requests_total[5m])) > 0)
