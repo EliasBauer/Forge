@@ -19,7 +19,8 @@ class ProjektKennzahlen(GeneralManager):
     class Interface(CalculationInterface):
         projekt = Input(Projekt, possible_values=lambda: Projekt.all())
 
-    Permission = CalculationPermission
+    class Permission(CalculationPermission):
+        __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
 
     @cached
     def _summe_ist(self) -> Decimal:

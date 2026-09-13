@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -173,6 +173,7 @@ class CurrentUserCapabilitiesTest(TestCase):
                           canCreateProjekt
                           canManageStundensaetze
                           canViewFinanzen
+                          canViewKostenPositionen
                         }
                       }
                     }
@@ -194,12 +195,11 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": False,
                 "canManageStundensaetze": False,
                 "canViewFinanzen": False,
+                "canViewKostenPositionen": False,
             },
         )
 
     def test_admin_alle_capabilities_true(self) -> None:
-        from django.contrib.auth.models import Group
-
         user = User.objects.create_user("admincaps", password="x")
         group, _ = Group.objects.get_or_create(name="Admin")
         user.groups.add(group)
@@ -213,12 +213,11 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": True,
                 "canManageStundensaetze": True,
                 "canViewFinanzen": True,
+                "canViewKostenPositionen": True,
             },
         )
 
     def test_monteur_darf_nur_nichts(self) -> None:
-        from django.contrib.auth.models import Group
-
         user = User.objects.create_user("monteurcaps", password="x")
         group, _ = Group.objects.get_or_create(name="Monteur")
         user.groups.add(group)
@@ -230,12 +229,27 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": False,
                 "canManageStundensaetze": False,
                 "canViewFinanzen": False,
+                "canViewKostenPositionen": False,
             },
         )
 
-    def test_projektleiter_alle_capabilities_true(self) -> None:
-        from django.contrib.auth.models import Group
+    def test_betrachter_sieht_finanzen_aber_keine_kostenpositionen(self) -> None:
+        user = User.objects.create_user("betrachtercaps", password="x")
+        group, _ = Group.objects.get_or_create(name="Betrachter")
+        user.groups.add(group)
+        self.client.force_login(user)
+        caps = self._gql()["data"]["me"]["capabilities"]  # type: ignore[index]
+        self.assertEqual(
+            caps,
+            {
+                "canCreateProjekt": False,
+                "canManageStundensaetze": False,
+                "canViewFinanzen": True,
+                "canViewKostenPositionen": False,
+            },
+        )
 
+    def test_projektleiter_sieht_alles_ausser_benutzerverwaltung(self) -> None:
         user = User.objects.create_user("plcaps", password="x")
         group, _ = Group.objects.get_or_create(name="Projektleiter")
         user.groups.add(group)
@@ -247,5 +261,49 @@ class CurrentUserCapabilitiesTest(TestCase):
                 "canCreateProjekt": True,
                 "canManageStundensaetze": True,
                 "canViewFinanzen": True,
+                "canViewKostenPositionen": True,
             },
         )
+
+
+class CalculationPermissionReadPlanTest(TestCase):
+    """CalculationPermission leitet den Read-Plan aus __read__ ab."""
+
+    def _user(self, gruppe: str) -> User:
+        user = User.objects.create_user(f"plan_{gruppe.lower()}", password="x")
+        group, _ = Group.objects.get_or_create(name=gruppe)
+        user.groups.add(group)
+        return user
+
+    def test_monteur_bekommt_deny_all(self) -> None:
+        from apps.projekt.calculation_manager import IstWert
+
+        plan = IstWert.Permission(
+            IstWert,  # type: ignore[arg-type]
+            self._user("Monteur"),
+        ).get_read_permission_plan()
+        self.assertEqual(plan.decision, "deny_all")
+        self.assertEqual(plan.filters, [])
+        self.assertFalse(plan.requires_instance_check)
+
+    def test_projektleiter_bekommt_alle_zeilen_ohne_instanz_check(self) -> None:
+        from apps.projekt.calculation_manager import IstWert
+
+        plan = IstWert.Permission(
+            IstWert,  # type: ignore[arg-type]
+            self._user("Projektleiter"),
+        ).get_read_permission_plan()
+        self.assertNotEqual(plan.decision, "deny_all")
+        self.assertEqual(plan.filters, [{"filter": {}, "exclude": {}}])
+        self.assertFalse(plan.requires_instance_check)
+
+    def test_admin_bekommt_alle_zeilen_ohne_instanz_check(self) -> None:
+        from apps.projekt.calculation_manager import IstWert
+
+        plan = IstWert.Permission(
+            IstWert,  # type: ignore[arg-type]
+            self._user("Admin"),
+        ).get_read_permission_plan()
+        self.assertNotEqual(plan.decision, "deny_all")
+        self.assertEqual(plan.filters, [{"filter": {}, "exclude": {}}])
+        self.assertFalse(plan.requires_instance_check)
