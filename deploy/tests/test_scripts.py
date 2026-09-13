@@ -389,6 +389,7 @@ def _run_preflight(
     bexio_token: str = "",
     grafana_uid: str = "472",
     docker_info_status: int = 0,
+    pgadmin_email: str = "admin@forge-betrieb.de",
 ) -> subprocess.CompletedProcess[str]:
     deploy = tmp_path / "deploy"
     scripts = deploy / "scripts"
@@ -448,6 +449,7 @@ def _run_preflight(
                 "APP_DOMAIN=forge.example.test",
                 "MONITORING_DOMAIN=monitoring.example.test",
                 "ADMIN_DOMAIN=db.example.test",
+                f"PGADMIN_DEFAULT_EMAIL={pgadmin_email}",
                 "ALERT_TEAMS_ENABLED=false",
                 "ALERT_SMTP_AUTH_ENABLED=false",
                 "ALERT_SMTP_PASSWORD_FILE=/dev/null",
@@ -576,6 +578,14 @@ def test_preflight_is_silent_about_a_configured_bexio_token(tmp_path: Path) -> N
         (
             {"grafana_uid": "1000"},
             "GRAFANA_DATA is not writable by Grafana container UID:GID 472:0",
+        ),
+        (
+            {"pgadmin_email": "admin@forge.local"},
+            "PGADMIN_DEFAULT_EMAIL must not use a special-use domain",
+        ),
+        (
+            {"pgadmin_email": "admin"},
+            "PGADMIN_DEFAULT_EMAIL must be a full e-mail address",
         ),
     ),
 )

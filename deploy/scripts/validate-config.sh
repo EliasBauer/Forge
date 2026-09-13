@@ -263,6 +263,15 @@ require_domain APP_DOMAIN "${APP_DOMAIN:-}"
 require_domain MONITORING_DOMAIN "${MONITORING_DOMAIN:-}"
 require_domain ADMIN_DOMAIN "${ADMIN_DOMAIN:-}"
 
+# pgAdmin validiert die Login-Adresse strikt und verweigert Special-Use-Domains.
+require_env PGADMIN_DEFAULT_EMAIL
+case "$PGADMIN_DEFAULT_EMAIL" in
+    *@*.local|*@*.localhost|*@*.test|*@*.example|*@*.invalid|*@localhost|*@example.com|*@example.net|*@example.org)
+        fail "PGADMIN_DEFAULT_EMAIL must not use a special-use domain (pgAdmin rejects it)" ;;
+    *@*.*) ;;
+    *) fail "PGADMIN_DEFAULT_EMAIL must be a full e-mail address" ;;
+esac
+
 # Validate rendered compose configuration for basic correctness.
 cd "$DEPLOY_DIR"
 compose config --quiet

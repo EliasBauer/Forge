@@ -16,6 +16,12 @@ set -a
 . "$ENV_FILE"
 set +a
 
+# Manual runs (backups) record the checkout revision like deploy.sh does.
+if [ -z "${SOURCE_REVISION:-}" ] && command -v git >/dev/null 2>&1; then
+    SOURCE_REVISION=$(git -C "$DEPLOY_DIR" rev-parse --short HEAD 2>/dev/null || printf 'unknown')
+    export SOURCE_REVISION
+fi
+
 # shellcheck source=lib/compose.sh
 . "$DEPLOY_DIR/scripts/lib/compose.sh"
 

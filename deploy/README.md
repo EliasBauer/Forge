@@ -75,6 +75,10 @@ sudo chmod 0640 /etc/forge/tls/privkey.pem
 sudo chmod 0644 /etc/forge/tls/fullchain.pem
 ```
 
+Der Blackbox-Exporter bekommt `TLS_CERT_FILE` als CA-Datei und vertraut damit
+dem ausgelieferten Zertifikat, selbstsigniert oder CA-signiert; bei CA-Zertifikaten
+muss `fullchain.pem` die Zwischenzertifikate enthalten.
+
 Der private Schlüssel gehört wie die Secrets der Deploy-Gruppe (`0640`): der
 Preflight läuft als Operator und prüft Ablauf und Schlüssel-Zuordnung (RSA und
 EC); nginx liest beide Dateien im Container als root. HSTS ist bewusst aus,
@@ -124,7 +128,7 @@ sudo chmod 0640 .env secrets/*.txt
 | `meilisearch_api_key.txt` | ja | Master-Key von Meilisearch |
 | `admin_htpasswd.txt` | ja | Basic-Auth vor pgAdmin (`user:hash`, apr1 oder bcrypt) |
 | `grafana_admin_password.txt` | ja | Grafana-Admin |
-| `pgadmin_password.txt` | ja | Login mit `PGADMIN_DEFAULT_EMAIL` |
+| `pgadmin_password.txt` | ja | Login mit `PGADMIN_DEFAULT_EMAIL` (keine `.local`/`.test`/`.example`-Adresse) |
 | `bexio_access_token.txt` | nein | leer = Bexio-Dev-Modus mit Fixture-Daten (Preflight warnt) |
 | `teams_workflow_url.txt` | nein | nur bei `ALERT_TEAMS_ENABLED=true`, sonst leer |
 | `smtp_password.txt` | nein | nur bei `ALERT_SMTP_AUTH_ENABLED=true` (`ALERT_SMTP_PASSWORD_FILE`) |
@@ -404,5 +408,9 @@ Prometheus behält Metriken 45 Tage (10 GB), Loki Logs 7 Tage.
 - Raspberry Pi 5 (8 GB) trägt den kompletten Stack für Tests; bei
   Speicherdruck `WEB_REPLICAS`, `PROMETHEUS_RETENTION_SIZE` oder das
   Observability-Profil reduzieren.
+- Raspberry Pi OS schaltet das Memory-Cgroup-Accounting ab; Container-
+  Speichermetriken (cAdvisor, OOM-Alerts) bleiben dort leer, bis
+  `cgroup_enable=memory cgroup_memory=1` in `/boot/firmware/cmdline.txt` steht
+  (Reboot nötig).
 - Ein kompletter Host-Ausfall ist vom mitlaufenden Stack nicht erkennbar;
   für Produktion einen externen Verfügbarkeits-Check ergänzen.
