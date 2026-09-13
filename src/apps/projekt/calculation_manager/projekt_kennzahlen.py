@@ -21,12 +21,23 @@ class ProjektKennzahlen(GeneralManager):
 
     class Permission(CalculationPermission):
         __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
+        # Lieferantenrechnungen sind für Betrachter tabu (siehe 5180928);
+        # __read__ dieses Managers ist weiter gefasst, deshalb der Override.
+        rechnungen = {"read": ["isForgeAdmin", "isProjektleiter"]}
+
+    @cached
+    def _rechnungen(self) -> tuple[Lieferantenrechnung, ...]:
+        return tuple(
+            Lieferantenrechnung.filter(richtiger_titel=self.projekt.auftragsnummer)
+        )
+
+    @graph_ql_property
+    def rechnungen(self) -> list[Lieferantenrechnung]:
+        return list(self._rechnungen())
 
     @cached
     def _summe_ist(self) -> Decimal:
-        rechnungen = list(
-            Lieferantenrechnung.filter(richtiger_titel=self.projekt.auftragsnummer)
-        )
+        rechnungen = self._rechnungen()
         if not rechnungen:
             return Decimal("0")
         return sum(
