@@ -167,7 +167,8 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 | Login                               | ✓       | ✓          | ✓             | ✓                    |
 | Projektliste (mit Finanzdaten)      | ✗       | ✓          | ✓             | ✓                    |
 | Projektliste (nur Name/Auftragsnr.) | ✓       | –          | –             | –                    |
-| Projektdetail (volle Matrix)        | ✗       | ✓          | ✓             | ✓                    |
+| Projektdetail (volle Matrix)        | ✗       | ✗          | ✓             | ✓                    |
+| Projektdetail (Kopfdaten + Summenzeilen, ohne Positionen) | ✗ | ✓  | –             | –                    |
 | Projektdetail (nur Stunden-Zeile)   | ✓       | –          | –             | –                    |
 | Projekt erstellen                   | ✗       | ✗          | ✓             | ✓                    |
 | Soll/Ist-Werte bearbeiten           | ✗       | ✗          | ✓             | ✓                    |
@@ -221,6 +222,12 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 - Sortierung per Klick auf Spaltenköpfe (Standard: Auftragsnummer aufsteigend)
 - Projekte mit Phase „Fertig“ (`projekt_phase`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
 - Monteur: sieht nur Auftragsnr., Name, Phase (keine Finanzdaten)
+- Die Spalte „Projektstatus" ist eine Finanzspalte: Monteur sieht sie nicht,
+  Betrachter schon. Dieselbe Kennzahl als Karte auf der Projektdetailseite
+  (ProjektStatusChart, [`designs/projektdetail.md` §5](./designs/projektdetail.md#5-projektstatuschart--projektstatus-auf-einen-blick))
+  hängt dagegen an `canViewKostenPositionen` und ist für Betrachter dort
+  unsichtbar. Diese Asymmetrie ist so gebaut und beabsichtigt dokumentiert —
+  nicht versehentlich vereinheitlichen.
 - **Projektstatus**: Mini-Balken (grün = AK verrechnet, hellblau = offen,
   roter Strich = Ist) plus „Offen"-Betrag und -Prozentsatz (Details und
   Sonderfälle: [`designs/projektdetail.md` §5](./designs/projektdetail.md#5-projektstatuschart--projektstatus-auf-einen-blick)).

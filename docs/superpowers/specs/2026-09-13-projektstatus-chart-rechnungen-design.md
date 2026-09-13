@@ -105,10 +105,10 @@ GraphQL liefert ein Betrachter `rechnungen: null`, ein Projektleiter `[]`.
 
 - `IstWert.rechnungen`: Kategorie mit Konto, `diverses`, leere Kategorien
   (Ertragsblock/Stunden/Transport), Summe der Liste == `ist_kosten_wert`.
-- `Projekt.lieferantenrechnungen`: enthält Rechnungen aller Konten inkl. 44401
+- `ProjektKennzahlen.rechnungen`: enthält Rechnungen aller Konten inkl. 44401
   und ohne Konto; Summe == `summe_ist_kosten`; Fremdprojekt-Rechnungen fehlen.
-- GraphQL: Betrachter erhält für `projekt { lieferantenrechnungen }` eine
-  Permission-Verweigerung; Projektleiter erhält die Liste.
+- GraphQL: Betrachter erhält für `projektKennzahlenList { items { rechnungen } }`
+  eine Permission-Verweigerung; Projektleiter erhält die Liste.
 - `tests/test_permission_konventionen.py` bleibt grün.
 
 ## Task 2 · Frontend-Grundlagen
@@ -213,11 +213,12 @@ faelligkeitsdatum ueberfaellig betrag steuerBerechnet nettoBetrag` plus
 eine Sub-Selection — ohne sie antwortet der Server mit HTTP 400. `Konto` ist
 für `isForgeAdmin`/`isProjektleiter` lesbar, passt also zur Query.
 
-Ausgeführt per `useLazyQuery` beim ersten Öffnen eines Pop-ups; Apollo
-cached, weitere Öffnungen sind sofort. Beim Refetch der Seite (Subscription)
-wird die Rechnungs-Query nicht automatisch neu geladen — Rechnungen ändern
-sich nur durch den wöchentlichen Bexio-Sync; ein erneutes Laden der Seite
-genügt.
+Ausgeführt per `useLazyQuery` mit `fetchPolicy: "no-cache"` — jedes Öffnen
+lädt frisch. Grund: Die Query teilt sich Felder unter `projekt(id)` mit
+`GET_PROJEKT`, deren `items`-Arrays keine `id` tragen und daher nicht
+normalisierbar sind; ein gemeinsamer Cache-Eintrag würde sich gegenseitig
+überschreiben (Details im Begründungskommentar in `ProjektDetailPage.tsx`
+über der Query-Definition).
 
 ### Klickbarkeit
 

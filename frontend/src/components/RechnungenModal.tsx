@@ -49,6 +49,9 @@ const SPALTEN: Spalte[] = [
   { key: "nettoBetrag", label: "Netto", numerisch: true, rechts: true },
 ];
 
+const FOKUSSIERBAR_SELEKTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 function sortWert(row: RechnungRow, key: SortKey): string | number {
   if (key === "buchungskonto") return row.buchungskonto?.accountNo ?? "";
   const wert = row[key];
@@ -74,17 +77,55 @@ export default function RechnungenModal({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    function fokussierbareElemente(): HTMLElement[] {
+      const dialog = dialogRef.current;
+      if (!dialog) return [];
+      return Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOKUSSIERBAR_SELEKTOR),
+      );
+    }
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const elemente = fokussierbareElemente();
+      if (elemente.length === 0) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const erstes = elemente[0];
+      const letztes = elemente[elemente.length - 1];
+      const aktiv = document.activeElement;
+      if (e.shiftKey) {
+        if (aktiv === erstes || !dialog.contains(aktiv)) {
+          e.preventDefault();
+          letztes.focus();
+        }
+      } else if (aktiv === letztes || !dialog.contains(aktiv)) {
+        e.preventDefault();
+        erstes.focus();
+      }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   // aria-modal="true" verspricht, dass der Rest der Seite unerreichbar ist —
-  // dafür muss der Fokus beim Öffnen aktiv auf den Dialog gelegt werden.
+  // dafür muss der Fokus beim Öffnen aktiv auf den Dialog gelegt werden. Beim
+  // Schliessen (Unmount, siehe bedingtes Rendern in ProjektDetailPage) geht
+  // der Fokus zurück an das Element, das den Dialog geöffnet hat.
   useEffect(() => {
+    const ausloeser = document.activeElement as HTMLElement | null;
     dialogRef.current?.focus();
+    return () => {
+      ausloeser?.focus();
+    };
   }, []);
 
   function sortiereNach(spalte: Spalte) {
