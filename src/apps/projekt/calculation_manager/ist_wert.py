@@ -21,7 +21,8 @@ class IstWert(GeneralManager):
         projekt = Input(Projekt, possible_values=lambda: Projekt.all())
         kostenart = Input(Kostenart, possible_values=lambda: Kostenart.all())
 
-    Permission = CalculationPermission
+    class Permission(CalculationPermission):
+        __read__ = ["isForgeAdmin", "isProjektleiter"]
 
     @cached
     def _rechnungen_nach_konto(

@@ -161,10 +161,10 @@ GENERAL_MANAGER = {
     "AUTOCREATE_GRAPHQL": True,
     "GRAPHQL_URL": "graphql/",
     "DEFAULT_PERMISSIONS": {
-        "READ": ["public"],
-        "CREATE": ["isAuthenticated"],
-        "UPDATE": ["isAuthenticated"],
-        "DELETE": ["isAuthenticated"],
+        "READ": ["isAdmin"],
+        "CREATE": ["isAdmin"],
+        "UPDATE": ["isAdmin"],
+        "DELETE": ["isAdmin"],
     },
     "GRAPHQL_GLOBAL_CAPABILITIES_PROVIDER": (
         "apps.authentication.graphql_capabilities.CurrentUserCapabilities"
