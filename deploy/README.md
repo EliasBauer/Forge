@@ -154,7 +154,7 @@ Token), sichert die Datenbank, migriert (`check --deploy`, `migrate`,
 Kern-Dienste mit `WEB_REPLICAS` (Default 2) und `CELERY_REPLICAS`, prüft
 nginx-, Liveness-, Readiness- und GraphQL-Probe, veröffentlicht die
 Deployment-Metrik, beendet den Wartungsmodus und leert den Django-Cache.
-`SOURCE_REVISION` kommt aus dem Git-Checkout, wenn `.env` `unknown` enthält.
+`SOURCE_REVISION` kommt aus dem Git-Checkout; `.env` darf den Wert nicht setzen.
 
 Ein fehlgeschlagener Index-Neuaufbau bricht das Deployment ab und lässt den
 Wartungsmodus aktiv.

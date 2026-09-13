@@ -18,7 +18,8 @@ map "$maintenance_mode:$status:$uri" $serve_maintenance {
 resolver 127.0.0.11 valid=10s ipv6=off;
 
 upstream forge_web {
-    zone forge_web 64k;
+    # 256k statt 64k: Hosts mit 16-KB-Seiten (Raspberry Pi 5) lehnen kleinere Zonen ab.
+    zone forge_web 256k;
     server web:8000;
 }
 
