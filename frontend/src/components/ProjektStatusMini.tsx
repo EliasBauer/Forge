@@ -1,14 +1,7 @@
 import { chf } from "../utils/format";
-import { getProjektStatus } from "../utils/projektStatus";
+import { getProjektStatus, type ProjektStatusInput } from "../utils/projektStatus";
 
-type Props = {
-  planWV: number | null;
-  sollWV: number | null;
-  ist: number;
-  ak: number;
-};
-
-export default function ProjektStatusMini({ planWV, sollWV, ist, ak }: Props) {
+export default function ProjektStatusMini({ planWV, sollWV, ist, ak }: ProjektStatusInput) {
   const status = getProjektStatus({ planWV, sollWV, ist, ak });
   if (!status) {
     return <span className="text-[12px] italic text-gray-400">keine WV-Summe</span>;

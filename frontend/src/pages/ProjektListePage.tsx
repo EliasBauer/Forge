@@ -65,25 +65,25 @@ function Avatar({ name }: { name: string | null }) {
   );
 }
 
-const STATUS_STYLES: Record<string, string> = {
+const PHASE_STYLES: Record<string, string> = {
   Offen: "bg-blue-50 text-blue-700 ring-blue-200",
   "In Arbeit": "bg-emerald-50 text-emerald-700 ring-emerald-200",
   Fertig: "bg-gray-50 text-gray-500 ring-gray-200",
 };
 
-const STATUS_DOTS: Record<string, string> = {
+const PHASE_DOTS: Record<string, string> = {
   Offen: "bg-blue-500",
   "In Arbeit": "bg-emerald-500",
   Fertig: "bg-gray-400",
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? STATUS_STYLES.Offen;
-  const dot = STATUS_DOTS[status] ?? STATUS_DOTS.Offen;
+function PhaseBadge({ phase }: { phase: string }) {
+  const style = PHASE_STYLES[phase] ?? PHASE_STYLES.Offen;
+  const dot = PHASE_DOTS[phase] ?? PHASE_DOTS.Offen;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset ${style}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-      {status}
+      {phase}
     </span>
   );
 }
@@ -379,13 +379,16 @@ export default function ProjektListePage() {
                         <td className="px-4 py-3 text-right text-gray-700 tabular-nums">
                           {chf(p.offerteSumme, { withCurrency: false })}
                         </td>
+                        {/* Plan-WV = summeWvPlus (ProjektKennzahlen, wächst später um die
+                            Ertragsblock-Zusätze) — dieselbe Kennzahl wie auf der
+                            Detailseite, siehe docs/specs/designs/projektdetail.md §5.2. */}
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
                           {p.projektKennzahlenList.items[0]?.summeWvPlus != null ? chf(p.projektKennzahlenList.items[0].summeWvPlus, { withCurrency: false }) : "–"}
                         </td>
                         <td className="px-4 py-3">
                           <ProjektStatusMini
                             planWV={p.projektKennzahlenList.items[0]?.summeWvPlus?.value ?? null}
-                            sollWV={p.projektKennzahlenList.items[0]?.summeWvPlus?.value ?? null}
+                            sollWV={p.wvSumme?.value ?? null}
                             ist={p.projektKennzahlenList.items[0]?.summeIstKosten?.value ?? 0}
                             ak={0}
                           />
@@ -393,7 +396,7 @@ export default function ProjektListePage() {
                       </>
                     )}
                     <td className="px-4 py-3">
-                      <StatusBadge status={p.projektPhase.name} />
+                      <PhaseBadge phase={p.projektPhase.name} />
                     </td>
                   </tr>
                 ))}

@@ -456,6 +456,9 @@ export default function ProjektDetailPage() {
 
   const offerteSummeNum = p ? Number(p.offerteSumme.value) : null;
   const wvSummeNum = p?.wvSumme ? Number(p.wvSumme.value) : null;
+  // Plan-WV (Projektsumme, für Chart und Kachel) — unterscheidet sich von wvSumme
+  // (Soll-WV), sobald das Backend die Ertragsblock-Zusätze in summeWvPlus einrechnet.
+  const summeWvPlusNum = kennzahlen?.summeWvPlus?.value ?? null;
 
   // Visualization rows (non-locked, with at least one value)
   const vizRows: VizRow[] = allReihen
@@ -656,8 +659,8 @@ export default function ProjektDetailPage() {
               </div>
               <div>
                 <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Plan-WV-Summe exkl. MwSt.</div>
-                {/* Plan-WV = WV-Summe until backend ready */}
-                <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(p.wvSumme)}</div>
+                {/* Plan-WV = summeWvPlus, nicht wvSumme (Soll-WV) — siehe Kommentar am Chart-Aufruf. */}
+                <div className="mt-1 text-[15px] text-gray-900 tabular-nums">{chf(kennzahlen?.summeWvPlus)}</div>
               </div>
             </div>
           </div>
@@ -943,9 +946,12 @@ export default function ProjektDetailPage() {
           </div>
 
           {/* Projektstatus (Plan-WV / Ist / AK verrechnet) */}
+          {/* Plan-WV = summeWvPlus (ProjektKennzahlen, wächst später um die
+              Ertragsblock-Zusätze), Soll-WV = wvSumme (ursprünglicher WV-Wert) —
+              beide heute wertgleich, siehe docs/specs/designs/projektdetail.md §5.2. */}
           {showPositionen && (
             <ProjektStatusChart
-              planWV={wvSummeNum}
+              planWV={summeWvPlusNum}
               sollWV={wvSummeNum}
               ist={summeIstKosten}
               ak={0}

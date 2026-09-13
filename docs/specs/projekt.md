@@ -219,8 +219,8 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 ```
 
 - Sortierung per Klick auf Spaltenköpfe (Standard: Auftragsnummer aufsteigend)
-- Projekte mit Status „Fertig“ (`projekt_phase`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
-- Monteur: sieht nur Auftragsnr., Name, Status (keine Finanzdaten)
+- Projekte mit Phase „Fertig“ (`projekt_phase`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
+- Monteur: sieht nur Auftragsnr., Name, Phase (keine Finanzdaten)
 - **Projektstatus**: Mini-Balken (grün = AK verrechnet, hellblau = offen,
   roter Strich = Ist) plus „Offen"-Betrag und -Prozentsatz (Details und
   Sonderfälle: [`designs/projektdetail.md` §5](./designs/projektdetail.md#5-projektstatuschart--projektstatus-auf-einen-blick)).
@@ -228,6 +228,12 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
   aktuell für jedes Projekt 100 % offen; übersteigen die Ist-Kosten den
   Plan-WV, wird der gesamte Zellentext rot mit „⚠", unabhängig vom
   AK-Stand.
+- **Plan-WV**: Diese Spalte und die Projektdetailseite speisen beide aus
+  `summeWvPlus` (`projektKennzahlenList`) — dieselbe Kennzahl wie „Soll-WV"
+  (`wvSumme`) heute noch liefert. Sobald der in `projekt_kennzahlen.py`
+  vermerkte `TODO: Ertragsblock-Zusätze (Phase 2)` umgesetzt ist, wächst
+  Plan-WV über Soll-WV hinaus (Details:
+  [`designs/projektdetail.md` §5.2](./designs/projektdetail.md#52-heutige-datenquellen-provisorisch)).
 
 ### 3. Projektdetail (`/projekte/:id`)
 
@@ -239,12 +245,12 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 Hotel Glockenhof Sihlstr, ZH
 Auftragsnummer: 2022.0050   |   PL: Karl-Heinz Bauer
 1. Offerte exkl.: 365'595.00   |   Summe WV exkl.: 319'220.06   |   Summe WV + Zusätze: 393'319.37
-Status: In Arbeit
+Phase: In Arbeit
 ```
 
 „Bearbeiten" nur für Projektleiter + Admin.
 Button „Bearbeiten" → Kopffelder werden zu Eingabefeldern (kein Modal), inkl.
-Status-Dropdown (Offen / In Arbeit / Fertig).
+Phase-Dropdown (Offen / In Arbeit / Fertig).
 
 #### Kostenmatrix
 

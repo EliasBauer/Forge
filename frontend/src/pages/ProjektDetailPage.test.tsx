@@ -250,6 +250,14 @@ describe("ProjektDetailPage – Rechnungen-Pop-up", () => {
     expect(screen.getByText("Rechnungen · Apparate")).toBeInTheDocument();
   });
 
+  it("macht eine Ist-Zelle ohne Wert nicht klickbar", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    // "Kanäle und Rohre" hat weder kostenPosition noch istWert im Mock — die
+    // Ist-Zelle zeigt "–" und darf keinen Button (Rechnungen-Pop-up) enthalten.
+    const zeile = (await screen.findByText("Kanäle und Rohre")).closest("tr") as HTMLElement;
+    expect(within(zeile).queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("öffnet alle Rechnungen über die Summenzeile", async () => {
     renderPage({ canUpdate: false, canDelete: false });
     const summe = await screen.findByRole("button", { name: /950\.00/ });
