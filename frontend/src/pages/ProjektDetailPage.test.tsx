@@ -11,6 +11,7 @@ import {
   GET_PROJEKT_RECHNUNGEN,
   PROJEKTLEITER,
 } from "../graphql/queries";
+import { UPDATE_PROJEKT } from "../graphql/mutations";
 import { PROJEKT_DETAIL_SUBSCRIPTION } from "../graphql/subscriptions";
 
 const { mockCapabilities } = vi.hoisted(() => ({
@@ -152,7 +153,10 @@ const rechnungenMock = {
   },
 };
 
-function renderPage(capabilities: { canUpdate: boolean; canDelete: boolean }) {
+function renderPage(
+  capabilities: { canUpdate: boolean; canDelete: boolean },
+  extraMocks: Parameters<typeof MockedProvider>[0]["mocks"] = [],
+) {
   return render(
     <MemoryRouter initialEntries={["/projekte/1"]}>
       <MockedProvider
@@ -163,6 +167,7 @@ function renderPage(capabilities: { canUpdate: boolean; canDelete: boolean }) {
           subscriptionMock,
           projektleiterMock,
           rechnungenMock,
+          ...(extraMocks ?? []),
         ]}
       >
         <Routes>
@@ -183,6 +188,37 @@ describe("ProjektDetailPage – Bearbeiten-Button folgt projekt.capabilities.can
     renderPage({ canUpdate: false, canDelete: false });
     await screen.findByText("Testprojekt");
     expect(screen.queryByText("Bearbeiten")).not.toBeInTheDocument();
+  });
+});
+
+describe("ProjektDetailPage – Kopf speichern", () => {
+  // GM >= 0.80.1 lässt weggelassene Mutation-Argumente unverändert. Ein geleertes
+  // Feld muss deshalb explizit `null` senden, sonst bleibt der alte Wert stehen.
+  it("sendet für geleerte optionale Felder explizit null", async () => {
+    const updateMock = {
+      request: {
+        query: UPDATE_PROJEKT,
+        variables: {
+          id: "1",
+          name: "Testprojekt",
+          offerteSumme: "1000.00 CHF",
+          wvSumme: null,
+          projektleiter: null,
+          projektPhase: "1",
+        },
+      },
+      result: { data: { updateProjekt: { success: true } } },
+    };
+    const capabilities = { canUpdate: true, canDelete: true };
+    // Zweiter Projekt-Mock für das refetch() nach erfolgreichem Speichern.
+    renderPage(capabilities, [updateMock, projektMock(capabilities)]);
+    fireEvent.click(await screen.findByText("Bearbeiten"));
+    const projektleiterSelect = await screen.findByDisplayValue("anna");
+    fireEvent.change(projektleiterSelect, { target: { value: "" } });
+    fireEvent.click(screen.getByText("Speichern"));
+    // Erst nach erfolgreicher Mutation verlässt die Seite den Bearbeiten-Modus.
+    expect(await screen.findByText("Bearbeiten")).toBeInTheDocument();
+    expect(screen.queryByText(/fehlgeschlagen|No more mocked/)).not.toBeInTheDocument();
   });
 });
 

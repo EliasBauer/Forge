@@ -6,17 +6,28 @@
 >
 > Upstream-Doku: https://timkleindick.github.io/general_manager/
 > Repo: https://github.com/TimKleindick/general_manager
-> Aktuelle Version: 0.79.3
+> Aktuelle Version: 0.80.4
 >
-> Diese Doku wurde gegen den v0.79.3-Quellcode verifiziert (nicht nur gegen die Doku-Site).
+> Diese Doku wurde gegen den v0.80.4-Quellcode verifiziert (nicht nur gegen die Doku-Site).
 > Versionshinweise im Text (z. B. „ab 0.68.0") markieren, in welchem Release sich ein
 > Verhalten geändert oder ein Feature Einzug gehalten hat.
 >
-> **Änderungen ggü. 0.76.0:** neues **Excel-Interface** (§16, ab 0.78.0, öffentliche API/Doku
-> ab 0.79.0) · GraphQL-**Group-Sums aggregieren Text-Werte jetzt _unique_** (§9, ab 0.79.2) ·
-> Chat-/NLI-Subsystem stark gehärtet, bleibt aber _planned_/instabil (§19). Der Rest von
-> 0.77–0.79.3 sind interne Bugfixes (Cache-Invalidierung, materialisierte Annotationen,
-> Constraint-Erhalt) ohne Änderung der dokumentierten API.
+> **Änderungen ggü. 0.79.3 (0.79.4–0.80.4):**
+> - **GraphQL-Update-Mutations sind partiell** (§9, ab 0.80.1): weggelassene Argumente lassen
+>   den gespeicherten Wert stehen — auch wenn das Feld einen Default hat; explizites `null` leert.
+>   Frontend-Formulare, die „leer" senden wollen, müssen `null` schicken, nicht `undefined`.
+> - **Subscriptions lösen Felder off-event-loop auf** (§10, ab 0.79.5): der zuvor dokumentierte
+>   `SynchronousOnlyOperation`-Bug bei lazy Relationen im `item`-Selection-Set ist behoben.
+> - **No-op-Updates schreiben nichts** (§3/§13, ab 0.79.6): unveränderte Werte → kein `save()`,
+>   keine History-Zeile.
+> - `GENERAL_MANAGER["READ_ONLY_SYNC_ON_STARTUP"] = False` (§2, ab 0.80.0) schaltet den
+>   `_data`-Sync beim Start ab; `sync_data()` bleibt manuell aufrufbar.
+> - Meilisearch: `task_timeout_in_ms` (Default 5000) am Backend konfigurierbar (§11, ab 0.80.4).
+> - Intern: Run-Cache teilt Dependency-Snapshots zwischen verschachtelten Calculations (§12,
+>   0.80.2) · Excel-Mirror reuse/Fork-sichere Locks (§16, 0.79.4/0.80.3).
+>
+> Ältere Sprünge: Excel-Interface (§16, ab 0.78.0) · unique Text-Group-Sums (§9, ab 0.79.2) ·
+> Chat-/NLI-Subsystem weiter _planned_/instabil (§19).
 
 ---
 
@@ -236,6 +247,12 @@ intern liest die Sync-Logik das Attribut via `getattr(<Manager-Klasse>, "_data")
 Unveränderte Daten werden beim Sync übersprungen (ab 0.54.1). Write-Versuche zur
 Laufzeit werfen Exceptions.
 
+**Start-Sync abschaltbar (ab 0.80.0):** `GENERAL_MANAGER = {"READ_ONLY_SYNC_ON_STARTUP": False}`
+lässt den registrierten Startup-Hook sofort zurückkehren (`get_setting(..., True)`-Guard in
+`read_only/management.py`), bestehende Zeilen bleiben unangetastet. Manuell nachziehen:
+`Manager.Interface.sync_data()`. Forge lässt den Default (`True`) — `ProjektPhase`/`Kostenart`
+sollen aus `_data` kommen.
+
 ### CalculationInterface
 
 Berechnete Werte ohne Persistenz. Inputs via `Input`-Klasse:
@@ -331,6 +348,8 @@ projekt = Projekt.create(
 # Aktualisieren (in-place, gibt dieselbe Instanz zurück)
 projekt.update(creator_id=request.user.id, bezeichnung="Lüftung Rohbau – Phase 2")
 # projekt.bezeichnung ist danach sofort aktuell
+# Ab 0.79.6: ändert sich nach full_clean() kein Skalar-/M2M-Wert, wird weder gespeichert
+# noch eine History-Zeile geschrieben (Ausnahme: history_comment gesetzt → immer persistiert).
 
 # Löschen (invalidiert die Instanz für weitere Attributzugriffe)
 projekt.delete(creator_id=request.user.id, history_comment="Projekt storniert")
@@ -881,6 +900,28 @@ mutation {
 }
 ```
 
+### Update-Mutations sind partiell (ab 0.80.1)
+
+`update<Manager>` fasst **nur explizit übergebene Argumente** an. Mechanismus
+(`graphql_mutations.py`, `update_mutation`): weggelassene Argumente — auch weggelassene
+Variablen — kommen als Graphene-`NOT_PROVIDED` an und werden vor `Manager.update(**kwargs)`
+herausgefiltert; explizites `null` kommt als `None` durch und **leert** das Feld.
+
+| Client sendet                        | Ergebnis                                    |
+| ------------------------------------ | ------------------------------------------- |
+| Argument weggelassen / `undefined`   | gespeicherter Wert bleibt (auch bei Default) |
+| `feld: null`                         | Feld wird `NULL` (wenn nullable)             |
+| `feld: wert`                         | Feld wird `wert`                             |
+
+Sinn der Regel: Aufgaben-orientierte Ansichten, die bewusst nur einen Ausschnitt der
+Tabellenspalten bearbeitbar machen, können die nicht gezeigten Felder nicht versehentlich auf
+Default zurücksetzen — Partial-Update ist die sichere Vorgabe für solche Formulare.
+
+`create<Manager>` nutzt weiterhin Model-Defaults für weggelassene Felder. Für Forge heißt das:
+ein per UI geleertes optionales Feld (`wvSumme`, `projektleiter`) muss `null` senden — Apollo
+lässt `undefined`-Variablen weg (`ProjektDetailPage.saveHeader`, Test in
+`tests/test_graphql_mutations.py`).
+
 ### Relation-Filter
 
 ```graphql
@@ -955,9 +996,16 @@ subscription {
 > werden; Bulk-Operationen fassen Benachrichtigungen in einem Batch-Kontext zusammen
 > (`bulk_data_change_notifications`), statt pro Zeile ein Event zu feuern.
 
-> **Achtung — `SynchronousOnlyOperation` bei `item`-Feldern (verifizierter GM-Bug, betrifft
-> sowohl `onProjektChange` als auch `onProjektClassChange` gleichermassen, Stand 0.76.0–0.79.3):**
-> Der WebSocket-Consumer führt `graphql.subscribe()` direkt im async Event-Loop aus (Daphne/Channels).
+> **Behoben ab 0.79.5 — `SynchronousOnlyOperation` bei `item`-Feldern (GM-Bug in 0.76.0–0.79.4,
+> betraf `onProjektChange` und `onProjektClassChange` gleichermassen):**
+> Seit 0.79.5 laufen für Subscriptions Permission-Check *und* Wert-Auflösung eines Feldes gemeinsam
+> in einem Worker-Thread (`graphql_resolvers.resolve_with_read_permission` → `asyncio.to_thread`,
+> nur wenn `info.operation.operation is OperationType.SUBSCRIPTION`; Queries/Mutations bleiben
+> synchron). Lazy FK-Reads im `item`-Selection-Set sind damit sicher; verweigerte Felder kommen
+> weiterhin als `null`. Die folgende Beschreibung bleibt als Hintergrund und für die
+> `select_related`-Empfehlung (die zusätzlich N+1 in Listen-Queries vermeidet).
+>
+> Der WebSocket-Consumer führte `graphql.subscribe()` direkt im async Event-Loop aus (Daphne/Channels).
 > Fragt `item { ... }` ein Feld ab, dessen zugrunde liegende Relation auf der Django-Instanz noch
 > nicht geladen ist, löst das eine synchrone DB-Query aus — egal ob es sich um eine
 > GM-zu-GM-Relation handelt (GMs `_general_manager_accessor`/`raw_id_manager` baut eine frische
@@ -980,12 +1028,11 @@ subscription {
 >   nimmt bei Treffer `_from_trusted_orm_instance(...)` statt `raw_id_manager(...)` — keine Query,
 >   kein Crash.
 >
-> GM hat dieses Async/Sync-Problem für Subscriptions bereits einmal gelöst (0.73.1: Permission-Checks
-> laufen seitdem off-event-loop), aber nicht konsistent auf den Attribut-Resolver selbst angewendet
-> (`raw_id_manager`/`build_manager` in `field_descriptors.py`) — das macht es zu einem echten
-> GM-Bug, kein Forge-Konfigurationsfehler. Kein Fix dafür in 0.77.0–0.79.3 gefunden (Stand
-> 2026-09-06) — ggf. upstream melden (`TimKleindick/general_manager`), bevor jemand erneut
-> GM-zu-GM-Relationsfelder in ein `item`-Selection-Set einer Subscription aufnimmt.
+> Historie: 0.73.1 verlagerte nur die Permission-Checks off-event-loop, der Attribut-Resolver
+> selbst blieb im Loop — daher der Bug. 0.79.5 zieht die Wert-Auflösung nach (siehe oben).
+> Forge nutzt aktuell weiterhin `select_related("projektleiter")` auf dem `Projekt`-Interface
+> und lädt Subscription-Daten per `refetch()` nach; beides bleibt gültig, ist aber kein
+> Zwang mehr.
 
 ---
 
@@ -1026,6 +1073,13 @@ python manage.py search_reconcile --limit 100            # max. States pro Sweep
 
 In Produktion `search_reconcile` per **Celery Beat** planen. `search_index --reindex` bleibt
 für vollständige Neuaufbauten.
+
+**Meilisearch-Task-Timeout (ab 0.80.4):** Das Backend wartet auf Index-Tasks per
+`client.wait_for_task(task_uid, timeout_in_ms=…)`, Default **5000 ms**
+(`MeilisearchBackend(task_timeout_in_ms=5000)`). Bei langen Reindex-Läufen in Prod über
+`SEARCH_BACKEND["OPTIONS"]["task_timeout_in_ms"]` erhöhen, z. B. `20_000`. Ältere Clients ohne
+`timeout_in_ms`-Signatur oder mit reinem `get_task()`-Polling werden weiterhin bedient
+(Signatur-Bind-Fallback in `search/backends/meilisearch.py`).
 
 ### Deklarative Invalidierungs-Regeln (ab 0.7x)
 
@@ -1124,6 +1178,10 @@ die den Datensatz gelesen haben, werden invalidiert (`warm_up`-Properties danach
 und die Invalidierung koordiniert; der Run-Cache-Speicher wird ab 0.69.x beschränkt/prozessweit
 evakuiert (transparent für die Nutzung). Die Invalidierung gebündelter Batches ist ab 0.78.0
 zusätzlich gefenced (Race-Fix), Excel-Cache-Spiegel synchronisieren koordiniert (§16).
+Ab 0.80.2 hält der Run-Cache **immutable Dependency-Snapshots** (`cache/_dependency_graph.py`,
+`DependencySnapshot`), die verschachtelte Calculations und Cache-Hits teilen; geteilte Graphen
+werden nur einmal budgetiert. Für Forge (verschachtelte Calculation-Manager wie
+`ProjektKennzahlen` → `IstWert`) ist das ein reiner Speicher-/Laufzeitgewinn ohne API-Änderung.
 
 ---
 
@@ -1145,6 +1203,14 @@ projekt.history.all()
 projekt.history.filter(history_change_reason__icontains="import")
 projekt.history.order_by("-history_date").first()
 ```
+
+**Keine History-Zeile bei No-op-Updates (ab 0.79.6):** `update()` vergleicht nach `full_clean()`
+die konkreten Felder (inkl. `MeasurementField`) mit dem Ausgangszustand
+(`orm_utils/update_state.py::track_update`, aufgerufen in `orm/mutations.py`). Ist nichts
+verändert, wird weder gespeichert noch ein `~`-Eintrag angelegt. Persistiert wird weiterhin bei:
+echter Feld-/Relations-/File-Änderung, Änderungen durch `clean()`, gesetzten M2M-Werten oder
+explizitem `history_comment`. Tests, die History-Zeilen nach einem wirkungslosen Update zählen,
+müssen `history_comment` setzen oder einen echten Wert ändern.
 
 ### Temporale Abfragen (As-of, ab 0.7x)
 
@@ -1324,8 +1390,11 @@ Gemeinsame Optionen: `required=True`, `default=None`, `header=None` (abweichende
   sichtbar.
 - `editable=True` erlaubt das Zurückschreiben in die Mappe (mit `dumper` für die Serialisierung);
   `editable=False` macht ein Feld read-only.
-- FRISCH (0.78.0) und intern noch in Härtung (Cache-Synchronisation 0.78.0/0.79.0) — vor
-  Produktiv-Einsatz gegen die Upstream-Doku und das konkrete Storage/Cache-Backend abgleichen.
+- FRISCH (0.78.0) und intern noch in Härtung — vor Produktiv-Einsatz gegen die Upstream-Doku und
+  das konkrete Storage/Cache-Backend abgleichen. Härtungsstand: Cache-Synchronisation
+  (0.78.0/0.79.0), Snapshot-Reuse bei unverändertem Workbook-Fingerprint statt erneuter
+  Deserialisierung (0.79.4), fork-sichere Lock-Objekte für Multiprocessing-Worker bei
+  gemeinsamem `workbook.gm.lock`-Sidecar (0.80.3). Forge nutzt das Interface nicht.
 
 ---
 
@@ -1507,7 +1576,11 @@ server: { proxy: { "/graphql": "http://localhost:8000" } }
 | `cache="auto"` Fehler                                    | Modus in 0.42.0 entfernt                                         | `cache="run"` (Default) oder `cache="dependency"`                                                        |
 | `Float cannot represent non numeric value`               | Frontend schickt String statt Zahl                              | `parseFloat(val.replace(",", "."))`                                                                      |
 | Vite zeigt nichts im Container                           | Vite lauscht nur auf localhost                                  | `npm run dev -- --host`                                                                                  |
-| `SynchronousOnlyOperation` in Subscription-Log            | `item`-Feld greift auf un-vorgeladene Relation zu (GM-Manager-FK oder plain Django-FK) im async Consumer | Relation per `select_related(...)` auf dem `Interface`-`Manager` vorladen, oder Feld aus `item` entfernen und per `refetch()` nachladen (§10) |
+| `SynchronousOnlyOperation` in Subscription-Log            | GM < 0.79.5: `item`-Feld lud Relation lazy im async Consumer     | Ab 0.79.5 behoben (Wert-Auflösung off-event-loop). Auf älteren Versionen: `select_related(...)` oder Feld aus `item` entfernen und `refetch()` (§10) |
+| Update-Mutation leert ein Feld nicht                      | GM ≥ 0.80.1: weggelassene Argumente/`undefined` bleiben unverändert | Explizit `feld: null` senden; `undefined` lässt Apollo die Variable weg (§9)                          |
+| Kein History-Eintrag nach `update()`                      | GM ≥ 0.79.6: No-op-Updates speichern nicht                       | Echten Wert ändern oder `history_comment` setzen (§13)                                                 |
+| ReadOnly-`_data` überschreibt manuelle Änderungen          | Startup-Sync aktiv (Default)                                     | `GENERAL_MANAGER["READ_ONLY_SYNC_ON_STARTUP"] = False`, dann `sync_data()` bewusst aufrufen (§2)       |
+| Meilisearch-Reindex bricht mit Task-Timeout ab            | GM ≥ 0.80.4 wartet standardmässig nur 5 s auf Index-Tasks        | `SEARCH_BACKEND["OPTIONS"]["task_timeout_in_ms"]` erhöhen (§11)                                        |
 | Unberechtigter darf per GraphQL anlegen, obwohl `__based_on__` gesetzt ist | Mutation-Schicht schreibt `projekt` → `projekt_id` um; Delegation findet die Basis nicht mehr, `None` → globaler Default greift | `__create__`/`__update__`/`__delete__` **explizit** am Manager deklarieren; `__based_on__` niemals als Schreibschutz verwenden (§5) |
 | Manager ohne eigenes `__read__` ist für jeden lesbar      | Settings-Default greift (`DEFAULT_PERMISSIONS`)                  | Jeder Manager deklariert seine vier Regeln selbst — Default ist Fehlernetz, keine Konfiguration (§5) |
 
