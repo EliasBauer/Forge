@@ -211,6 +211,47 @@ class GraphQLMutationShapeTest(TestCase):
         self.assertNotIn("errors", result, result.get("errors"))
         self.assertTrue(result["data"]["updateProjekt"]["success"])
 
+    # GM >= 0.80.1: Update-Mutations fassen nur explizit übergebene Felder an.
+    # Weggelassene Variablen behalten den gespeicherten Wert; explizites null
+    # leert das Feld. Das Frontend verlässt sich auf genau diesen Contract.
+    def _projekt_mit_optionalen_feldern(self) -> Projekt:
+        return Projekt.create(
+            ignore_permission=True,
+            projekt_phase=ProjektPhase.filter(name="Offen").first(),
+            name="Optional gesetzt",
+            auftragsnummer="MUT-003",
+            offerte_summe=Measurement(10_000, "CHF"),
+            wv_summe=Measurement(9_000, "CHF"),
+            projektleiter=self.projektleiter,
+            jahr=2026,
+        )
+
+    def test_update_projekt_ohne_argument_laesst_feld_unveraendert(self) -> None:
+        projekt = self._projekt_mit_optionalen_feldern()
+        result = _gql(
+            self.client,
+            _MUTATION_UPDATE_PROJEKT,
+            variables={"id": projekt.id, "name": "Nur Name"},
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        aktuell = Projekt(id=projekt.id)
+        self.assertEqual(aktuell.name, "Nur Name")
+        self.assertEqual(aktuell.wv_summe, Measurement(9_000, "CHF"))
+        assert aktuell.projektleiter is not None
+        self.assertEqual(aktuell.projektleiter.id, self.projektleiter.id)
+
+    def test_update_projekt_mit_null_leert_feld(self) -> None:
+        projekt = self._projekt_mit_optionalen_feldern()
+        result = _gql(
+            self.client,
+            _MUTATION_UPDATE_PROJEKT,
+            variables={"id": projekt.id, "wvSumme": None, "projektleiter": None},
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        aktuell = Projekt(id=projekt.id)
+        self.assertIsNone(aktuell.wv_summe)
+        self.assertIsNone(aktuell.projektleiter)
+
     # ------------------------------------------------------------------
     # KOSTEN_POSITION-Mutations
     # ------------------------------------------------------------------
