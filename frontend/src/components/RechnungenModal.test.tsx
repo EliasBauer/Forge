@@ -83,6 +83,16 @@ describe("RechnungenModal", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it("schliesst per Klick auf das Overlay, aber nicht per Klick im Dialog", () => {
+    const onClose = vi.fn();
+    render(<RechnungenModal title="T" rows={rows} loading={false} error={null} onClose={onClose} />);
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(dialog);
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(dialog.parentElement as HTMLElement);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("zeigt Lade- und Leerzustand", () => {
     const { rerender } = render(
       <RechnungenModal title="T" rows={[]} loading error={null} onClose={vi.fn()} />,

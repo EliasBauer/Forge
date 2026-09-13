@@ -256,4 +256,22 @@ describe("ProjektDetailPage – Rechnungen-Pop-up", () => {
     fireEvent.click(summe);
     expect(await screen.findByText("Alle Rechnungen · Testprojekt")).toBeInTheDocument();
   });
+
+  it("lädt beim erneuten Öffnen nicht neu — sofort da, kein zweiter Request", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    const istZelle = await screen.findByRole("button", { name: /400\.00/ });
+
+    fireEvent.click(istZelle);
+    expect(await screen.findByText("LR-777")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Schliessen" }));
+
+    // Zweites Öffnen: kein Request mehr im MockedProvider übrig (der Mock ist
+    // einmalig) — ein zweiter Fetch würde als Fehlerbanner ("No more mocked
+    // responses") statt der Zeile erscheinen. Direkter, synchroner Zugriff
+    // ohne findBy* stellt sicher, dass keine neue Ladephase abgewartet wird.
+    fireEvent.click(screen.getByRole("button", { name: /400\.00/ }));
+    expect(screen.getByText("LR-777")).toBeInTheDocument();
+    expect(screen.queryByText("Lade Rechnungen…")).not.toBeInTheDocument();
+    expect(screen.queryByText(/No more mocked responses/)).not.toBeInTheDocument();
+  });
 });
