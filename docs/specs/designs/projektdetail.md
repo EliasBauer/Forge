@@ -32,9 +32,9 @@ Visualisierungs-Sektion.
 │ │ ┌─ 3 Linien + „Offen“-Kachel (siehe §5) ─────────────┐│ │
 │ └───────────────────────────────────────────────────────┘ │
 │                                                           │
-│ ┌─ ProjectVisualization Card ───────────────────────────┐ │
+│ ┌─ ProjektKategorienChart Card ─────────────────────────┐ │
 │ │ Projektkategorien auf einen Blick [Legende grün/gelb/rot]│
-│ │ Plan-WV vs. Ist je Kategorie                          │ │
+│ │ [Legende: Plan-WV · Ist-Kosten · Überschreitung]      │ │
 │ │ ┌─ Balkendiagramm (siehe §6) ───────────────────────┐ │ │
 │ └───────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────┘
@@ -352,34 +352,39 @@ gleichzeitig auftreten.
 
 ---
 
-## 6. ProjectVisualization (Balkendiagramm)
+## 6. ProjektKategorienChart (Balkendiagramm)
 
 Card mit:
 - Header: „Projektkategorien auf einen Blick" (hiess vor der Einführung
   von §5 „Projektstatus auf einen Blick")
 - Health-Legende rechts: Status-Counts grün / gelb / rot mit Anzahl Kategorien
-- Section-Titel: „Plan-WV vs. Ist je Kategorie"
+- Balken-Legende darunter: Plan-WV · Ist-Kosten · Überschreitung Plan-WV
 
 ### 6.1 Pro Kategorie
 
-Grid `[160px 1fr 120px] gap-4`:
+**Ein** Balken je Kategorie, gebaut wie die Plan-WV-Zeile des Projektstatus
+(§5) — zwei getrennte Balken pro Kategorie standen vorher nebeneinander, ohne
+dass die Farben etwas mit §5 zu tun hatten.
+
+Grid `[180px 1fr 150px] gap-4`:
 
 ```
-[Kategorie-Label]   ┌─────────────────────────┐   [Status-Pill]
-                    │ Plan-WV ▓▓▓░░░░         │ CHF 1'215.06
-                    │ Ist     ▓▓▓▓▓▓▓│        │ CHF 2'541.10
-                    └─────────────────────────┘
-                              ↑ Plan-WV-Marker
+[● Kategorie-Label]   ┌─────────────────────────┐   CHF 2'541.10
+[  Plan-WV CHF 1'215] │ ▓▓▓▓▓▓▓▓╱╱╱╱╱│          │   [Status-Pill]
+                      └─────────────────────────┘
+                        Plan-WV  über │ Ist-Linie
 ```
 
-Beide Balken:
-- Höhe `h-2.5`, `rounded-sm`, Hintergrund `bg-gray-100`
-- Plan-WV-Balken: `bg-gray-300`
-- Ist-Balken: `DEV_STYLES[level].dot` (oder `bg-gray-400` wenn keine Bewertung möglich)
-- Beide auf **gemeinsamer Skala** (max aller `planWV` und `ist` der dargestellten Kategorien)
+Balken (`h-2.5`, `rounded-sm`, Hintergrund `bg-gray-100`):
+- `0 … planWV`: `var(--forge-blue-light)`, `rounded-sm`
+- `planWV … ist`, nur wenn `ist > planWV`: `GESTRICHELT_ROT`
+  (`utils/chartStyles.ts`, dasselbe Muster wie die Überschreitung in §5)
+- senkrechte Linie an der Ist-Position: `w-px`, `var(--forge-red)`,
+  `absolute top-[-3px] bottom-[-3px]` — auch wenn Ist unter Plan-WV liegt
+- **Gemeinsame Skala** über alle Zeilen (max aller `planWV` und `ist` der
+  dargestellten Kategorien), damit die Balkenlängen vergleichbar bleiben
 
-Auf der Ist-Spur zusätzlich: 1 px senkrechte Linie an der Plan-WV-Position
-(`absolute top-[-2px] bottom-[-2px] w-px bg-gray-500/70`) — als 100 %-Marker.
+Rechts: Ist-Betrag in `DEV_STYLES[level].text`, darunter die Status-Pill.
 
 ### 6.2 Status-Pill (rechts)
 

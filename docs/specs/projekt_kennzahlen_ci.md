@@ -40,7 +40,7 @@ class Interface(CalculationInterface):
 | `bisher_verrechnet` | `Decimal` | `ist_erloese − summe_ist_kosten` (ist_erloese = 0 bis Phase 2) |
 | `summe_offerte_kosten` | `Decimal` | Summe `KostenPosition.offerte_kosten_wert` (exkl. Ertragsblock + Stunden) |
 | `summe_wv_kosten` | `Decimal` | Summe `KostenPosition.wv_kosten_wert` (exkl. Ertragsblock + Stunden) |
-| `verbrauchsrate` | `Decimal \| None` | `summe_ist_kosten / summe_offerte_kosten × 100`, None wenn Basis 0 |
+| `verbrauchsrate` | `Decimal \| None` | `summe_ist_kosten / summe_wv_kosten × 100`, None wenn Basis 0 — Bezug ist die Plan-WV-Spalte derselben Fusszeile, nicht die Offerte |
 | `delta_wv_off` | `Decimal \| None` | `summe_wv_kosten − summe_offerte_kosten`, None wenn Basis 0 |
 | `delta_wv_off_pct` | `Decimal \| None` | `delta_wv_off / summe_offerte_kosten × 100` |
 | `delta_ist_plan` | `Decimal \| None` | `summe_ist_kosten − summe_wv_kosten`, None wenn Basis 0 |

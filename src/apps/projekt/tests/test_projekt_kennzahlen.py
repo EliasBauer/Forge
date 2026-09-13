@@ -138,7 +138,7 @@ class ProjektKennzahlenTest(TestCase):
         self.assertGreater(kz.summe_wv_kosten.magnitude, Decimal("0"))
         self.assertEqual(kz.summe_offerte_kosten.magnitude, Decimal("50000.00"))
 
-    def test_verbrauchsrate_none_ohne_offerte(self) -> None:
+    def test_verbrauchsrate_none_ohne_plan_wv(self) -> None:
         self.assertIsNone(self._kz().verbrauchsrate)
 
     def test_delta_wv_off_none_ohne_offerte(self) -> None:
@@ -204,3 +204,61 @@ class ProjektKennzahlenTest(TestCase):
             steuer_berechnet=Decimal("77.00"),
         )
         self.assertEqual(self._kz().summe_ist_kosten.magnitude, Decimal("923.00"))
+
+    def _rechnung(self, betrag: str, steuer: str) -> None:
+        _LieferantenrechnungModel.objects.create(
+            bexio_id=uuid.uuid4(),
+            bexio_zeilen_id=uuid.uuid4(),
+            dokument_nr=f"2024-R-{uuid.uuid4().hex[:6]}",
+            titel="Testrechnung",
+            richtiger_titel=self.projekt.auftragsnummer,
+            status="paid",
+            rechnungsdatum=date(2024, 1, 15),
+            lieferant_id=1,
+            firmenname="Testlieferant AG",
+            waehrung_code="CHF",
+            rechnungsbetrag=Decimal(betrag),
+            ausstehender_betrag=Decimal("0.00"),
+            bexio_erstellt_am=datetime(2024, 1, 15, 10, 0, 0),
+            betrag=Decimal(betrag),
+            steuer_berechnet=Decimal(steuer),
+        )
+
+    def test_verbrauchsrate_rechnet_gegen_plan_wv_nicht_offerte(self) -> None:
+        art = Kostenart.filter(schluessel="regulierung").first()
+        assert isinstance(art, Kostenart)
+        KostenPosition.create(
+            ignore_permission=True,
+            projekt_id=self.projekt.id,
+            art_id=art.id,
+            offerte_kosten_wert=Measurement(Decimal("20000"), "CHF"),
+        )
+        self._rechnung("1000.00", "77.00")
+        kz = self._kz()
+        # Offerte 20'000 -> Plan-WV 20'000 / 100'000 * 90'000 = 18'000
+        self.assertEqual(kz.summe_offerte_kosten.magnitude, Decimal("20000.00"))
+        self.assertEqual(kz.summe_wv_kosten.magnitude, Decimal("18000.00"))
+        # 923 / 18'000 = 5.13 % (gegen die Offerte waeren es 4.62 %)
+        self.assertEqual(kz.verbrauchsrate, Decimal("5.13"))
+
+    def test_verbrauchsrate_none_wenn_nur_offerte_ohne_plan_wv(self) -> None:
+        proj = Projekt.create(
+            ignore_permission=True,
+            projekt_phase=_offen(),
+            name="Offerte ohne WV",
+            auftragsnummer="2024-103",
+            jahr=_TESTJAHR,
+            offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
+            wv_summe=None,
+        )
+        art = Kostenart.filter(schluessel="regulierung").first()
+        assert isinstance(art, Kostenart)
+        KostenPosition.create(
+            ignore_permission=True,
+            projekt_id=proj.id,
+            art_id=art.id,
+            offerte_kosten_wert=Measurement(Decimal("10000"), "CHF"),
+        )
+        kz = self._kz(proj)
+        self.assertEqual(kz.summe_offerte_kosten.magnitude, Decimal("10000.00"))
+        self.assertIsNone(kz.verbrauchsrate)

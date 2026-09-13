@@ -21,7 +21,7 @@ describe("ProjektStatusChart", () => {
     render(<ProjektStatusChart planWV={250000} sollWV={230000} ist={290000} ak={120000} />);
     expect(screen.getByTestId("ist-wert")).toHaveTextContent("⚠");
     expect(
-      screen.getByText("Ist über Plan-WV: +CHF 40'000.00 (+16.0 %)"),
+      screen.getByText("Ist-Kosten über Plan-WV: +CHF 40'000.00 (+16.0 %)"),
     ).toBeInTheDocument();
   });
 
