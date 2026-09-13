@@ -52,9 +52,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    # "forge.observability.metrics_host.InternalMetricsHostMiddleware",  # Task 3
+    "forge.observability.metrics_host.InternalMetricsHostMiddleware",
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
-    # "forge.observability.middleware.ApiMetricsMiddleware",  # Task 3
+    "forge.observability.middleware.ApiMetricsMiddleware",
     "forge.middleware.DisableCSRFForGraphQL",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
