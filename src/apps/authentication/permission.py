@@ -51,10 +51,28 @@ class CalculationPermission(AdditiveManagerPermission):
 
     GM's Instance-Check ruft queryset.filter(id__in=...) auf, was für
     CalculationBuckets fehlschlägt (kein 'id' im identification-dict).
-    Verifiziert in 0.45.0: Workaround bleibt notwendig.
+    Deshalb wird __read__ hier statisch ausgewertet — Gruppen-Regeln brauchen
+    keine Instanz: Unberechtigte bekommen deny_all, Berechtigte alle Zeilen
+    ohne Instanz-Check.
+
+    Ein Manager ohne eigenes __read__ erbt den Settings-Default aus
+    DEFAULT_PERMISSIONS. Der steht aktuell auf ["isAdmin"] — das prüft
+    user.is_staff, NICHT die Gruppe "Admin" (das wäre isForgeAdmin).
+
+    Darauf darf sich trotzdem kein Manager verlassen: Projektregel ist, dass
+    jeder Manager seine vier Regeln selbst deklariert. Der Default ist ein
+    Fehlernetz, keine Konfiguration — er soll auffallen, nicht tragen.
+    Erzwungen von tests/test_permission_konventionen.py, Begründung in
+    reference.md §5.
     """
 
     def get_read_permission_plan(self) -> ReadPermissionPlan:
+        if not self.check_operation_permission("read"):
+            return ReadPermissionPlan(
+                filters=[],
+                requires_instance_check=False,
+                decision="deny_all",
+            )
         return ReadPermissionPlan(
             filters=[{"filter": {}, "exclude": {}}],
             requires_instance_check=False,

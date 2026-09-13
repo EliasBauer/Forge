@@ -386,8 +386,10 @@ export default function ProjektListePage() {
                 {items.map((p) => (
                   <tr
                     key={p.id}
-                    onClick={() => navigate(`/projekte/${p.id}`)}
-                    className="border-b border-gray-100 last:border-0 hover:bg-blue-50/50 cursor-pointer transition-colors group"
+                    onClick={showFinancials ? () => navigate(`/projekte/${p.id}`) : undefined}
+                    className={`border-b border-gray-100 last:border-0 transition-colors group${
+                      showFinancials ? " hover:bg-blue-50/50 cursor-pointer" : ""
+                    }`}
                   >
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">
                       {p.auftragsnummer}
@@ -395,10 +397,12 @@ export default function ProjektListePage() {
                     <td className="px-4 py-3 font-medium text-gray-900">
                       <span className="inline-flex items-center gap-1">
                         {p.name}
-                        <ChevronRight
-                          size={14}
-                          className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-1 group-hover:translate-x-0 duration-150"
-                        />
+                        {showFinancials && (
+                          <ChevronRight
+                            size={14}
+                            className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-1 group-hover:translate-x-0 duration-150"
+                          />
+                        )}
                       </span>
                     </td>
                     <td className="px-4 py-3">

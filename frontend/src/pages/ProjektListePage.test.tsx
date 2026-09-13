@@ -1,31 +1,50 @@
-import { MemoryRouter } from "react-router-dom";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
+import { cleanup, render, screen, fireEvent, within } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing/react";
 import { ApolloLink } from "@apollo/client/link";
 import { getMainDefinition } from "@apollo/client/utilities";
 import { MockLink, MockSubscriptionLink } from "@apollo/client/testing";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ProjektListePage from "./ProjektListePage";
 import { GET_PROJEKTE } from "../graphql/queries";
 import { PROJEKT_LISTE_SUBSCRIPTION } from "../graphql/subscriptions";
+
+const { mockCapabilities } = vi.hoisted(() => ({
+  mockCapabilities: {
+    canCreateProjekt: true,
+    canManageStundensaetze: true,
+    canViewFinanzen: true,
+    canViewKostenPositionen: true,
+  },
+}));
 
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({
     user: {
       id: 1,
       username: "admin",
-      capabilities: {
-        canCreateProjekt: true,
-        canManageStundensaetze: true,
-        canViewFinanzen: true,
-      },
+      capabilities: mockCapabilities,
     },
     loading: false,
     login: vi.fn(),
     logout: vi.fn(),
   }),
 }));
+
+afterEach(() => {
+  mockCapabilities.canCreateProjekt = true;
+  mockCapabilities.canManageStundensaetze = true;
+  mockCapabilities.canViewFinanzen = true;
+  mockCapabilities.canViewKostenPositionen = true;
+});
+
+afterEach(cleanup);
+
+function DetailStub() {
+  const { id } = useParams<{ id: string }>();
+  return <p>Detail-Stub {id}</p>;
+}
 
 function projekt(overrides: Record<string, unknown> = {}) {
   return {
@@ -84,9 +103,12 @@ global.IntersectionObserver = FakeIntersectionObserver;
 
 function renderPage() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={["/"]}>
       <MockedProvider mocks={[listePage1Mock, subscriptionMock]}>
-        <ProjektListePage />
+        <Routes>
+          <Route path="/" element={<ProjektListePage />} />
+          <Route path="/projekte/:id" element={<DetailStub />} />
+        </Routes>
       </MockedProvider>
     </MemoryRouter>,
   );
@@ -404,5 +426,44 @@ describe("ProjektListePage – Fehler beim Nachladen", () => {
     fireEvent.click(retryButton);
 
     await screen.findByText("Retry Seite Zwei");
+  });
+});
+
+describe("ProjektListePage – Monteur ohne canViewFinanzen", () => {
+  it("zeigt die Finanzspalten nicht", async () => {
+    mockCapabilities.canViewFinanzen = false;
+    renderPage();
+    await screen.findByText("Bauprojekt B");
+
+    expect(screen.queryByText("Offerte")).not.toBeInTheDocument();
+    expect(screen.queryByText("WV + Zusätze")).not.toBeInTheDocument();
+    expect(screen.queryByText("Abweichung zu Ist")).not.toBeInTheDocument();
+  });
+
+  it("navigiert bei Klick auf eine Zeile nicht in die Detailseite", async () => {
+    mockCapabilities.canViewFinanzen = false;
+    renderPage();
+    const zelle = await screen.findByText("Bauprojekt B");
+
+    const zeile = zelle.closest("tr");
+    expect(zeile).not.toBeNull();
+    fireEvent.click(zeile as HTMLElement);
+
+    // MemoryRouter hält die History im Speicher — window.location ändert sich
+    // NIE und taugt nicht als Assertion. Stattdessen prüfen, ob die Zielroute
+    // gerendert wurde. Der nächste Test beweist, dass der Stub bei erlaubter
+    // Navigation wirklich erscheint, diese Assertion also nicht vakuum-grün ist.
+    expect(screen.queryByText("Detail-Stub 1")).not.toBeInTheDocument();
+  });
+
+  it("navigiert mit canViewFinanzen weiterhin in die Detailseite", async () => {
+    renderPage();
+    const zelle = await screen.findByText("Bauprojekt B");
+
+    const zeile = zelle.closest("tr");
+    expect(zeile).not.toBeNull();
+    fireEvent.click(zeile as HTMLElement);
+
+    expect(await screen.findByText("Detail-Stub 1")).toBeInTheDocument();
   });
 });

@@ -35,3 +35,6 @@ deploy/secrets/*.txt
 
 # Deploy (Runtime-Artefakte, siehe deploy/README.md)
 deploy/tests/__pycache__/
+
+# Superpowers SDD-Arbeitsverzeichnis (Ledger, Briefs, Review-Pakete)
+.superpowers/
