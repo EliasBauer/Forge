@@ -36,12 +36,13 @@ class IstWert(GeneralManager):
             result.setdefault(key, []).append(r)
         return {k: tuple(v) for k, v in result.items()}
 
-    @graph_ql_property
-    def ist_kosten_wert(self) -> Measurement | None:
+    @cached
+    def _rechnungen(self) -> tuple[Lieferantenrechnung, ...]:
+        """Die Rechnungen, aus denen ist_kosten_wert gebildet wird."""
         if self.kostenart.ist_ertragsblock:
-            return None
+            return ()
         if self.kostenart.schluessel in ("stunden", "transport_montage"):
-            return None  # TODO stunden.md
+            return ()  # TODO stunden.md
 
         index = self._rechnungen_nach_konto()
 
@@ -51,23 +52,25 @@ class IstWert(GeneralManager):
                 for k in Kostenart.all()
                 if k.konto_nummer is not None
             )
-            rechnungen = [
+            return tuple(
                 r
                 for key, gruppe in index.items()
                 if key is None or key not in bekannte
                 for r in gruppe
-            ]
-            if not rechnungen:
-                return None
-            summe = sum(
-                (r.betrag - r.steuer_berechnet for r in rechnungen), Decimal("0")
             )
-            return Measurement(summe, "CHF")
 
         konto_nr = self.kostenart.konto_nummer
         if konto_nr is None:
-            return None
-        rechnungen = list(index.get(str(konto_nr), ()))
+            return ()
+        return tuple(index.get(str(konto_nr), ()))
+
+    @graph_ql_property
+    def rechnungen(self) -> list[Lieferantenrechnung]:
+        return list(self._rechnungen())
+
+    @graph_ql_property
+    def ist_kosten_wert(self) -> Measurement | None:
+        rechnungen = self._rechnungen()
         if not rechnungen:
             return None
         summe = sum((r.betrag - r.steuer_berechnet for r in rechnungen), Decimal("0"))
