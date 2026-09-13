@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { chf, deDate } from "../utils/format";
 
@@ -71,6 +71,7 @@ export default function RechnungenModal({
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("rechnungsdatum");
   const [absteigend, setAbsteigend] = useState(true);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -79,6 +80,12 @@ export default function RechnungenModal({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // aria-modal="true" verspricht, dass der Rest der Seite unerreichbar ist —
+  // dafür muss der Fokus beim Öffnen aktiv auf den Dialog gelegt werden.
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
 
   function sortiereNach(spalte: Spalte) {
     if (spalte.key === sortKey) {
@@ -97,7 +104,11 @@ export default function RechnungenModal({
       typeof va === "number" && typeof vb === "number"
         ? va - vb
         : String(va).localeCompare(String(vb), "de");
-    return absteigend ? -cmp : cmp;
+    if (cmp !== 0) return absteigend ? -cmp : cmp;
+    // Tiebreaker bleibt unabhängig von der Sortierrichtung stabil (nicht mitgedreht),
+    // sonst sprängen gleichdatierte Zeilen beim Umkehren der Hauptsortierung.
+    if (sortKey !== "dokumentNr") return a.dokumentNr.localeCompare(b.dokumentNr, "de");
+    return 0;
   });
 
   const nettoSumme = rows.reduce((summe, r) => summe + r.nettoBetrag, 0);
@@ -108,10 +119,12 @@ export default function RechnungenModal({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="bg-white rounded-lg shadow-xl w-full max-w-[1100px] mt-10"
+        tabIndex={-1}
+        className="bg-white rounded-lg shadow-xl w-full max-w-[1100px] mt-10 focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">

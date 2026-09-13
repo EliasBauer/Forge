@@ -25,9 +25,9 @@ _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
 
 
 def _offen() -> ProjektPhase:
-    status = ProjektPhase.filter(name="Offen").first()
-    assert status is not None
-    return status
+    phase = ProjektPhase.filter(name="Offen").first()
+    assert phase is not None
+    return phase
 
 
 GRAPHQL_URL = "/graphql/"
@@ -150,6 +150,50 @@ _QUERY_SEARCH_PROJEKTE = """
     }
 """
 
+# Derselbe Feldsatz wie GET_PROJEKT_RECHNUNGEN in frontend/src/graphql/queries.ts.
+_QUERY_PROJEKT_RECHNUNGEN = """
+    query ProjektRechnungen($id: ID!) {
+      projekt(id: $id) {
+        id
+        projektKennzahlenList {
+          items {
+            rechnungen {
+              ...RechnungFelder
+            }
+          }
+        }
+        istWertList {
+          items {
+            kostenart {
+              schluessel
+            }
+            rechnungen {
+              ...RechnungFelder
+            }
+          }
+        }
+      }
+    }
+
+    fragment RechnungFelder on LieferantenrechnungType {
+      id
+      dokumentNr
+      rechnungsdatum
+      firmenname
+      zeilenTitel
+      status
+      faelligkeitsdatum
+      ueberfaellig
+      betrag
+      steuerBerechnet
+      nettoBetrag
+      buchungskonto {
+        accountNo
+        name
+      }
+    }
+"""
+
 
 class _SharedSetup(TestCase):
     """Erstellt Testdaten einmalig, wird von allen Query-Tests geerbt."""
@@ -241,6 +285,31 @@ class GraphQLQueryShapeTest(_SharedSetup):
 
         # istWertList ist vorhanden (Bexio-Fehler in Testumgebung erwartet)
         self.assertIn("istWertList", p)
+
+    # ------------------------------------------------------------------
+    # GET_PROJEKT_RECHNUNGEN
+    # ------------------------------------------------------------------
+
+    def test_projekt_rechnungen_shape(self) -> None:
+        result = _gql(
+            self.client,
+            _QUERY_PROJEKT_RECHNUNGEN,
+            variables={"id": str(self.projekt.id)},
+        )
+        self.assertNotIn("errors", result, result.get("errors"))
+        p = result["data"]["projekt"]
+        self.assertIsNotNone(p)
+
+        kennzahlen = p["projektKennzahlenList"]["items"]
+        self.assertEqual(len(kennzahlen), 1)
+        self.assertIn("rechnungen", kennzahlen[0])
+
+        ist_items = p["istWertList"]["items"]
+        self.assertGreaterEqual(len(ist_items), 1)
+        for item in ist_items:
+            self.assertIn("kostenart", item)
+            self.assertIn("schluessel", item["kostenart"])
+            self.assertIn("rechnungen", item)
 
     # ------------------------------------------------------------------
     # search (Projekt-Suche über das Backend)

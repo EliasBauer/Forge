@@ -83,6 +83,11 @@ describe("RechnungenModal", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it("legt den Fokus beim Öffnen auf den Dialog", () => {
+    render(<RechnungenModal title="T" rows={rows} loading={false} error={null} onClose={vi.fn()} />);
+    expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
   it("schliesst per Klick auf das Overlay, aber nicht per Klick im Dialog", () => {
     const onClose = vi.fn();
     render(<RechnungenModal title="T" rows={rows} loading={false} error={null} onClose={onClose} />);
@@ -91,6 +96,19 @@ describe("RechnungenModal", () => {
     expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(dialog.parentElement as HTMLElement);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("sortiert bei gleichem Datum sekundär nach Dokument-Nr, unabhängig von der Richtung", () => {
+    const gleichesDatum: RechnungRow[] = [
+      { ...rows[0], id: "3", dokumentNr: "LR-020", rechnungsdatum: "2024-05-01" },
+      { ...rows[1], id: "4", dokumentNr: "LR-010", rechnungsdatum: "2024-05-01" },
+    ];
+    render(<RechnungenModal title="T" rows={gleichesDatum} loading={false} error={null} onClose={vi.fn()} />);
+    // Standard: Datum absteigend — bei Gleichstand Dokument-Nr aufsteigend als Tiebreaker.
+    expect(zeilenTexte()).toEqual(["LR-010", "LR-020"]);
+    // Hauptsortierung (Datum) umkehren: Tiebreaker bleibt unverändert aufsteigend.
+    fireEvent.click(screen.getByRole("button", { name: /Datum/ }));
+    expect(zeilenTexte()).toEqual(["LR-010", "LR-020"]);
   });
 
   it("zeigt Lade- und Leerzustand", () => {

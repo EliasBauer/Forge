@@ -98,12 +98,12 @@ DEV_STYLES = {
 
 ---
 
-## 6. Status (Projekt-Lifecycle)
+## 6. Phase (Projekt-Lifecycle)
 
 Es gibt **drei** Status (`ProjektPhase`-Lookup-Tabelle, editierbar im
 Bearbeiten-Formular des Projekts):
 
-| Status       | Visual                                     |
+| Phase        | Visual                                     |
 |--------------|---------------------------------------------|
 | `Offen`      | Blauer Dot, blue-50 BG, blue-700 Text       |
 | `In Arbeit`  | Grüner Dot, emerald-50 BG, emerald-700 Text |
@@ -113,7 +113,7 @@ Bearbeiten-Formular des Projekts):
 eingeführt — der operative Zustand ergibt sich aus der Kostenanalyse, nicht
 aus einem Label.)
 
-Badge-Markup (siehe `STATUS_STYLES`/`StatusBadge` in `ProjektListePage.tsx`):
+Badge-Markup (siehe `PHASE_STYLES`/`PhaseBadge` in `ProjektListePage.tsx`):
 ```tsx
 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px]
                  font-medium bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200">
