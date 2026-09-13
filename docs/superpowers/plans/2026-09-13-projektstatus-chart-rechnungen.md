@@ -696,7 +696,7 @@ Reine Logik, keine Darstellung. Treibt Chart (Task 4) und Mini-Balken (Task 5).
   mit den unten definierten Typen; CSS-Variablen `--forge-blue-light`,
   `--forge-green`.
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 `frontend/src/utils/projektStatus.test.ts`:
 
@@ -771,12 +771,12 @@ describe("getProjektStatus", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run projektStatus`
 Expected: FAIL — `Failed to resolve import "./projektStatus"`
 
-- [ ] **Step 3: Implementieren**
+- [x] **Step 3: Implementieren**
 
 `frontend/src/utils/projektStatus.ts`:
 
@@ -862,12 +862,12 @@ export function getProjektStatus(
 }
 ```
 
-- [ ] **Step 4: Test laufen lassen**
+- [x] **Step 4: Test laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run projektStatus`
 Expected: PASS (8 Tests)
 
-- [ ] **Step 5: Tokens ergänzen**
+- [x] **Step 5: Tokens ergänzen**
 
 In `frontend/src/index.css` im `:root`-Block, direkt nach `--forge-red-soft`:
 
@@ -876,7 +876,7 @@ In `frontend/src/index.css` im `:root`-Block, direkt nach `--forge-red-soft`:
   --forge-green: #059669;
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/utils/projektStatus.ts \
