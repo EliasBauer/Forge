@@ -1,0 +1,15 @@
+- targets:
+    - https://__APP_DOMAIN__/health/live/
+  labels:
+    module: https_2xx
+    probe: public_https
+- targets:
+    - "https://__APP_DOMAIN__/graphql/?query=query%20HealthProbe%20%7B%20__typename%20%7D&operationName=HealthProbe"
+  labels:
+    module: graphql_health
+    probe: public_graphql
+- targets:
+    - http://meilisearch:7700/health
+  labels:
+    module: internal_http_2xx
+    probe: meilisearch_health

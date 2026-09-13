@@ -1,0 +1,402 @@
+groups:
+  - name: forge-maintenance
+    rules:
+      - alert: ForgeMaintenanceActive
+        expr: forge_maintenance_suppress_until_timestamp_seconds > time()
+        for: 0m
+        labels: {severity: info, service: maintenance, notification_scope: none, alert_family: maintenance}
+        annotations:
+          summary: "Forge maintenance suppression is active"
+          impact: "Maintenance-sensitive alerts are inhibited until the suppression window ends."
+          first_action: "Confirm the maintenance window and its expected completion time."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgemaintenanceactive"
+      - alert: ForgeMaintenanceOverrun
+        expr: forge_maintenance_mode == 1 and forge_maintenance_suppress_until_timestamp_seconds <= time()
+        for: 1m
+        labels: {severity: critical, service: maintenance, notification_scope: always, alert_family: maintenance}
+        annotations:
+          summary: "Forge maintenance exceeded its suppression window"
+          impact: "Maintenance remains active while operational alerts are no longer inhibited."
+          first_action: "Contact the maintenance owner and decide whether to finish or extend the window."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgemaintenanceoverrun"
+
+  - name: forge-public-edge
+    rules:
+      - alert: ForgePublicProbeDown
+        expr: probe_success{job="blackbox",probe=~"public_https|public_graphql"} == 0 or absent(probe_success{job="blackbox",probe=~"public_https|public_graphql"}) or absent(up{job="forge-web"})
+        for: 2m
+        labels: {severity: critical, service: public-api, notification_scope: always, alert_family: public-probe, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Public Forge probe is failing"
+          impact: "Users may be unable to reach public Forge workflows."
+          first_action: "Open the API dashboard, then check Nginx and web logs for the failing probe."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgepublicprobedown"
+      - alert: ForgeTlsExpiryWarning
+        expr: (probe_ssl_earliest_cert_expiry{job="blackbox",probe="public_https"} - time()) < 30 * 86400
+        for: 15m
+        labels: {severity: warning, service: public-api, notification_scope: business_hours, alert_family: tls-expiry}
+        annotations:
+          summary: "Forge TLS certificate expires within 30 days"
+          impact: "The public endpoint will become unavailable if the certificate is not renewed."
+          first_action: "Verify the certificate expiry date and renewal automation."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgetlsexpirywarning"
+      - alert: ForgeTlsExpiryCritical
+        expr: (probe_ssl_earliest_cert_expiry{job="blackbox",probe="public_https"} - time()) < 7 * 86400
+        for: 5m
+        labels: {severity: critical, service: public-api, notification_scope: always, alert_family: tls-expiry}
+        annotations:
+          summary: "Forge TLS certificate expires within 7 days"
+          impact: "Public HTTPS access is at imminent risk."
+          first_action: "Start emergency certificate renewal and verify the served certificate."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgetlsexpirycritical"
+
+  - name: forge-api
+    rules:
+      - alert: ForgeGraphqlServerFaultsWarning
+        expr: sum(increase(graphql_errors_total{code=~"INTERNAL_SERVER_ERROR|unknown"}[10m])) >= 3
+        for: 0m
+        labels: {severity: warning, service: api, notification_scope: business_hours, alert_family: graphql-server-faults, maintenance_sensitive: "true"}
+        annotations:
+          summary: "GraphQL server faults exceed the warning floor"
+          impact: "Some GraphQL-backed user workflows are failing."
+          first_action: "Inspect recent GraphQL operations and correlated web exceptions."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgegraphqlserverfaultswarning"
+      - alert: ForgeGraphqlServerFaultsCritical
+        expr: sum(increase(graphql_errors_total{code=~"INTERNAL_SERVER_ERROR|unknown"}[10m])) >= 10
+        for: 0m
+        labels: {severity: critical, service: api, notification_scope: business_hours, alert_family: graphql-server-faults, maintenance_sensitive: "true"}
+        annotations:
+          summary: "GraphQL server faults exceed the critical floor"
+          impact: "GraphQL-backed workflows are failing at a sustained high volume."
+          first_action: "Identify the dominant failing operation and inspect its web exceptions."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgegraphqlserverfaultscritical"
+      - alert: ForgeGraphqlErrorRatioInfo
+        expr: forge:graphql_errors:ratio5m > 0.05 and sum(increase(graphql_requests_total[15m])) >= 20
+        for: 15m
+        labels: {severity: info, service: api, notification_scope: none, alert_family: graphql-error-ratio, maintenance_sensitive: "true"}
+        annotations:
+          summary: "GraphQL error ratio is above 5 percent"
+          impact: "A meaningful share of GraphQL requests is returning errors."
+          first_action: "Compare error status and operation trends against deployments."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgegraphqlerrorratioinfo"
+      - alert: ForgeApiLatencyWarning
+        expr: forge:api_request_duration_seconds:p95_5m > 1
+        for: 15m
+        labels: {severity: warning, service: api, notification_scope: business_hours, alert_family: api-latency, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Forge API p95 latency exceeds one second"
+          impact: "API workflows are noticeably slower for users."
+          first_action: "Break down latency by API and correlate it with dependency load."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeapilatencywarning"
+      - alert: ForgeApiLatencyCritical
+        # Match the traffic floor by API so traffic on one API cannot qualify another.
+        expr: forge:api_request_duration_seconds:p95_5m > 3 and on(api) sum by (api) (increase(forge_api_requests_total[10m])) >= 20
+        for: 10m
+        labels: {severity: critical, service: api, notification_scope: business_hours, alert_family: api-latency, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Forge API p95 latency exceeds three seconds"
+          impact: "Active API workflows are severely degraded."
+          first_action: "Inspect slow endpoints, web saturation, and dependency latency."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-api"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeapilatencycritical"
+
+  - name: forge-data-services
+    rules:
+      - alert: ForgePostgresDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels: {severity: critical, service: postgres, notification_scope: always, alert_family: postgres-availability, maintenance_sensitive: "true", root_cause: "true", dependency: postgres}
+        annotations:
+          summary: "PostgreSQL monitoring target is down"
+          impact: "Database-backed application and worker operations may fail."
+          first_action: "Check the PostgreSQL container health and recent database logs."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-postgres-pgbouncer"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgepostgresdown"
+      - alert: ForgeRedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels: {severity: critical, service: redis, notification_scope: always, alert_family: redis-availability, maintenance_sensitive: "true", root_cause: "true", dependency: redis}
+        annotations:
+          summary: "Redis monitoring target is down"
+          impact: "Caching and asynchronous task delivery may fail."
+          first_action: "Check the Redis container health and recent Redis logs."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-async-redis"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeredisdown"
+      - alert: ForgeMeilisearchTargetDown
+        expr: up{job="meilisearch"} == 0
+        for: 2m
+        labels: {severity: warning, service: meilisearch, notification_scope: business_hours, alert_family: meilisearch-availability, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Meilisearch monitoring target is down"
+          impact: "Search telemetry is unavailable and search may be degraded."
+          first_action: "Check the Meilisearch target and container health."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-search"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgemeilisearchtargetdown"
+      - alert: ForgeMeilisearchUnavailable
+        expr: probe_success{job="blackbox",probe="meilisearch_health"} == 0 or absent(probe_success{job="blackbox",probe="meilisearch_health"})
+        for: 5m
+        labels: {severity: critical, service: meilisearch, notification_scope: business_hours, alert_family: meilisearch-availability, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Meilisearch remains unavailable"
+          impact: "Search-backed user workflows are unavailable."
+          first_action: "Inspect Meilisearch health, resources, and startup logs."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-search"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgemeilisearchunavailable"
+      - alert: ForgePgbouncerSaturation
+        expr: sum(pgbouncer_pools_client_active_connections) / max(pgbouncer_config_max_client_connections) > 0.85
+        for: 10m
+        labels: {severity: warning, service: pgbouncer, notification_scope: business_hours, alert_family: pgbouncer-capacity, maintenance_sensitive: "true"}
+        annotations:
+          summary: "PgBouncer client connections exceed 85 percent"
+          impact: "New database clients are approaching the connection limit."
+          first_action: "Inspect pool usage and identify connection-heavy clients."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-postgres-pgbouncer"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgepgbouncersaturation"
+      - alert: ForgePgbouncerWaitingClients
+        expr: sum(pgbouncer_pools_client_waiting_connections) > 0
+        for: 5m
+        labels: {severity: critical, service: pgbouncer, notification_scope: business_hours, alert_family: pgbouncer-capacity, maintenance_sensitive: "true"}
+        annotations:
+          summary: "PgBouncer clients are waiting for connections"
+          impact: "Database requests are queued and application latency may rise."
+          first_action: "Inspect saturated pools and PostgreSQL connection capacity."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-postgres-pgbouncer"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgepgbouncerwaitingclients"
+
+  - name: forge-celery
+    rules:
+      - alert: ForgeCeleryQueueAgeWarning
+        expr: max(forge_celery_oldest_task_age_seconds) > 600
+        for: 5m
+        labels: {severity: warning, service: celery, notification_scope: business_hours, alert_family: celery-queue-age, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Oldest Celery task is more than 10 minutes old"
+          impact: "Background work is delayed."
+          first_action: "Identify the affected queue and inspect worker throughput."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-async-redis"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeceleryqueueagewarning"
+      - alert: ForgeCeleryQueueAgeCritical
+        expr: max(forge_celery_oldest_task_age_seconds) > 1800
+        for: 5m
+        labels: {severity: critical, service: celery, notification_scope: business_hours, alert_family: celery-queue-age, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Oldest Celery task is more than 30 minutes old"
+          impact: "Background workflows are severely delayed."
+          first_action: "Inspect queue depth, worker health, and the oldest task type."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-async-redis"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeceleryqueueagecritical"
+      - alert: ForgeCeleryNoWorker
+        expr: sum(celery_worker_up) < 1
+        for: 5m
+        labels: {severity: critical, service: celery, notification_scope: business_hours, alert_family: celery-workers, maintenance_sensitive: "true"}
+        annotations:
+          summary: "No Celery worker is available"
+          impact: "No background tasks can be processed."
+          first_action: "Check worker containers, broker connectivity, and worker logs."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-async-redis"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgecelerynoworker"
+      - alert: ForgeCeleryFailureRatio
+        expr: sum(increase(celery_task_failed_total[15m])) / clamp_min(sum(increase(celery_task_received_total[15m])), 1) > 0.10 and sum(increase(celery_task_failed_total[15m])) >= 5
+        for: 10m
+        labels: {severity: info, service: celery, notification_scope: none, alert_family: celery-failure-ratio, maintenance_sensitive: "true"}
+        annotations:
+          summary: "Celery task failure ratio exceeds 10 percent"
+          impact: "A significant share of background tasks is failing."
+          first_action: "Identify the dominant failing task and inspect its exceptions."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-async-redis"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeceleryfailureratio"
+
+  - name: forge-host
+    rules:
+      - alert: ForgeHostCpuHigh
+        expr: 1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.90
+        for: 20m
+        labels: {severity: warning, service: host, notification_scope: business_hours, alert_family: host-cpu}
+        annotations:
+          summary: "Host CPU usage exceeds 90 percent"
+          impact: "Services may experience resource contention and higher latency."
+          first_action: "Identify the busiest containers and recent workload changes."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-host-containers"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgehostcpuhigh"
+      - alert: ForgeMemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 10m
+        labels: {severity: warning, service: host, notification_scope: business_hours, alert_family: host-memory}
+        annotations:
+          summary: "Host available memory is below 10 percent"
+          impact: "Containers are at risk of memory pressure and eviction."
+          first_action: "Inspect container memory use and host swap activity."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-host-containers"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgememorylow"
+      - alert: ForgeMemoryCritical
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.05
+        for: 5m
+        labels: {severity: critical, service: host, notification_scope: always, alert_family: host-memory}
+        annotations:
+          summary: "Host available memory is below 5 percent"
+          impact: "Service termination or host instability is imminent."
+          first_action: "Identify memory-heavy containers and safely relieve pressure."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-host-containers"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgememorycritical"
+      - alert: ForgeApplicationContainerOom
+        expr: increase(container_oom_events_total{compose_service=~"web|celery-worker|postgres|redis|meilisearch"}[5m]) > 0
+        for: 0m
+        labels: {severity: critical, service: containers, notification_scope: always, alert_family: container-oom, maintenance_sensitive: "true"}
+        annotations:
+          summary: "A Forge application container was OOM-killed"
+          impact: "An application or dependency process was terminated for memory exhaustion."
+          first_action: "Identify the affected service and inspect its memory trend and restart logs."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-host-containers"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeapplicationcontaineroom"
+      - alert: ForgeFilesystemLow
+        expr: node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"} < 0.15
+        for: 15m
+        labels: {severity: warning, service: host, notification_scope: business_hours, alert_family: host-filesystem}
+        annotations:
+          summary: "Host filesystem has less than 15 percent free"
+          impact: "Persistent services may soon be unable to write data."
+          first_action: "Identify the affected mount and its largest safe-to-review consumers."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-host-containers"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgefilesystemlow"
+      - alert: ForgeFilesystemPredictedFull
+        expr: predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}[6h], 24 * 3600) < 0
+        for: 15m
+        labels: {severity: warning, service: host, notification_scope: business_hours, alert_family: host-filesystem-prediction}
+        annotations:
+          summary: "Host filesystem is predicted to fill within 24 hours"
+          impact: "Current growth will exhaust a persistent filesystem within one day."
+          first_action: "Confirm the growth trend and identify the responsible files or service."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-host-containers"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgefilesystempredictedfull"
+      - alert: ForgeFilesystemCritical
+        expr: node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"} < 0.05
+        for: 5m
+        labels: {severity: critical, service: host, notification_scope: always, alert_family: host-filesystem}
+        annotations:
+          summary: "Host filesystem has less than 5 percent free"
+          impact: "Persistent services face imminent write failures."
+          first_action: "Identify the affected mount and safely reclaim or add capacity."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-host-containers"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgefilesystemcritical"
+
+  - name: forge-backup
+    rules:
+      - alert: ForgeBackupTelemetryMissing
+        expr: absent(backup_last_success_timestamp_seconds)
+        for: 30m
+        labels: {severity: warning, service: backup, notification_scope: business_hours, alert_family: backup}
+        annotations:
+          summary: "Backup success telemetry is missing"
+          impact: "Operators cannot verify the age of the latest successful backup."
+          first_action: "Check the backup metrics producer and Pushgateway series."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgebackuptelemetrymissing"
+      - alert: ForgeBackupStale
+        expr: time() - backup_last_success_timestamp_seconds > 26 * 3600
+        for: 15m
+        labels: {severity: warning, service: backup, notification_scope: business_hours, alert_family: backup}
+        annotations:
+          summary: "Latest successful backup is more than 26 hours old"
+          impact: "The recovery point objective is at risk."
+          first_action: "Inspect the latest backup job and its upload outcome."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgebackupstale"
+      - alert: ForgeBackupCritical
+        # TSDB age preserves the never-success grace period across Prometheus process restarts.
+        expr: time() - backup_last_success_timestamp_seconds > 50 * 3600 or (absent(backup_last_success_timestamp_seconds) and on() (time() - max(prometheus_tsdb_lowest_timestamp_seconds) > 50 * 3600))
+        for: 15m
+        labels: {severity: critical, service: backup, notification_scope: always, alert_family: backup}
+        annotations:
+          summary: "Latest successful backup is more than 50 hours old"
+          impact: "Recoverable data may be more than two days old."
+          first_action: "Start incident response for the failed backup chain and preserve evidence."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgebackupcritical"
+      - alert: ForgeBackupTransferFailed
+        # Treat a missing prior success as zero so the first recorded transfer failure is actionable.
+        expr: backup_transfer_last_failure_timestamp_seconds > on() group_left() (max(backup_transfer_last_success_timestamp_seconds) or vector(0))
+        for: 5m
+        labels: {severity: critical, service: backup, notification_scope: always, alert_family: backup-transfer}
+        annotations:
+          summary: "Latest backup transfer failed"
+          impact: "The newest backup may not exist in off-host storage."
+          first_action: "Inspect transfer logs, destination availability, and the local backup artifact."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgebackuptransferfailed"
+
+  - name: forge-restore-verification
+    rules:
+      - alert: ForgeRestoreVerificationMissing
+        expr: absent(restore_verification_last_success_timestamp_seconds)
+        for: 30m
+        labels: {severity: warning, service: restore, notification_scope: business_hours, alert_family: restore-verification}
+        annotations:
+          summary: "Restore verification telemetry is missing"
+          impact: "Operators cannot confirm that backups can be restored."
+          first_action: "Check the restore verification job and its metrics publication."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgerestoreverificationmissing"
+      - alert: ForgeRestoreVerificationStale
+        expr: time() - restore_verification_last_success_timestamp_seconds > 8 * 86400
+        for: 15m
+        labels: {severity: warning, service: restore, notification_scope: business_hours, alert_family: restore-verification}
+        annotations:
+          summary: "Restore verification is more than 8 days old"
+          impact: "Recent backup restorability has not been demonstrated."
+          first_action: "Inspect the scheduled verification job and run history."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgerestoreverificationstale"
+      - alert: ForgeRestoreVerificationCritical
+        # TSDB age preserves the never-verified grace period across Prometheus process restarts.
+        expr: time() - restore_verification_last_success_timestamp_seconds > 15 * 86400 or (absent(restore_verification_last_success_timestamp_seconds) and on() (time() - max(prometheus_tsdb_lowest_timestamp_seconds) > 15 * 86400))
+        for: 15m
+        labels: {severity: critical, service: restore, notification_scope: business_hours, alert_family: restore-verification}
+        annotations:
+          summary: "Restore verification is more than 15 days old"
+          impact: "Backup restorability has been unverified for over two weeks."
+          first_action: "Prioritize a controlled restore verification and investigate repeated failures."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgerestoreverificationcritical"
+
+  - name: forge-observability
+    rules:
+      - alert: ForgeTelemetryTargetDown
+        # File-discovered critical jobs need absence detection because missing targets emit no up series.
+        expr: up{job=~"prometheus|node|pgbouncer|alloy|loki|nginx|celery|pushgateway|alertmanager|blackbox"} == 0 or absent(up{job="blackbox"})
+        for: 5m
+        labels: {severity: critical, service: observability, notification_scope: always, alert_family: telemetry-target}
+        annotations:
+          summary: "A core telemetry target is down"
+          impact: "Operational visibility is incomplete for the affected target."
+          first_action: "Identify the failed scrape job and inspect target health and connectivity."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgetelemetrytargetdown"
+      - alert: ForgeRuleEvaluationFailures
+        expr: increase(prometheus_rule_evaluation_failures_total[10m]) > 0
+        for: 1m
+        labels: {severity: critical, service: prometheus, notification_scope: always, alert_family: rule-evaluation}
+        annotations:
+          summary: "Prometheus rule evaluations are failing"
+          impact: "Recording rules or alerts may be missing or incorrect."
+          first_action: "Inspect Prometheus rule evaluation errors and the affected rule group."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgeruleevaluationfailures"
+      - alert: ForgeNotificationDeliveryFailures
+        expr: sum by (integration) (increase(alertmanager_notifications_failed_total[10m])) > 0
+        for: 1m
+        labels: {severity: critical, service: alertmanager, notification_scope: always, alert_family: notification-delivery}
+        annotations:
+          summary: "Alertmanager notification delivery is failing"
+          impact: "Operational alerts may not reach responders through an integration."
+          first_action: "Identify the failing integration and inspect Alertmanager delivery errors."
+          dashboard_url: "https://__MONITORING_DOMAIN__/d/forge-continuity"
+          runbook_url: "__RUNBOOK_BASE_URL__/alerts.md#forgenotificationdeliveryfailures"

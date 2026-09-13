@@ -1,0 +1,45 @@
+rule_files:
+  - recording-rules.yml
+
+evaluation_interval: 30s
+
+tests:
+  - name: zero_traffic_preserves_unknown
+    interval: 30s
+    input_series:
+      - series: 'forge_api_requests_total{api="graphql",status="200"}'
+        values: "100+0x12"
+      - series: 'graphql_requests_total{status="success"}'
+        values: "100+0x12"
+      - series: 'graphql_requests_total{status="error"}'
+        values: "10+0x12"
+    promql_expr_test:
+      - expr: forge:graphql_errors:ratio5m
+        eval_time: 6m
+        exp_samples: []
+      - expr: forge:api_requests:rate5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'forge:api_requests:rate5m{api="graphql"}'
+            value: 0
+
+  - name: active_traffic_ratios
+    interval: 30s
+    input_series:
+      - series: 'forge_api_requests_total{api="graphql",status="200"}'
+        values: "0+30x12"
+      - series: 'graphql_requests_total{status="success"}'
+        values: "0+90x12"
+      - series: 'graphql_requests_total{status="error"}'
+        values: "0+10x12"
+    promql_expr_test:
+      - expr: forge:graphql_errors:ratio5m
+        eval_time: 6m
+        exp_samples:
+          - labels: forge:graphql_errors:ratio5m
+            value: 0.1
+      - expr: forge:api_requests:rate5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'forge:api_requests:rate5m{api="graphql"}'
+            value: 1
