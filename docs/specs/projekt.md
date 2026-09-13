@@ -47,7 +47,7 @@ Konkrete Benutzer beim Start: 1× Admin, 2× Projektleiter (Simon, Karl-Heinz), 
 | `projektleiter`  | FK → User (nullable)             | Zugewiesener Projektleiter                                                        |
 | `offerte_summe`  | MeasurementField (CHF)           | Erster Angebotsbetrag exkl. MwSt.                                                 |
 | `wv_summe`       | MeasurementField (CHF, nullable) | Aktueller Werkvertragsumfang exkl. MwSt. — bei neuen Projekten noch nicht gesetzt |
-| `projekt_status` | ForeignKey(ProjektStatus)        | Lifecycle-Status des Projekts: „Offen“, „In Arbeit“ oder „Fertig“                  |
+| `projekt_phase`  | ForeignKey(ProjektPhase)         | Lifecycle-Phase des Projekts: „Offen“, „In Arbeit“ oder „Fertig“                  |
 
 **Berechnete Eigenschaft**
 `summe_wv_plus`: WV-Summe (**TODO** das ist erstmal dasselbe, die implementierung kommt noch).
@@ -212,14 +212,14 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 ────────────────────────────────────────────────────────────────────────────
 [+ Neues Projekt]   [☐ Fertige anzeigen]
 
-  Auftragsnr.   Name                    PL            WV exkl.    WV + Zusätze   Status
+  Auftragsnr.   Name                    PL            WV exkl.    WV + Zusätze   Phase
   ─────────────────────────────────────────────────────────────────────────────────────
   2022.0050     Hotel Glockenhof …      Karl-Heinz    319'220     393'319        In Arbeit [→]
   2022.0055     Raiffeisenbank …        Karl-Heinz    131'848     156'537        Fertig    [→]
 ```
 
 - Sortierung per Klick auf Spaltenköpfe (Standard: Auftragsnummer aufsteigend)
-- Projekte mit Status „Fertig“ (`projekt_status`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
+- Projekte mit Status „Fertig“ (`projekt_phase`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
 - Monteur: sieht nur Auftragsnr., Name, Status (keine Finanzdaten)
 
 ### 3. Projektdetail (`/projekte/:id`)

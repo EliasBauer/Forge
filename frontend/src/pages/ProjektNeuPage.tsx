@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { CREATE_PROJEKT } from "../graphql/mutations";
-import { GET_PROJEKT_STATUS_IDS, PROJEKTLEITER } from "../graphql/queries";
+import { GET_PROJEKT_PHASE_IDS, PROJEKTLEITER } from "../graphql/queries";
 
 type MutationResult = {
   createProjekt: {
@@ -15,8 +15,8 @@ type MutationResult = {
 type UserOption = { id: string; username: string };
 type ProjektleiterData = { benutzerList: { items: UserOption[] } };
 
-type ProjektStatusOption = { id: string; name: string };
-type ProjektStatusData = { projektStatusList: { items: ProjektStatusOption[] } };
+type ProjektPhaseOption = { id: string; name: string };
+type ProjektPhaseData = { projektPhaseList: { items: ProjektPhaseOption[] } };
 
 type FormState = {
   name: string;
@@ -25,7 +25,7 @@ type FormState = {
   offerteSumme: string;
   wvSumme: string;
   projektleiter: string;
-  projektStatus: string;
+  projektPhase: string;
 };
 
 const inputClass =
@@ -47,21 +47,21 @@ export default function ProjektNeuPage() {
     offerteSumme: "",
     wvSumme: "",
     projektleiter: "",
-    projektStatus: "",
+    projektPhase: "",
   });
   const [serverError, setServerError] = useState<string | null>(null);
   const { data: projektleiterData } = useQuery<ProjektleiterData>(PROJEKTLEITER);
   const users = projektleiterData?.benutzerList.items ?? [];
-  const { data: statusData } = useQuery<ProjektStatusData>(GET_PROJEKT_STATUS_IDS);
-  const statusOptions = statusData?.projektStatusList.items ?? [];
+  const { data: phaseData } = useQuery<ProjektPhaseData>(GET_PROJEKT_PHASE_IDS);
+  const phaseOptions = phaseData?.projektPhaseList.items ?? [];
 
-  // Vorbelegung mit "Offen", sobald die Statusliste geladen ist.
+  // Vorbelegung mit "Offen", sobald die Phasenliste geladen ist.
   useEffect(() => {
-    if (form.projektStatus || statusOptions.length === 0) return;
-    const offen = statusOptions.find((s) => s.name === "Offen") ?? statusOptions[0];
-    setForm((prev) => ({ ...prev, projektStatus: offen.id }));
+    if (form.projektPhase || phaseOptions.length === 0) return;
+    const offen = phaseOptions.find((s) => s.name === "Offen") ?? phaseOptions[0];
+    setForm((prev) => ({ ...prev, projektPhase: offen.id }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusOptions]);
+  }, [phaseOptions]);
 
   const [createProjekt, { loading }] = useMutation<MutationResult>(CREATE_PROJEKT, {
     refetchQueries: ["ProjektListe"],
@@ -95,8 +95,8 @@ export default function ProjektNeuPage() {
       setServerError("Bitte ein gültiges Jahr eingeben (2000–2100).");
       return;
     }
-    if (!form.projektStatus) {
-      setServerError("Bitte einen Status auswählen.");
+    if (!form.projektPhase) {
+      setServerError("Bitte eine Phase auswählen.");
       return;
     }
     createProjekt({
@@ -107,7 +107,7 @@ export default function ProjektNeuPage() {
         offerteSumme,
         wvSumme: wvSumme ?? undefined,
         projektleiter: form.projektleiter || undefined,
-        projektStatus: form.projektStatus,
+        projektPhase: form.projektPhase,
       },
     });
   }
@@ -235,23 +235,23 @@ export default function ProjektNeuPage() {
 
           <div>
             <label
-              htmlFor="projektStatus"
+              htmlFor="projektPhase"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Status *
+              Phase *
             </label>
             <select
-              id="projektStatus"
-              name="projektStatus"
+              id="projektPhase"
+              name="projektPhase"
               required
-              value={form.projektStatus}
+              value={form.projektPhase}
               onChange={handleChange}
               className={`${inputClass} bg-white`}
               style={{ ["--tw-ring-color" as string]: "var(--forge-blue)" }}
             >
-              {statusOptions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
+              {phaseOptions.map((phase) => (
+                <option key={phase.id} value={phase.id}>
+                  {phase.name}
                 </option>
               ))}
             </select>

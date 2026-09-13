@@ -100,7 +100,7 @@ DEV_STYLES = {
 
 ## 6. Status (Projekt-Lifecycle)
 
-Es gibt **drei** Status (`ProjektStatus`-Lookup-Tabelle, editierbar im
+Es gibt **drei** Status (`ProjektPhase`-Lookup-Tabelle, editierbar im
 Bearbeiten-Formular des Projekts):
 
 | Status       | Visual                                     |

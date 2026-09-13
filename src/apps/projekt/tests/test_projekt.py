@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.projekt.models import Projekt, ProjektStatus
+from apps.projekt.models import Projekt, ProjektPhase
 
 _ProjektModel: Any = Projekt.Interface._model  # type: ignore[misc]
 
@@ -20,10 +20,10 @@ _WV_STANDARD = Decimal("90000")
 _OFFERTE_KLEIN = Decimal("50000")
 
 
-def _offen() -> ProjektStatus:
-    status = ProjektStatus.filter(name="Offen").first()
-    assert status is not None
-    return status
+def _offen() -> ProjektPhase:
+    phase = ProjektPhase.filter(name="Offen").first()
+    assert phase is not None
+    return phase
 
 
 class ProjektModelTest(TestCase):
@@ -39,7 +39,7 @@ class ProjektModelTest(TestCase):
             projektleiter=str(self.user.pk),
             offerte_summe=Measurement(_OFFERTE_STANDARD, "CHF"),
             wv_summe=Measurement(_WV_STANDARD, "CHF"),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
         )
 
     def test_felder_vorhanden(self) -> None:
@@ -51,7 +51,7 @@ class ProjektModelTest(TestCase):
             "projektleiter",
             "offerte_summe",
             "wv_summe",
-            "projekt_status",
+            "projekt_phase",
         ):
             self.assertIn(feld, feld_namen, msg=f"Feld '{feld}' fehlt am Modell")
 
@@ -66,7 +66,7 @@ class ProjektModelTest(TestCase):
             auftragsnummer="2024-002",
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
         )
         self.assertIsNotNone(proj.id)
 
@@ -80,7 +80,7 @@ class ProjektModelTest(TestCase):
                 auftragsnummer="2024-001",
                 jahr=_TESTJAHR,
                 offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
-                projekt_status=_offen(),
+                projekt_phase=_offen(),
             )
 
     def test_projektleiter_ist_optional(self) -> None:
@@ -90,7 +90,7 @@ class ProjektModelTest(TestCase):
             auftragsnummer="2024-003",
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
         )
         self.assertIsNone(proj.projektleiter)
 
@@ -102,31 +102,31 @@ class ProjektModelTest(TestCase):
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
             wv_summe=None,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
         )
         self.assertIsNone(proj.wv_summe)
 
-    def test_projekt_status_ist_pflichtfeld(self) -> None:
+    def test_projekt_phase_ist_pflichtfeld(self) -> None:
         with self.assertRaises((ValidationError, Exception)):
             Projekt.create(
                 ignore_permission=True,
-                name="Ohne Status",
+                name="Ohne Phase",
                 auftragsnummer="2024-006",
                 jahr=_TESTJAHR,
                 offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
             )
 
-    def test_projekt_status_explizit_gesetzt(self) -> None:
-        fertig = ProjektStatus.filter(name="Fertig").first()
+    def test_projekt_phase_explizit_gesetzt(self) -> None:
+        fertig = ProjektPhase.filter(name="Fertig").first()
         proj = Projekt.create(
             ignore_permission=True,
-            name="Mit explizitem Status",
+            name="Mit expliziter Phase",
             auftragsnummer="2024-007",
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_KLEIN, "CHF"),
-            projekt_status=fertig,
+            projekt_phase=fertig,
         )
-        self.assertEqual(proj.projekt_status.name, "Fertig")
+        self.assertEqual(proj.projekt_phase.name, "Fertig")
 
     def test_create_mit_projektleiter_als_string_id(self) -> None:
         """GM konvertiert projektleiter:'2' automatisch → projektleiter_id=2."""
@@ -138,7 +138,7 @@ class ProjektModelTest(TestCase):
             offerte_summe=Measurement(Decimal("10000"), "CHF"),
             wv_summe=Measurement(Decimal("9000"), "CHF"),
             projektleiter=str(user.pk),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             ignore_permission=True,
         )
         self.assertEqual(proj.projektleiter.id, user.pk)  # type: ignore[union-attr]
@@ -150,7 +150,7 @@ class ProjektModelTest(TestCase):
             jahr=str(_TESTJAHR),
             offerte_summe=Measurement(Decimal("10000"), "CHF"),
             wv_summe=Measurement(Decimal("9000"), "CHF"),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             ignore_permission=True,
         )
         self.assertIsNone(proj.projektleiter)
@@ -164,7 +164,7 @@ class ProjektModelTest(TestCase):
             jahr=str(_TESTJAHR),
             offerte_summe=Measurement(Decimal("10000"), "CHF"),
             wv_summe=Measurement(Decimal("9000"), "CHF"),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             ignore_permission=True,
         )
         updated = proj.update(projektleiter=str(user.pk), ignore_permission=True)
@@ -183,7 +183,7 @@ class ProjektRegelnTest(TestCase):
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_STANDARD, "CHF"),
             wv_summe=Measurement(_WV_STANDARD, "CHF"),
-            projekt_status_id=_offen().id,
+            projekt_phase_id=_offen().id,
         )
         defaults.update(kwargs)
         return _ProjektModel(**defaults)
@@ -206,7 +206,7 @@ class ProjektRegelnTest(TestCase):
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_STANDARD, "CHF"),
             wv_summe=None,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
         )
         self.assertIsNotNone(obj.id)
 
@@ -218,7 +218,7 @@ class ProjektRegelnTest(TestCase):
             jahr=_TESTJAHR,
             offerte_summe=Measurement(_OFFERTE_STANDARD, "CHF"),
             wv_summe=Measurement(Decimal("80000"), "CHF"),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
         )
         self.assertIsNotNone(obj.id)
 
@@ -230,6 +230,6 @@ class ProjektRegelnTest(TestCase):
             jahr=_TESTJAHR,
             offerte_summe=Measurement(Decimal("80000"), "CHF"),
             wv_summe=Measurement(_OFFERTE_STANDARD, "CHF"),
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
         )
         self.assertIsNotNone(obj.id)

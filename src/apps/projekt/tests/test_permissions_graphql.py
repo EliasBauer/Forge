@@ -11,7 +11,7 @@ from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektStatus
+from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektPhase
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
 
@@ -69,10 +69,10 @@ def _lade_kostenart_daten() -> None:
     )
 
 
-def _offen() -> ProjektStatus:
-    status = ProjektStatus.filter(name="Offen").first()
-    assert status is not None
-    return status
+def _offen() -> ProjektPhase:
+    phase = ProjektPhase.filter(name="Offen").first()
+    assert phase is not None
+    return phase
 
 
 class RollenGraphQLTestBase(TestCase):
@@ -82,7 +82,7 @@ class RollenGraphQLTestBase(TestCase):
         _lade_kostenart_daten()
         self.projekt = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Sichtbarkeitsprojekt",
             auftragsnummer="2024-900",
             jahr=_TESTJAHR,

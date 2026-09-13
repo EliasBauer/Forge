@@ -20,7 +20,7 @@ from general_manager.permission import (
 from general_manager.rule import Rule
 
 from apps.authentication.managers import Benutzer
-from apps.projekt.models.projekt_status import ProjektStatus
+from apps.projekt.models.projekt_phase import ProjektPhase
 
 if TYPE_CHECKING:
     from apps.projekt.models import KostenPosition
@@ -44,7 +44,7 @@ class Projekt(GeneralManager):
     projektleiter: Benutzer | None
     offerte_summe: Measurement
     wv_summe: Measurement | None
-    projekt_status: ProjektStatus
+    projekt_phase: ProjektPhase
 
     kosten_positionen_list: Bucket[KostenPosition]
 
@@ -65,8 +65,8 @@ class Projekt(GeneralManager):
         wv_summe = MeasurementField(
             base_unit="CHF", default=None, null=True, blank=True
         )
-        projekt_status = models.ForeignKey(
-            "projekt.ProjektStatus",
+        projekt_phase = models.ForeignKey(
+            "projekt.ProjektPhase",
             on_delete=models.PROTECT,
             related_name="projekte",
         )
