@@ -473,3 +473,49 @@ describe("ProjektListePage – Monteur ohne canViewFinanzen", () => {
     expect(await screen.findByText("Detail-Stub 1")).toBeInTheDocument();
   });
 });
+
+const listeMitFertigMock = {
+  request: { query: GET_PROJEKTE, variables: { page: 1 } },
+  result: {
+    data: {
+      projektList: {
+        items: [
+          projekt({ id: "1", auftragsnummer: "T-2026-002", name: "Bauprojekt B" }),
+          projekt({
+            id: "2",
+            auftragsnummer: "T-2026-001",
+            name: "Fertigprojekt F",
+            projektPhase: { id: "3", name: "Fertig" },
+          }),
+        ],
+        pageInfo: { totalCount: 2 },
+      },
+    },
+  },
+};
+
+describe("ProjektListePage – fertige Projekte", () => {
+  it("graut fertige Zeilen aus, den Projektstatus aber nicht", async () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <MockedProvider mocks={[listeMitFertigMock, subscriptionMock]}>
+          <Routes>
+            <Route path="/" element={<ProjektListePage />} />
+          </Routes>
+        </MockedProvider>
+      </MemoryRouter>,
+    );
+
+    const fertigeZeile = (await screen.findByText("Fertigprojekt F")).closest("tr");
+    expect(fertigeZeile).not.toBeNull();
+    const fertig = within(fertigeZeile as HTMLElement);
+    expect(fertig.getByText("T-2026-001").closest("td")).toHaveClass("opacity-50");
+    expect(fertig.getByText("Fertigprojekt F").closest("td")).toHaveClass("opacity-50");
+    // Der Projektstatus bleibt in voller Sättigung lesbar.
+    expect(fertig.getByTestId("mini-text").closest("td")).not.toHaveClass("opacity-50");
+
+    const laufendeZeile = screen.getByText("Bauprojekt B").closest("tr");
+    const laufend = within(laufendeZeile as HTMLElement);
+    expect(laufend.getByText("T-2026-002").closest("td")).not.toHaveClass("opacity-50");
+  });
+});

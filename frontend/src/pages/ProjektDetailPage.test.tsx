@@ -379,3 +379,19 @@ describe("ProjektDetailPage – Rechnungen-Pop-up", () => {
     expect(screen.queryByText("LR-777")).not.toBeInTheDocument();
   });
 });
+
+describe("ProjektDetailPage – Kopfzeile", () => {
+  it("zeigt die Auftragsnummer ohne technische ID", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    // Die ID steht schon in der URL; in der Kopfzeile hilft sie niemandem.
+    expect(await screen.findByText("T-1")).toBeInTheDocument();
+    expect(screen.queryByText(/\(id:/)).not.toBeInTheDocument();
+  });
+
+  it("legt die sechs Kennzahlen des Kopfs auf eine Zeile", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    const grid = await screen.findByTestId("projekt-kopf-grid");
+    expect(grid.children).toHaveLength(6);
+    expect(grid).toHaveClass("lg:grid-cols-6");
+  });
+});

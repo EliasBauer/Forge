@@ -93,7 +93,14 @@ class ProjektKennzahlen(GeneralManager):
 
     @graph_ql_property
     def verbrauchsrate(self) -> Decimal | None:
-        basis = self._summe_offerte()
+        """Anteil der Ist-Kosten am Plan-WV (nicht an der Offerte).
+
+        Bezugsgrösse ist die Plan-WV-Spalte derselben Fusszeile — dasselbe
+        `_summe_wv()`, auf dem auch `delta_ist_plan_pct` rechnet. Gegen die
+        Offerte gerechnet stünde in der Tabelle sonst ein Prozentwert, der zu
+        keiner der beiden darüberliegenden Summen passt.
+        """
+        basis = self._summe_wv()
         if not basis:
             return None
         return (self._summe_ist() / basis * 100).quantize(Decimal("0.01"))
