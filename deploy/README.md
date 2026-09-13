@@ -70,14 +70,16 @@ sudo openssl req -x509 -nodes -newkey rsa:4096 -sha256 -days 3650 \
   -out /etc/forge/tls/fullchain.pem \
   -subj "/CN=forge.example.local" \
   -addext "subjectAltName=DNS:forge.example.local,DNS:monitoring.forge.example.local,DNS:db.forge.example.local"
-sudo chmod 0600 /etc/forge/tls/privkey.pem
+sudo chgrp forge-deploy /etc/forge/tls/privkey.pem
+sudo chmod 0640 /etc/forge/tls/privkey.pem
 sudo chmod 0644 /etc/forge/tls/fullchain.pem
 ```
 
-nginx liest Zertifikat und Schlüssel als root; der Preflight prüft Ablauf und
-Schlüssel-Zuordnung (RSA und EC). HSTS ist bewusst aus, damit Browser
-selbstsignierte Zertifikate weiterhin akzeptieren; mit einem CA-Zertifikat
-`DJANGO_SECURE_HSTS_SECONDS=31536000` in `.env` setzen.
+Der private Schlüssel gehört wie die Secrets der Deploy-Gruppe (`0640`): der
+Preflight läuft als Operator und prüft Ablauf und Schlüssel-Zuordnung (RSA und
+EC); nginx liest beide Dateien im Container als root. HSTS ist bewusst aus,
+damit Browser selbstsignierte Zertifikate weiterhin akzeptieren; mit einem
+CA-Zertifikat `DJANGO_SECURE_HSTS_SECONDS=31536000` in `.env` setzen.
 
 ### DNS
 
