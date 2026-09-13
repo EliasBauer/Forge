@@ -131,6 +131,7 @@ definition `tmp_position` - `offerte_position_prozent(i.e. apparate) * wv_summe`
 - `offerte_position_prozent` = `offerte_position / offerte_summe × 100`
 - `wv_position_prozent` = `wv_position / wv_summe × 100`
 - `ist_position_prozent` = `ist_position / ist_koste × 100`
+- `verbrauchsrate` (Fusszeile „Summe der Kosten", Ist-%) = `summe_ist_kosten / summe_wv_kosten × 100` — Bezug ist Plan-WV, nicht die Offerte
 
 ---
 

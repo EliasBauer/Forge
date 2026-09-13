@@ -1,10 +1,6 @@
 import { chf } from "../utils/format";
+import { GESTRICHELT_HELLBLAU, GESTRICHELT_ROT } from "../utils/chartStyles";
 import { getProjektStatus, type ProjektStatusInput, type Segment } from "../utils/projektStatus";
-
-const GESTRICHELT_ROT =
-  "repeating-linear-gradient(90deg, var(--forge-red) 0 6px, transparent 6px 10px)";
-const GESTRICHELT_HELLBLAU =
-  "repeating-linear-gradient(90deg, var(--forge-blue-light) 0 6px, transparent 6px 10px)";
 
 function Seg({
   seg,
@@ -170,7 +166,7 @@ export default function ProjektStatusChart({ planWV, sollWV, ist, ak }: ProjektS
             </div>
             {status.istOverPlan && (
               <div className="mt-1 text-[11px] text-rose-700 tabular-nums">
-                Ist über Plan-WV: +{chf(status.istOverPlanAbs)} (+
+                Ist-Kosten über Plan-WV: +{chf(status.istOverPlanAbs)} (+
                 {status.istOverPlanPct.toFixed(1)} %)
               </div>
             )}

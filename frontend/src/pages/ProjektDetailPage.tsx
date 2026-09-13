@@ -4,6 +4,9 @@ import { Link, useParams } from "react-router-dom";
 import { Calculator, ChevronLeft, Database, Pencil } from "lucide-react";
 import Layout from "../components/Layout";
 import ProjektStatusChart from "../components/ProjektStatusChart";
+import ProjektKategorienChart, {
+  type KategorieZeile,
+} from "../components/ProjektKategorienChart";
 import RechnungenModal, { type RechnungRow } from "../components/RechnungenModal";
 import {
   GET_KOSTENART_IDS,
@@ -182,140 +185,6 @@ function istCellCls(level: DeviationLevel | null): string {
   return "bg-emerald-50/60 text-emerald-700 font-medium";
 }
 
-// ------- Visualization card -------
-
-type VizRow = {
-  schluessel: string;
-  label: string;
-  planWV: number | null;
-  ist: number | null;
-};
-
-function ProjectVisualization({ rows }: { rows: VizRow[] }) {
-  const visible = rows.filter((r) => r.planWV != null || r.ist != null);
-  if (visible.length === 0) return null;
-
-  const maxVal = Math.max(
-    ...visible.flatMap((r) => [r.planWV ?? 0, r.ist ?? 0]),
-    1,
-  );
-
-  const deviations = visible.map((r) => getDeviation(r.planWV, r.ist));
-  const countOver = deviations.filter((d) => d?.level === "over").length;
-  const countWarn = deviations.filter((d) => d?.level === "warn").length;
-  const countOk = deviations.filter((d) => d != null && (d.level === "ok" || d.level === "under")).length;
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm mt-5">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 className="text-[15px] font-semibold text-gray-900">Projektkategorien auf einen Blick</h2>
-        <div className="flex items-center gap-4 text-[11px] font-medium">
-          {countOver > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-rose-700">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              {countOver} überschritten
-            </span>
-          )}
-          {countWarn > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-amber-700">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
-              {countWarn} Grenzbereich
-            </span>
-          )}
-          {countOk > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-emerald-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              {countOk} im Soll
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="px-6 py-4">
-        <p className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 mb-4">
-          Plan-WV vs. Ist je Kategorie
-        </p>
-        <div className="flex flex-col gap-3">
-          {visible.map((row, i) => {
-            const dev = deviations[i];
-            const level = dev?.level ?? null;
-            const planWVPct = row.planWV != null ? (row.planWV / maxVal) * 100 : 0;
-            const istPct = row.ist != null ? (row.ist / maxVal) * 100 : 0;
-            const dotColor = level ? DEV_STYLES[level].dot : "bg-gray-400";
-            const textColor = level ? DEV_STYLES[level].text : "text-gray-400";
-
-            return (
-              <div
-                key={row.schluessel}
-                className="grid items-center gap-4 py-2 border-b border-gray-50 last:border-0"
-                style={{ gridTemplateColumns: "160px 1fr 130px" }}
-              >
-                {/* Label with status dot */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${level ? DEV_STYLES[level].dot : "bg-gray-200"}`} />
-                  <span className="text-sm text-gray-700 truncate">{row.label}</span>
-                </div>
-
-                {/* Dual bar */}
-                <div className="flex flex-col gap-1.5">
-                  {/* Plan-WV bar */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-400 w-11 text-right shrink-0">Plan-WV</span>
-                    <div className="flex-1 h-2.5 rounded-sm bg-gray-100 relative overflow-hidden">
-                      <div
-                        className="absolute left-0 top-0 h-full rounded-sm bg-gray-300"
-                        style={{ width: `${planWVPct}%` }}
-                      />
-                    </div>
-                    <span className="text-[11px] text-gray-500 tabular-nums w-24 text-right shrink-0">
-                      {chf(row.planWV)}
-                    </span>
-                  </div>
-                  {/* Ist bar + Plan-WV marker */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-400 w-11 text-right shrink-0">Ist</span>
-                    <div className="flex-1 h-2.5 rounded-sm bg-gray-100 relative overflow-visible">
-                      <div
-                        className={`absolute left-0 top-0 h-full rounded-sm ${dotColor}`}
-                        style={{ width: `${istPct}%` }}
-                      />
-                      {planWVPct > 0 && (
-                        <div
-                          className="absolute top-[-2px] bottom-[-2px] w-px bg-gray-500/70"
-                          style={{ left: `${planWVPct}%` }}
-                        />
-                      )}
-                    </div>
-                    <span className="text-[11px] text-gray-500 tabular-nums w-24 text-right shrink-0">
-                      {chf(row.ist)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Status pill */}
-                <div className="flex justify-end">
-                  {dev != null ? (
-                    <span className={`inline-flex items-center gap-1 text-[11px] font-medium tabular-nums ${textColor}`}>
-                      {(level === "over" || level === "warn") && (
-                        <span className="text-[10px]">⚠</span>
-                      )}
-                      {dev.overPct >= 0 ? "+" : "−"}
-                      {Math.abs(dev.overPct).toFixed(1)} %
-                    </span>
-                  ) : row.planWV != null ? (
-                    <span className="text-[11px] italic text-gray-400">noch offen</span>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ------- Main page -------
 
 export default function ProjektDetailPage() {
@@ -460,8 +329,8 @@ export default function ProjektDetailPage() {
   // (Soll-WV), sobald das Backend die Ertragsblock-Zusätze in summeWvPlus einrechnet.
   const summeWvPlusNum = kennzahlen?.summeWvPlus?.value ?? null;
 
-  // Visualization rows (non-locked, with at least one value)
-  const vizRows: VizRow[] = allReihen
+  // Kategorie-Zeilen des Charts: ohne Ertragsblock und ohne Stunden (andere Einheit)
+  const kategorieZeilen: KategorieZeile[] = allReihen
     .filter((r) => !ERTRAGSBLOCK.has(r.schluessel) && r.schluessel !== "stunden")
     .map((r) => ({
       schluessel: r.schluessel,
@@ -582,7 +451,7 @@ export default function ProjektDetailPage() {
                 ) : (
                   <h1 className="text-[22px] font-semibold text-gray-900">{p.name}</h1>
                 )}
-                <p className="text-xs text-gray-500 mt-1">{p.auftragsnummer} (id:{p.id})</p>
+                <p className="text-xs text-gray-500 mt-1">{p.auftragsnummer}</p>
               </div>
               <div className="flex items-center gap-2 ml-4 shrink-0">
                 {canEditData && !editingHeader && (
@@ -607,7 +476,10 @@ export default function ProjektDetailPage() {
               </div>
             </div>
 
-            <div className="border-t border-gray-100 px-6 py-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            <div
+              data-testid="projekt-kopf-grid"
+              className="border-t border-gray-100 px-6 py-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6"
+            >
               <div>
                 <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Projektleiter</div>
                 {editingHeader && headerForm ? (
@@ -960,8 +832,8 @@ export default function ProjektDetailPage() {
             />
           )}
 
-          {/* Visualisierung */}
-          {showPositionen && <ProjectVisualization rows={vizRows} />}
+          {/* Kategorien-Chart, Balkenlogik wie im Projektstatus */}
+          {showPositionen && <ProjektKategorienChart rows={kategorieZeilen} />}
         </>
       )}
 

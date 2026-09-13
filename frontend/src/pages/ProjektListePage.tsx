@@ -77,6 +77,12 @@ const PHASE_DOTS: Record<string, string> = {
   Fertig: "bg-gray-400",
 };
 
+// Abgeschlossene Projekte treten in der Liste zurueck. Der Projektstatus bleibt
+// bewusst voll gesaettigt — gerade bei fertigen Projekten will man sehen, ob am
+// Ende etwas offen geblieben ist.
+const FERTIG_PHASE = "Fertig";
+const GEDAEMPFT = " opacity-50";
+
 function PhaseBadge({ phase }: { phase: string }) {
   const style = PHASE_STYLES[phase] ?? PHASE_STYLES.Offen;
   const dot = PHASE_DOTS[phase] ?? PHASE_DOTS.Offen;
@@ -349,7 +355,10 @@ export default function ProjektListePage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((p) => (
+                {items.map((p) => {
+                  const gedaempft =
+                    p.projektPhase.name === FERTIG_PHASE ? GEDAEMPFT : "";
+                  return (
                   <tr
                     key={p.id}
                     onClick={showFinancials ? () => navigate(`/projekte/${p.id}`) : undefined}
@@ -357,10 +366,10 @@ export default function ProjektListePage() {
                       showFinancials ? " hover:bg-blue-50/50 cursor-pointer" : ""
                     }`}
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                    <td className={`px-4 py-3 font-mono text-xs text-gray-600${gedaempft}`}>
                       {p.auftragsnummer}
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                    <td className={`px-4 py-3 font-medium text-gray-900${gedaempft}`}>
                       <span className="inline-flex items-center gap-1">
                         {p.name}
                         {showFinancials && (
@@ -371,18 +380,18 @@ export default function ProjektListePage() {
                         )}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={`px-4 py-3${gedaempft}`}>
                       <Avatar name={p.projektleiter?.username ?? null} />
                     </td>
                     {showFinancials && (
                       <>
-                        <td className="px-4 py-3 text-right text-gray-700 tabular-nums">
+                        <td className={`px-4 py-3 text-right text-gray-700 tabular-nums${gedaempft}`}>
                           {chf(p.offerteSumme, { withCurrency: false })}
                         </td>
                         {/* Plan-WV = summeWvPlus (ProjektKennzahlen, wächst später um die
                             Ertragsblock-Zusätze) — dieselbe Kennzahl wie auf der
                             Detailseite, siehe docs/specs/designs/projektdetail.md §5.2. */}
-                        <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                        <td className={`px-4 py-3 text-right tabular-nums text-gray-700${gedaempft}`}>
                           {p.projektKennzahlenList.items[0]?.summeWvPlus != null ? chf(p.projektKennzahlenList.items[0].summeWvPlus, { withCurrency: false }) : "–"}
                         </td>
                         <td className="px-4 py-3">
@@ -399,7 +408,8 @@ export default function ProjektListePage() {
                       <PhaseBadge phase={p.projektPhase.name} />
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {!isSearching && listItems.length < total && (
                   <tr ref={sentinelRef}>
                     <td
