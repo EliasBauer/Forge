@@ -535,7 +535,7 @@ Claude-Session: https://claude.ai/code/session_01Wn4HSteRch4Z7TwLgvAoQ3"
   Schema `projektKennzahlenList { items { rechnungen { ... } } }`; für
   Betrachter `null`.
 
-- [ ] **Step 1: Failing Tests schreiben**
+- [x] **Step 1: Failing Tests schreiben**
 
 An `src/apps/projekt/tests/test_rechnungen_properties.py` anhängen:
 
@@ -615,13 +615,13 @@ Dafür oben im Modul ergänzen:
 from apps.projekt.tests.test_permissions_graphql import RollenGraphQLTestBase
 ```
 
-- [ ] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/projekt/tests/test_rechnungen_properties.py -v --no-cov`
 Expected: FAIL — `Cannot query field 'rechnungen' on type 'ProjektKennzahlenType'`
 bzw. `AttributeError: 'ProjektKennzahlen' object has no attribute 'rechnungen'`
 
-- [ ] **Step 3: Implementieren**
+- [x] **Step 3: Implementieren**
 
 In `src/apps/projekt/calculation_manager/projekt_kennzahlen.py`:
 
@@ -655,19 +655,19 @@ In `src/apps/projekt/calculation_manager/projekt_kennzahlen.py`:
 (`_summe_ist` ersetzt die bisherige Fassung, die dieselbe Query selbst
 abgesetzt hat — damit sind Liste und Summe garantiert dieselbe Menge.)
 
-- [ ] **Step 4: Tests laufen lassen**
+- [x] **Step 4: Tests laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/projekt/tests/ -v --no-cov`
 Expected: PASS — insbesondere auch `test_projekt_kennzahlen.py` und
 `test_permissions_graphql.py` unverändert grün.
 
-- [ ] **Step 5: Volles Gate**
+- [x] **Step 5: Volles Gate**
 
 Run: `devcontainer exec --workspace-folder . uv run pre-commit run --all-files`
 Expected: alle Hooks **Passed** (Coverage-Gate 100 % — die neuen Zeilen sind
 durch die Tests oben abgedeckt).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/apps/projekt/calculation_manager/projekt_kennzahlen.py \
