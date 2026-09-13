@@ -166,6 +166,12 @@ describe("ProjektListePage – keine Client-Sortierung mehr", () => {
     expect(await screen.findByText("Bauprojekt B")).toBeInTheDocument();
     expect(screen.getAllByText("In Arbeit").length).toBeGreaterThan(0);
   });
+
+  it("zeigt die Projektstatus-Spalte mit offenem Betrag", async () => {
+    renderPage();
+    expect(await screen.findByText("Projektstatus")).toBeInTheDocument();
+    expect(screen.getAllByTestId("mini-text")[0]).toHaveTextContent("offen");
+  });
 });
 
 describe("ProjektListePage – Infinite Scroll", () => {
@@ -436,8 +442,8 @@ describe("ProjektListePage – Monteur ohne canViewFinanzen", () => {
     await screen.findByText("Bauprojekt B");
 
     expect(screen.queryByText("Offerte")).not.toBeInTheDocument();
-    expect(screen.queryByText("WV + Zusätze")).not.toBeInTheDocument();
-    expect(screen.queryByText("Abweichung zu Ist")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plan-WV")).not.toBeInTheDocument();
+    expect(screen.queryByText("Projektstatus")).not.toBeInTheDocument();
   });
 
   it("navigiert bei Klick auf eine Zeile nicht in die Detailseite", async () => {

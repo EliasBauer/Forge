@@ -6,7 +6,7 @@ import Layout from "../components/Layout";
 import { GET_PROJEKTE, SEARCH_PROJEKTE } from "../graphql/queries";
 import { PROJEKT_LISTE_SUBSCRIPTION } from "../graphql/subscriptions";
 import { chf, type GQLMeasurement } from "../utils/format";
-import { getDeviation, DEV_STYLES } from "../utils/deviation";
+import ProjektStatusMini from "../components/ProjektStatusMini";
 import { useAuth } from "../contexts/AuthContext";
 
 type Projekt = {
@@ -85,40 +85,6 @@ function StatusBadge({ status }: { status: string }) {
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {status}
     </span>
-  );
-}
-
-function DeviationCell({ wv, ist }: { wv: number | null; ist: number | null }) {
-  if (wv == null || ist == null || ist === 0) {
-    return <span className="text-gray-300 text-[12px]">–</span>;
-  }
-  const dev = getDeviation(wv, ist);
-  if (!dev) return <span className="text-gray-300 text-[12px]">–</span>;
-
-  const magnitude = Math.min(Math.abs(dev.overPct), 30) / 30;
-  const fillPct = magnitude * 50;
-  const isOver = dev.overPct > 0;
-  const dotColor = DEV_STYLES[dev.level].dot;
-  const textColor = DEV_STYLES[dev.level].text;
-  const sign = dev.overPct >= 0 ? "+" : "−";
-  const absStr = Math.abs(dev.overPct).toFixed(1);
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="relative w-12 h-1.5 rounded-full bg-gray-100 shrink-0">
-        <div className="absolute left-1/2 top-[-2px] bottom-[-2px] w-px bg-gray-400/60" />
-        <div
-          className={`absolute top-0 bottom-0 rounded-full ${dotColor}`}
-          style={{
-            width: `${fillPct}%`,
-            left: isOver ? "50%" : `${50 - fillPct}%`,
-          }}
-        />
-      </div>
-      <span className={`text-[12px] font-medium tabular-nums whitespace-nowrap ${textColor}`}>
-        {sign}{absStr} %
-      </span>
-    </div>
   );
 }
 
@@ -370,10 +336,10 @@ export default function ProjektListePage() {
                         Offerte
                       </th>
                       <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right">
-                        WV + Zusätze
+                        Plan-WV
                       </th>
                       <th className="px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500">
-                        Abweichung zu Ist
+                        Projektstatus
                       </th>
                     </>
                   )}
@@ -417,7 +383,12 @@ export default function ProjektListePage() {
                           {p.projektKennzahlenList.items[0]?.summeWvPlus != null ? chf(p.projektKennzahlenList.items[0].summeWvPlus, { withCurrency: false }) : "–"}
                         </td>
                         <td className="px-4 py-3">
-                          <DeviationCell wv={p.projektKennzahlenList.items[0]?.summeWvPlus?.value ?? null} ist={p.projektKennzahlenList.items[0]?.summeIstKosten?.value ?? null} />
+                          <ProjektStatusMini
+                            planWV={p.projektKennzahlenList.items[0]?.summeWvPlus?.value ?? null}
+                            sollWV={p.projektKennzahlenList.items[0]?.summeWvPlus?.value ?? null}
+                            ist={p.projektKennzahlenList.items[0]?.summeIstKosten?.value ?? 0}
+                            ak={0}
+                          />
                         </td>
                       </>
                     )}

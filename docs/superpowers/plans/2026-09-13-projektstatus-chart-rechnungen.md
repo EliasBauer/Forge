@@ -1276,7 +1276,7 @@ Claude-Session: https://claude.ai/code/session_01Wn4HSteRch4Z7TwLgvAoQ3"
 - Consumes: `getProjektStatus` aus Task 3.
 - Produces: `<ProjektStatusMini planWV sollWV ist ak />` (Default-Export).
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 `frontend/src/components/ProjektStatusMini.test.tsx`:
 
@@ -1308,12 +1308,12 @@ describe("ProjektStatusMini", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run ProjektStatusMini`
 Expected: FAIL — `Failed to resolve import "./ProjektStatusMini"`
 
-- [ ] **Step 3: Implementieren**
+- [x] **Step 3: Implementieren**
 
 `frontend/src/components/ProjektStatusMini.tsx`:
 
@@ -1374,12 +1374,12 @@ export default function ProjektStatusMini({ planWV, sollWV, ist, ak }: Props) {
 }
 ```
 
-- [ ] **Step 4: Test laufen lassen**
+- [x] **Step 4: Test laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run ProjektStatusMini`
 Expected: PASS (3 Tests)
 
-- [ ] **Step 5: Liste umbauen**
+- [x] **Step 5: Liste umbauen**
 
 In `frontend/src/pages/ProjektListePage.tsx`:
 
@@ -1419,7 +1419,7 @@ import ProjektStatusMini from "../components/ProjektStatusMini";
                         </td>
 ```
 
-- [ ] **Step 6: Listentest anpassen**
+- [x] **Step 6: Listentest anpassen**
 
 In `frontend/src/pages/ProjektListePage.test.tsx` die beiden Zeilen 439-440
 (Monteur sieht keine Finanzspalten) auf die neuen Titel umstellen und einen
@@ -1443,12 +1443,12 @@ Der Helfer in dieser Datei heisst `renderPage()` (Zeile 104, ohne Argumente):
 Der Standard-Mock (`projekt()`, Zeile 49) liefert `summeWvPlus` 9'500 und
 `summeIstKosten` 8'000 — also Plan-WV 9'500, AK 0, Offen 9'500 (100 %).
 
-- [ ] **Step 7: Frontend-Tests laufen lassen**
+- [x] **Step 7: Frontend-Tests laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run`
 Expected: PASS
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/src/components/ProjektStatusMini.tsx \
