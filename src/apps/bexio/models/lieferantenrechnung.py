@@ -76,7 +76,7 @@ class Lieferantenrechnung(GeneralManager):
             ordering = ["-rechnungsdatum", "position"]
 
     class Permission(AdditiveManagerPermission):
-        __read__ = ["isForgeAdmin", "isProjektleiter", "isBetrachter"]
+        __read__ = ["isForgeAdmin", "isProjektleiter"]
         __create__ = ["isAdmin"]
         __update__ = ["isAdmin"]
         __delete__ = ["isAdmin"]

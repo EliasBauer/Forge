@@ -8,9 +8,21 @@ ist die `auftragsnummer` eines Projekts — die ein Monteur sehen darf.
 
 Solange `Lieferantenrechnung` auf `isAuthenticated` stand, war die Absicherung
 der abgeleiteten Werte damit wertlos: ein Monteur konnte das Journal direkt
-abfragen und die Ist-Kosten je Projekt selbst zusammenrechnen. Für einen
-Betrachter war es sogar mehr, als ihm auf der Detailseite verwehrt wird — das
-komplette Journal über alle Projekte und Lieferanten, ganz ohne Join.
+abfragen und die Ist-Kosten je Projekt selbst zusammenrechnen.
+
+Auch der **Betrachter** bleibt bewusst draußen, obwohl er die aggregierten
+Kennzahlen sehen darf. Grund ist die Konsistenz mit der Rolle: einzelne
+Kostenpositionen sind ihm verwehrt, und eine einzelne Lieferantenrechnung ist
+feiner als eine Kostenposition — sie nennt zusätzlich den Lieferanten. Die
+gröbere Ebene zu sperren und die feinere offenzulassen wäre widersprüchlich.
+„Betrachter" ist eine absichtlich beschränkte Rolle für Personen, denen
+gegenüber Rechenschaft abgelegt wird; sie sollen die Summen sehen, nicht die
+Belege.
+
+Funktional kostet das nichts: das Frontend fragt weder `lieferantenrechnungList`
+noch `kontoList` je ab, und die Betrachter-Kennzahlen laufen unverändert, weil
+`ProjektKennzahlen` intern auf die Buckets zugreift und GM Permissions nur an
+der GraphQL-Grenze prüft.
 
 Diese Tests halten fest, dass die Rohdaten mindestens so eng sind wie das,
 was aus ihnen berechnet wird.
@@ -116,11 +128,20 @@ class BexioRohdatenSichtbarkeitTest(TestCase):
         self._login("Monteur")
         self.assertEqual(self._konten(), 0)
 
-    # ---------------- erlaubt ----------------
+    def test_betrachter_sieht_keine_lieferantenrechnungen(self) -> None:
+        """Bewusst verwehrt — eine Rechnung ist feiner als eine Kostenposition.
 
-    def test_betrachter_sieht_lieferantenrechnungen(self) -> None:
+        Der Betrachter sieht die aggregierten Kennzahlen, aber keine Belege;
+        siehe Modul-Docstring.
+        """
         self._login("Betrachter")
-        self.assertEqual(self._rechnungen(), 1)
+        self.assertEqual(self._rechnungen(), 0)
+
+    def test_betrachter_sieht_keine_konten(self) -> None:
+        self._login("Betrachter")
+        self.assertEqual(self._konten(), 0)
+
+    # ---------------- erlaubt ----------------
 
     def test_projektleiter_sieht_lieferantenrechnungen(self) -> None:
         self._login("Projektleiter")
