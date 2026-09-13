@@ -344,10 +344,13 @@ Beispiel-Cron (täglich 02:30):
 Das Profil startet ein isoliertes PostgreSQL mit temporärem Volume, prüft die
 Checksummen, spielt den Dump ein und lässt `manage.py check` und
 `showmigrations --plan` laufen. Produktionsdaten werden nicht berührt.
-Cleanup der Verifikationsressourcen:
+Cleanup nur gezielt (Container und temporäres Volume). Niemals `compose down`
+mit einem Profil verwenden: `down` entfernt zusätzlich alle profil-losen
+Kern-Dienste (web, postgres, redis, nginx, …).
 
 ```bash
-./scripts/compose.sh --profile restore-verification down
+./scripts/compose.sh --profile restore-verification rm -sf restore-postgres restore-verify
+docker volume rm "$(./scripts/compose.sh config --format json | python3 -c 'import sys,json; print(json.load(sys.stdin)["name"])')_restore_postgres_data"
 ```
 
 ## PostgreSQL-Restore

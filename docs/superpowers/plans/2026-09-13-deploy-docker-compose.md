@@ -817,6 +817,7 @@ Funde, alle in den Branch zurückgespielt:
 - `SOURCE_REVISION` aus `.env` überschrieb die Git-Revision → nur noch aus Git, auch für manuelle Backups über `compose.sh` (d1aad2a, fe107de).
 - TLS-Key muss für die Deploy-Gruppe lesbar sein (Preflight läuft als Operator) → Runbook (1ce59f9); auf dem Pi liegt das Testzertifikat deshalb unter `~/forge-tls`.
 - pgAdmin lehnt `.local`-Login-Adressen ab → Preflight-Check + Default `admin@forge-betrieb.de` (fe107de).
+- `compose down --profile restore-verification` entfernte auch die Kern-Dienste (Compose `down` wirkt auf alle aktiven Profile inkl. der profil-losen Services) → Runbook: gezieltes `rm -sf` + Volume, Test verbietet `compose down` im Runbook.
 - Raspberry Pi OS ohne Memory-Cgroup-Accounting: Container-Speichermetriken leer → Runbook „Bekannte Grenzen".
 
 Verifiziert (vom Mac per `curl --resolve`, WebSocket per Python-Client, Rest auf dem Pi): Health live/ready/maintenance 200, SPA + Logo + Admin-Static, `/admin/login/` 200, HTTP→HTTPS 308, unbekannter Host 404, Basic-Auth 401/200, `/api/login/` mit falschen Daten 401 und mit dem angelegten Admin 200, GraphQL-HealthProbe `{"data":{"__typename":"Query"}}`, WebSocket `connection_ack` + offene Subscription, Grafana health + 2 Datasources + 20 Dashboards in 3 Ordnern, Loki mit Logs aller 22 Services, 17 Prometheus-Targets `up`, pgAdmin hinter Basic-Auth 200, 3 Backups lokal + im Share mit gültigen Checksummen. Wartungsmodus nach Deploy beendet (`forge_maintenance_mode 0`, `forge_deployment_timestamp_seconds{revision="d1aad2a"}`).

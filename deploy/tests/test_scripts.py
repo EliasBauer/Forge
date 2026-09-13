@@ -947,6 +947,15 @@ def test_start_helpers_use_exact_forge_service_sets_without_one_shots() -> None:
         assert "--force-recreate --no-deps --no-build" in text
 
 
+def test_runbook_never_recommends_compose_down_for_profiles() -> None:
+    """`compose down --profile X` also removes the profile-less core services."""
+    text = (DEPLOY / "README.md").read_text()
+    for line in text.splitlines():
+        if "compose.sh" in line and " down" in line:
+            raise AssertionError(f"runbook must not use compose down: {line.strip()}")
+    assert "rm -sf restore-postgres restore-verify" in text
+
+
 def test_native_observability_validator_runs_exact_checks_in_order() -> None:
     text = (SCRIPTS / "validate-observability-config.sh").read_text()
     order = [
