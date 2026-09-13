@@ -372,28 +372,16 @@ export default function ProjektDetailPage() {
   // jede Query, die dieselben Felder berührt (u. a. ProjektListePage, SearchProjekte),
   // und müsste sich auf die Reihenfolge der Listeneinträge verlassen (keine IDs) —
   // bei künftiger Filterung/Paginierung ein stiller Falsch-Merge statt eines
-  // sichtbaren Fehlers. Deshalb no-cache statt globaler Cache-Konfiguration.
-  //
-  // Damit erneutes Öffnen trotzdem sofort da ist (kein Netz-Roundtrip, kein
-  // Lade-Flackern): einmal pro Projekt-`id` laden, danach aus `rechnungenQuery.data`
-  // bedienen, bis sich die `id` ändert (Navigation zu einem anderen Projekt).
-  const [rechnungenGeladenFuerId, setRechnungenGeladenFuerId] = useState<
-    string | undefined
-  >(undefined);
+  // sichtbaren Fehlers. Deshalb no-cache statt globaler Cache-Konfiguration. Jedes
+  // Öffnen lädt bewusst frisch (man verweilt hier nicht, ein Roundtrip pro Klick
+  // ist in Ordnung) — das hält den Zustand einfach und zeigt nie veraltete Daten.
   const [ladeRechnungen, rechnungenQuery] = useLazyQuery<RechnungenData>(
     GET_PROJEKT_RECHNUNGEN,
     { fetchPolicy: "no-cache" },
   );
 
   function oeffneRechnungen(schluessel: string | null, title: string) {
-    if (rechnungenGeladenFuerId !== id && !rechnungenQuery.loading) {
-      ladeRechnungen({ variables: { id } })
-        .then(() => setRechnungenGeladenFuerId(id))
-        // Fehler landen bereits in rechnungenQuery.error; ein Abbruch (z. B. beim
-        // Verlassen der Seite während des Ladens) soll hier nicht als unbehandelte
-        // Promise-Ablehnung auffallen — nächster Klick versucht es erneut.
-        .catch(() => {});
-    }
+    void ladeRechnungen({ variables: { id } });
     setRechnungenModal({ title, schluessel });
   }
 

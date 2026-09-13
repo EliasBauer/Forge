@@ -257,21 +257,72 @@ describe("ProjektDetailPage – Rechnungen-Pop-up", () => {
     expect(await screen.findByText("Alle Rechnungen · Testprojekt")).toBeInTheDocument();
   });
 
-  it("lädt beim erneuten Öffnen nicht neu — sofort da, kein zweiter Request", async () => {
-    renderPage({ canUpdate: false, canDelete: false });
-    const istZelle = await screen.findByRole("button", { name: /400\.00/ });
+  it("lädt bei jedem Öffnen neu, statt den letzten Stand zu behalten", async () => {
+    // Zweiter GET_PROJEKT_RECHNUNGEN-Mock mit anderem Inhalt: erscheint er nach
+    // dem zweiten Öffnen, wurde tatsächlich neu geladen statt der alte Stand
+    // aus dem ersten Fetch weiterverwendet.
+    const rechnungenMockNeu = {
+      request: { query: GET_PROJEKT_RECHNUNGEN, variables: { id: "1" } },
+      result: {
+        data: {
+          projekt: {
+            id: "1",
+            projektKennzahlenList: { items: [{ rechnungen: [] }] },
+            istWertList: {
+              items: [
+                {
+                  kostenart: { schluessel: "apparate" },
+                  rechnungen: [
+                    {
+                      id: "9",
+                      dokumentNr: "LR-999",
+                      rechnungsdatum: "2024-07-01",
+                      firmenname: "Neu AG",
+                      zeilenTitel: null,
+                      status: "open",
+                      faelligkeitsdatum: null,
+                      ueberfaellig: false,
+                      betrag: 500,
+                      steuerBerechnet: 0,
+                      nettoBetrag: 500,
+                      buchungskonto: null,
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
 
+    render(
+      <MemoryRouter initialEntries={["/projekte/1"]}>
+        <MockedProvider
+          mocks={[
+            projektMock({ canUpdate: false, canDelete: false }),
+            kostenartMock,
+            phaseMock,
+            subscriptionMock,
+            projektleiterMock,
+            rechnungenMock,
+            rechnungenMockNeu,
+          ]}
+        >
+          <Routes>
+            <Route path="/projekte/:id" element={<ProjektDetailPage />} />
+          </Routes>
+        </MockedProvider>
+      </MemoryRouter>,
+    );
+
+    const istZelle = await screen.findByRole("button", { name: /400\.00/ });
     fireEvent.click(istZelle);
     expect(await screen.findByText("LR-777")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Schliessen" }));
 
-    // Zweites Öffnen: kein Request mehr im MockedProvider übrig (der Mock ist
-    // einmalig) — ein zweiter Fetch würde als Fehlerbanner ("No more mocked
-    // responses") statt der Zeile erscheinen. Direkter, synchroner Zugriff
-    // ohne findBy* stellt sicher, dass keine neue Ladephase abgewartet wird.
     fireEvent.click(screen.getByRole("button", { name: /400\.00/ }));
-    expect(screen.getByText("LR-777")).toBeInTheDocument();
-    expect(screen.queryByText("Lade Rechnungen…")).not.toBeInTheDocument();
-    expect(screen.queryByText(/No more mocked responses/)).not.toBeInTheDocument();
+    expect(await screen.findByText("LR-999")).toBeInTheDocument();
+    expect(screen.queryByText("LR-777")).not.toBeInTheDocument();
   });
 });
