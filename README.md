@@ -103,7 +103,9 @@ Celery Worker + Beat, PostgreSQL 17 hinter pgBouncer, Redis, Meilisearch,
 dazu die Profile `observability` (Prometheus, Alertmanager, Grafana, Loki,
 Alloy, Exporter), `administration` (pgAdmin), `backup` und
 `restore-verification`. Konfiguration, Skripte und Runbook liegen unter
-[`deploy/`](deploy/README.md).
+[`deploy/`](deploy/README.md). Einstieg: [`docs/start_prod.md`](docs/start_prod.md)
+(Schritt für Schritt) und [`docs/explain_prod_setup.md`](docs/explain_prod_setup.md)
+(was die Teile tun und warum).
 
 Kurzfassung (Details und Host-Vorbereitung im Runbook):
 
