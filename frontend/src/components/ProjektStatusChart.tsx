@@ -1,12 +1,5 @@
 import { chf } from "../utils/format";
-import { getProjektStatus, type Segment } from "../utils/projektStatus";
-
-type Props = {
-  planWV: number | null;
-  sollWV: number | null;
-  ist: number;
-  ak: number;
-};
+import { getProjektStatus, type ProjektStatusInput, type Segment } from "../utils/projektStatus";
 
 const GESTRICHELT_ROT =
   "repeating-linear-gradient(90deg, var(--forge-red) 0 6px, transparent 6px 10px)";
@@ -61,7 +54,7 @@ function Row({
   );
 }
 
-export default function ProjektStatusChart({ planWV, sollWV, ist, ak }: Props) {
+export default function ProjektStatusChart({ planWV, sollWV, ist, ak }: ProjektStatusInput) {
   const status = getProjektStatus({ planWV, sollWV, ist, ak });
 
   return (

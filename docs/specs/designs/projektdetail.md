@@ -316,16 +316,20 @@ Alle drei Linien teilen sich denselben Massstab
 
 | Kennzahl        | Quelle heute                                                        |
 | --------------- | -------------------------------------------------------------------- |
-| Plan-WV         | `wvSumme` (dieselbe Zahl wie „WV-Summe exkl. MwSt.“ im Kopf)         |
-| Soll-WV         | ebenfalls `wvSumme` — Plan-WV und Soll-WV sind aktuell identisch     |
+| Plan-WV         | `summeWvPlus` (ProjektKennzahlen; dieselbe Kennzahl auf Detailseite und Projektliste) |
+| Soll-WV         | `wvSumme` (ursprünglicher Werkvertragswert, dieselbe Zahl wie „WV-Summe exkl. MwSt.“ im Kopf) |
 | Ist-Kosten kum. | `summeIstKosten` (= Fusszeile „Summe der Kosten“ der Kostentabelle)  |
 | AK verrechnet   | fest `0` — das Backend liefert diesen Wert noch nicht                |
 
-Weil Soll-WV und Plan-WV heute immer gleich sind, treten die unten
-beschriebenen „Soll-WV ≠ Plan-WV“-Fälle in der Praxis nicht auf; die
-Komponente unterstützt sie bereits für den Tag, an dem Plan-WV ein eigener
-Wert wird. Ebenso ist „Offen“ heute für jedes Projekt immer 100 % von
-Plan-WV, weil AK verrechnet konstant 0 ist.
+`summeWvPlus` (`summe_wv_plus` in `projekt_kennzahlen.py`) liefert heute
+lediglich `wv_summe` zurück — Plan-WV und Soll-WV sind also aktuell
+identisch, und die unten beschriebenen „Soll-WV ≠ Plan-WV“-Fälle treten in
+der Praxis nicht auf. Die Komponente unterstützt sie bereits für den Tag,
+an dem der dort vermerkte `TODO: Ertragsblock-Zusätze (Phase 2)` landet:
+dann wächst Plan-WV über Soll-WV hinaus, und das dunkelblaue
+„Auffüllung“-Segment (§5.1) bekommt seine eigentliche Bedeutung. Ebenso ist
+„Offen“ heute für jedes Projekt immer 100 % von Plan-WV, weil AK verrechnet
+konstant 0 ist.
 
 ### 5.3 Sonderfälle
 
