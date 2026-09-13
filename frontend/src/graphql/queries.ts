@@ -253,3 +253,46 @@ export const ME = gql`
     }
   }
 `;
+
+export const GET_PROJEKT_RECHNUNGEN = gql`
+  query ProjektRechnungen($id: ID!) {
+    projekt(id: $id) {
+      id
+      projektKennzahlenList {
+        items {
+          rechnungen {
+            ...RechnungFelder
+          }
+        }
+      }
+      istWertList {
+        items {
+          kostenart {
+            schluessel
+          }
+          rechnungen {
+            ...RechnungFelder
+          }
+        }
+      }
+    }
+  }
+
+  fragment RechnungFelder on LieferantenrechnungType {
+    id
+    dokumentNr
+    rechnungsdatum
+    firmenname
+    zeilenTitel
+    status
+    faelligkeitsdatum
+    ueberfaellig
+    betrag
+    steuerBerechnet
+    nettoBetrag
+    buchungskonto {
+      accountNo
+      name
+    }
+  }
+`;

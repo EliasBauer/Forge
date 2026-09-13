@@ -13,6 +13,7 @@ GRAPHQL_METRIC_OPERATION_ALLOWLIST = (
     "ProjektListe",
     "ProjektListeUpdated",
     "ProjektPhaseIds",
+    "ProjektRechnungen",
     "ProjektUpdated",
     "Projektleiter",
     "SearchProjekte",
