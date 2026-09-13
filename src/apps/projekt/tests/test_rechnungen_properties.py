@@ -14,6 +14,7 @@ from general_manager.measurement import Measurement
 from apps.bexio.models import Konto, Lieferantenrechnung
 from apps.projekt.calculation_manager import IstWert
 from apps.projekt.models import Kostenart, Projekt, ProjektPhase
+from apps.projekt.tests.test_permissions_graphql import RollenGraphQLTestBase
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
 _KontoModel: Any = Konto.Interface._model  # type: ignore[misc]
@@ -139,3 +140,68 @@ class IstWertRechnungenTest(RechnungenBasis):
         )
         assert iw.ist_kosten_wert is not None
         self.assertEqual(Decimal(iw.ist_kosten_wert.magnitude), summe)
+
+
+class ProjektKennzahlenRechnungenTest(RechnungenBasis):
+    """ProjektKennzahlen.rechnungen = alle Rechnungen des Projekts."""
+
+    def _kennzahlen(self) -> Any:
+        from apps.projekt.calculation_manager import ProjektKennzahlen
+
+        return ProjektKennzahlen(projekt=self.projekt)
+
+    def test_leer_ohne_rechnungen(self) -> None:
+        self.assertEqual(self._kennzahlen().rechnungen, [])
+
+    def test_enthaelt_alle_konten_auch_ohne_kategorie(self) -> None:
+        konto_44401 = _konto("44401")
+        _rechnung(_AUFTRAGSNUMMER, Decimal("100"), Decimal("0"), self.konto_4001, "R-A")
+        _rechnung(_AUFTRAGSNUMMER, Decimal("200"), Decimal("0"), konto_44401, "R-T")
+        _rechnung(_AUFTRAGSNUMMER, Decimal("300"), Decimal("0"), None, "R-O")
+        nummern = sorted(r.dokument_nr for r in self._kennzahlen().rechnungen)
+        self.assertEqual(nummern, ["R-A", "R-O", "R-T"])
+
+    def test_ignoriert_anderes_projekt(self) -> None:
+        _rechnung("ANDERES", Decimal("500"), Decimal("0"), self.konto_4001)
+        self.assertEqual(self._kennzahlen().rechnungen, [])
+
+    def test_summe_der_liste_entspricht_summe_ist_kosten(self) -> None:
+        _rechnung(_AUFTRAGSNUMMER, Decimal("500"), Decimal("38.5"), self.konto_4001)
+        _rechnung(_AUFTRAGSNUMMER, Decimal("300"), Decimal("0"), None)
+        kennzahlen = self._kennzahlen()
+        summe = sum(
+            (r.betrag - r.steuer_berechnet for r in kennzahlen.rechnungen),
+            Decimal("0"),
+        )
+        self.assertEqual(Decimal(kennzahlen.summe_ist_kosten.magnitude), summe)
+
+
+RECHNUNGEN_QUERY = """
+query {
+  projektKennzahlenList {
+    items {
+      rechnungen { dokumentNr nettoBetrag buchungskonto { accountNo name } }
+    }
+  }
+}
+"""
+
+
+class RechnungenPermissionTest(RollenGraphQLTestBase):
+    """Betrachter darf Rechnungen nicht sehen, Projektleiter schon."""
+
+    def _rechnungen(self) -> Any:
+        items = self._gql(RECHNUNGEN_QUERY)["projektKennzahlenList"]["items"]
+        return items[0]["rechnungen"] if items else None
+
+    def test_betrachter_sieht_keine_rechnungen(self) -> None:
+        self._login("Betrachter")
+        self.assertIsNone(self._rechnungen())
+
+    def test_projektleiter_sieht_rechnungen(self) -> None:
+        self._login("Projektleiter")
+        self.assertEqual(self._rechnungen(), [])
+
+    def test_admin_sieht_rechnungen(self) -> None:
+        self._login("Admin")
+        self.assertEqual(self._rechnungen(), [])
