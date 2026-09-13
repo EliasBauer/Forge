@@ -88,6 +88,8 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "*/migrations/*.py" = ["E501"]
+# PromQL-/LogQL-Ausdruecke der Dashboard-Specs sind bewusst nicht umgebrochen.
+"deploy/grafana/scripts/*.py" = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
