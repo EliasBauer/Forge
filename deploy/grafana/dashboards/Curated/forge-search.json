@@ -1,0 +1,470 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Overview",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-overview?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Logs and Changes",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-logs-changes?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Meilisearch detail",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-meilisearch-detail?${__url_time_range}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=\"meilisearch\"}",
+          "instant": true,
+          "legendFormat": "Up",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "scrape_duration_seconds{job=\"meilisearch\"}",
+          "instant": true,
+          "legendFormat": "Scrape duration",
+          "queryType": "instant",
+          "range": false,
+          "refId": "B"
+        }
+      ],
+      "title": "Health and scrape",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (method, path) (rate(meilisearch_http_requests_total{path!~\"/health|/metrics\"}[5m]))",
+          "instant": false,
+          "legendFormat": "{{method}} {{path}}",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(meilisearch_http_response_time_seconds_bucket{path!~\"/health|/metrics\"}[5m])))",
+          "instant": false,
+          "legendFormat": "p95",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP p95 latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "meilisearch_is_indexing",
+          "instant": false,
+          "legendFormat": "Indexing",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Indexing state",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (kind, value) (meilisearch_nb_tasks)",
+          "instant": false,
+          "legendFormat": "{{kind}} {{value}}",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Task backlog and failures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "The pinned Meilisearch version exposes the index count but no per-index document-count metric.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "meilisearch_index_count",
+          "instant": false,
+          "legendFormat": "Indexes",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Documents and indexes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 7,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "meilisearch_db_size_bytes",
+          "instant": false,
+          "legendFormat": "Size",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "meilisearch_db_size_bytes - meilisearch_db_size_bytes offset 24h",
+          "instant": false,
+          "legendFormat": "24h growth",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Database size and 24h growth",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [
+    "forge",
+    "production"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Forge Search",
+  "uid": "forge-search",
+  "version": 1
+}

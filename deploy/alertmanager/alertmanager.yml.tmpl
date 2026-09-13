@@ -1,0 +1,75 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: __ALERT_SMTP_SMARTHOST__
+  smtp_from: __ALERT_SMTP_FROM__
+  smtp_auth_username: __ALERT_SMTP_USERNAME__ # SMTP_AUTH_ONLY
+  smtp_auth_password_file: /run/secrets/smtp_password # SMTP_AUTH_ONLY
+  smtp_require_tls: __ALERT_SMTP_REQUIRE_TLS__
+
+route:
+  receiver: sink
+  group_by: [alertname, service, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: operations
+      matchers:
+        - 'alertname="ForgeNotificationTest"'
+      group_wait: 0s
+      group_interval: 1s
+      repeat_interval: 1h
+    - receiver: operations
+      matchers:
+        - 'notification_scope="always"'
+      repeat_interval: 1h
+    - receiver: operations
+      matchers:
+        - 'notification_scope="business_hours"'
+        - 'severity="critical"'
+      active_time_intervals: [business-hours]
+      repeat_interval: 1h
+    - receiver: operations
+      matchers:
+        - 'notification_scope="business_hours"'
+        - 'severity="warning"'
+      active_time_intervals: [business-hours]
+      repeat_interval: 4h
+
+receivers:
+  - name: sink
+  - name: operations
+    msteamsv2_configs: # TEAMS_ONLY
+      - webhook_url_file: /run/secrets/teams_workflow_url # TEAMS_ONLY
+        send_resolved: true # TEAMS_ONLY
+        title: '{{ template "msteamsv2.default.title" . }}' # TEAMS_ONLY
+        text: '{{ template "msteamsv2.default.text" . }}' # TEAMS_ONLY
+    email_configs:
+      - to: __ALERT_EMAIL_TO__
+        send_resolved: true
+        headers:
+          Subject: '[Forge][{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+
+inhibit_rules:
+  - source_matchers:
+      - 'alertname="ForgeMaintenanceActive"'
+    target_matchers:
+      - 'maintenance_sensitive="true"'
+    equal: [environment]
+  - source_matchers:
+      - 'root_cause="true"'
+    target_matchers:
+      - 'dependency_symptom="true"'
+    equal: [environment, dependency]
+  - source_matchers:
+      - 'severity="critical"'
+    target_matchers:
+      - 'severity="warning"'
+    equal: [environment, alert_family, api, instance, mountpoint, probe]
+
+time_intervals:
+  - name: business-hours
+    time_intervals:
+      - weekdays: [monday:friday]
+        times: [{start_time: "07:00", end_time: "18:00"}]
+        location: Europe/Zurich

@@ -1,0 +1,19 @@
+# Build-Kontext ist das Repo-Root (deploy/*/Dockerfile). Secrets duerfen nie ins Image.
+.git
+**/.env
+**/.env.*
+deploy/.env
+deploy/.env.*
+deploy/secrets/*.txt
+**/node_modules
+frontend/dist
+.venv
+**/__pycache__
+**/.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+*.sqlite3
+staticfiles
+.claude
+docs

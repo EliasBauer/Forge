@@ -28,10 +28,13 @@ CONTEXT.md
 
 # Secrets
 .env
+deploy/.env
+deploy/.env.*
+!deploy/.env.example
+deploy/secrets/*.txt
 
-# Docker
-postgres-data/
-meilisearch-data/
+# Deploy (Runtime-Artefakte, siehe deploy/README.md)
+deploy/tests/__pycache__/
 
 # Superpowers SDD-Arbeitsverzeichnis (Ledger, Briefs, Review-Pakete)
 .superpowers/

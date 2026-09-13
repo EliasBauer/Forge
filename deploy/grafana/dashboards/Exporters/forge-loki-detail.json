@@ -1,0 +1,1022 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Overview",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-overview?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Logs and Changes",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-logs-changes?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Logs and Changes",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-logs-changes?${__url_time_range}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=\"loki\",instance=~\"$instance\"}",
+          "instant": true,
+          "legendFormat": "{{instance}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Target health",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "scrape_duration_seconds{job=\"loki\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Duration",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "scrape_samples_scraped{job=\"loki\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Samples",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Scrape duration and samples",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(process_cpu_seconds_total{job=\"loki\",instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "CPU",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes{job=\"loki\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Resident memory",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Process CPU and resident memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "loki_build_info{job=\"loki\",instance=~\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{version}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Build information",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Bps"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_distributor_bytes_received_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Bytes",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_distributor_lines_received_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Lines",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_discarded_bytes_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Discarded bytes",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_discarded_samples_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Discarded lines",
+          "queryType": "range",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Distributor ingestion",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_request_duration_seconds_count{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Request rate",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(loki_request_duration_seconds_bucket{instance=~\"$instance\"}[5m])))",
+          "instant": false,
+          "legendFormat": "p95",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (status_code) (rate(loki_request_duration_seconds_count{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "{{status_code}}",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Request traffic",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(loki_ingester_memory_streams{instance=~\"$instance\"})",
+          "instant": false,
+          "legendFormat": "Streams",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_ingester_chunks_created_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Chunks created / s",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_ingester_chunks_flush_requests_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Flushes",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_ingester_chunks_flush_failures_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Failures",
+          "queryType": "range",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Ingester streams and chunks",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 8,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_ingester_wal_records_logged_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Records",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loki_ingester_wal_disk_full_failures_total{instance=~\"$instance\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Disk-full failures",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "WAL activity",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 9,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "loki_boltdb_shipper_compactor_running{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Running",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(time() - loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{instance=~\"$instance\"}) and on(instance) (loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{instance=~\"$instance\"} > 0)",
+          "instant": false,
+          "legendFormat": "Last success age",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Compactor",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 10,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(loki_cache_corrupt_chunks_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Corrupt chunks",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(loki_querier_index_cache_corruptions_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Index cache corruptions",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Storage and cache integrity",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 11,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "loki_query_frontend_queries_in_progress{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "In progress",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "loki_query_scheduler_inflight_requests{instance=~\"$instance\",quantile=\"0.95\"}",
+          "instant": false,
+          "legendFormat": "Scheduler inflight p95",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Query frontend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 12,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "go_goroutines{job=\"loki\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Goroutines",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "go_memstats_heap_alloc_bytes{job=\"loki\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Heap",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Go runtime",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [
+    "forge",
+    "production"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(loki_build_info{job=\"loki\"}, instance)",
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(loki_build_info{job=\"loki\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Loki Detail",
+  "uid": "forge-loki-detail",
+  "version": 1
+}

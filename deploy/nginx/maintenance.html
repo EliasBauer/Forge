@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Forge – Wartung</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #2b2a29;
+        background-color: #f4f5f7;
+        display: flex;
+        flex-direction: column;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 24px;
+        font-size: 1.5rem;
+      }
+      main {
+        flex: 1;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      h1 { max-width: 700px; margin: 0 0 16px; font-size: 2.5rem; line-height: 1.1; }
+      .message { max-width: 630px; margin: 12px auto 0; font-size: 1.1rem; line-height: 1.6; }
+      .accent { color: #6d82f7; }
+      @media (max-width: 720px) {
+        h1 { font-size: 1.8rem; }
+        .message { font-size: 1rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="brand" aria-label="Forge">
+      <img src="/logo.svg" alt="" width="32" height="32">
+      <span>Forge</span>
+    </header>
+    <main aria-labelledby="maintenance-title">
+      <h1 id="maintenance-title">Wir sind <span class="accent">bald</span> zurück.</h1>
+      <p class="message">Forge wird gerade aktualisiert und ist für kurze Zeit nicht erreichbar.</p>
+      <p class="message">Bitte versuche es in ein paar Minuten erneut. Vielen Dank für deine Geduld.</p>
+    </main>
+  </body>
+</html>

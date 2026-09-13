@@ -1,0 +1,832 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Overview",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-overview?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Logs and Changes",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-logs-changes?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Celery exporter",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-celery-exporter?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Redis exporter",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-redis-exporter?${__url_time_range}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(celery_worker_up)",
+          "instant": true,
+          "legendFormat": "Worker up",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(celery_active_worker_count)",
+          "instant": true,
+          "legendFormat": "Active workers",
+          "queryType": "instant",
+          "range": false,
+          "refId": "B"
+        }
+      ],
+      "title": "Workers online",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(celery_worker_tasks_active)",
+          "instant": true,
+          "legendFormat": "Active tasks",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Active tasks",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "forge_celery_queue_depth",
+          "instant": true,
+          "legendFormat": "{{queue}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Queue depth",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "forge_celery_oldest_task_age_seconds",
+          "instant": true,
+          "legendFormat": "{{queue}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Oldest task age",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (name) (rate(celery_task_received_total[5m]))",
+          "instant": false,
+          "legendFormat": "{{name}} received",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (name) (rate(celery_task_succeeded_total[5m]))",
+          "instant": false,
+          "legendFormat": "{{name}} succeeded",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (name) (rate(celery_task_failed_total[5m]))",
+          "instant": false,
+          "legendFormat": "{{name}} failed",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (name) (rate(celery_task_retried_total[5m]))",
+          "instant": false,
+          "legendFormat": "{{name}} retried",
+          "queryType": "range",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Task outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (name, le) (rate(celery_task_runtime_bucket[5m])))",
+          "instant": false,
+          "legendFormat": "{{name}}",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Task p95 duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 7,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(redis_memory_used_bytes / redis_memory_max_bytes) and on(instance, job) (redis_memory_max_bytes > 0)",
+          "instant": false,
+          "legendFormat": "Used ratio",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "redis_memory_used_bytes",
+          "instant": false,
+          "legendFormat": "Used bytes",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Redis memory ratio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 8,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(redis_evicted_keys_total[5m])",
+          "instant": false,
+          "legendFormat": "Evictions",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(redis_rejected_connections_total[5m])",
+          "instant": false,
+          "legendFormat": "Rejected connections",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Redis evictions and rejected connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 9,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "redis_blocked_clients",
+          "instant": true,
+          "legendFormat": "Blocked clients",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis blocked clients",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 10,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (cmd) (rate(redis_commands_processed_total[5m]))",
+          "instant": false,
+          "legendFormat": "{{cmd}}",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis command rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "redis_rdb_last_bgsave_status",
+          "instant": true,
+          "legendFormat": "RDB save",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "redis_rdb_last_save_timestamp_seconds",
+          "instant": true,
+          "legendFormat": "RDB last save",
+          "queryType": "instant",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "redis_aof_last_bgrewrite_status",
+          "instant": true,
+          "legendFormat": "AOF rewrite",
+          "queryType": "instant",
+          "range": false,
+          "refId": "C"
+        }
+      ],
+      "title": "Redis persistence",
+      "type": "stat"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [
+    "forge",
+    "production"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Forge Async and Redis",
+  "uid": "forge-async-redis",
+  "version": 1
+}

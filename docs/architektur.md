@@ -44,6 +44,9 @@ Django (ASGI / Daphne)
 forge/
 ├── src/
 │   ├── forge/                       # Django-Projekt (settings, urls, asgi, wsgi)
+│   │   ├── env.py                   # Umgebungs-Helfer (Docker-Secrets NAME_FILE)
+│   │   ├── health.py                # /health/live|ready|maintenance
+│   │   └── observability/           # API-/Queue-Metriken, Metrics-Host, Probe
 │   └── apps/
 │       ├── authentication/          # Login, Gruppen, Berechtigungen
 │       │   ├── managers.py          # Benutzer/Gruppe GM-Manager (Wrapper um User/Group)
@@ -88,8 +91,13 @@ forge/
 │       ├── pages/                   # AufgabenPage, LoginPage, ProjektListePage,
 │       │                            # ProjektDetailPage, ProjektNeuPage, StundensaetzePage
 │       └── utils/                   # format.ts, deviation.ts
-├── docker/             # Dockerfile + docker-compose.yml
-├── nginx/              # nginx.conf (Reverse Proxy)
+├── deploy/             # Docker-Compose-Deployment (Runbook: deploy/README.md)
+│   ├── compose.yml     # Kern + Profile observability/administration/backup/restore-verification
+│   ├── backend/, nginx/ # Dockerfiles, Entrypoints, nginx-Template
+│   ├── scripts/        # deploy.sh, validate-config.sh, maintenance.sh, backup/restore
+│   ├── prometheus/, alertmanager/, grafana/, loki/, alloy/, blackbox/
+│   ├── secrets/        # *.txt.example (echte Dateien sind gitignored)
+│   └── tests/          # Contract-Tests (pytest)
 ├── tests/              # Integrations- und System-Tests (cross-cutting)
 ├── docs/                             # Dokumentation
 │   ├── specs/                        # Feature-Specs je Domain (+ designs/ für Claude.ai-Handoffs)
@@ -100,16 +108,30 @@ forge/
 
 ## Settings & Umgebungsvariablen
 
-| Variable            | Default (Dev)                              | Bedeutung                |
-| ------------------- | ------------------------------------------ | ------------------------ |
-| `DJANGO_SECRET_KEY` | insecure-dev-key                           | Django Secret            |
-| `DEBUG`             | `true`                                     | Debug-Modus              |
-| `ALLOWED_HOSTS`     | `localhost,127.0.0.1`                      | Erlaubte Hosts           |
-| `DATABASE_URL`      | `postgres://forge:forge@localhost:5432/forge` | PostgreSQL DSN        |
-| `REDIS_URL`         | `redis://localhost:6379/0`                 | Redis (Cache + Channels) |
+`FORGE_ENV=dev` (Devcontainer) schaltet SQLite, `DEBUG`, unsicheren Secret-Key
+und Bexio-Fixtures ein. Ohne `FORGE_ENV` gilt Produktion: PostgreSQL, Pflicht-
+Secret, Security-Settings hinter nginx, JSON-Logs, GraphQL-Metriken.
+Jedes Secret wird bevorzugt aus `NAME_FILE` (Docker-Secret) gelesen
+(`forge/env.py`).
 
-Wenn `REDIS_URL` gesetzt: Redis-Cache + RedisChannelLayer.
-Wenn nicht: LocMemCache + InMemoryChannelLayer (nur für lokale Tests ohne Redis).
+| Variable                        | Default (Prod)                     | Bedeutung                                  |
+| ------------------------------- | ---------------------------------- | ------------------------------------------ |
+| `DJANGO_SECRET_KEY[_FILE]`      | Pflicht                            | Django Secret                              |
+| `ALLOWED_HOSTS`                 | `localhost,127.0.0.1`              | Erlaubte Hosts                             |
+| `CSRF_TRUSTED_ORIGINS`          | `http://localhost:5173`            | Origins für CSRF (Admin)                   |
+| `POSTGRES_HOST/PORT/DB/USER`    | `pgbouncer/5432/forge/forge`       | PostgreSQL-Verbindung                      |
+| `POSTGRES_PASSWORD[_FILE]`      | Pflicht                            | PostgreSQL-Passwort                        |
+| `POSTGRES_CONN_MAX_AGE`         | `0`                                | 0 = pro Request (pgBouncer)                |
+| `REDIS_URL`                     | leer → LocMem/InMemory             | Cache, Channel-Layer, Celery-Broker        |
+| `MEILISEARCH_URL`               | leer → DevSearchBackend            | Suche                                      |
+| `MEILISEARCH_MASTER_KEY[_FILE]` | leer                               | Meilisearch-Key                            |
+| `BEXIO_ACCESS_TOKEN[_FILE]`     | leer → Fixture-Modus               | Bexio-API                                  |
+| `INTERNAL_METRICS_HOST`         | leer                               | Host-Alias für Prometheus-Scrapes          |
+| `STATIC_ROOT`                   | `src/staticfiles`                  | collectstatic-Ziel                         |
+| `MAINTENANCE_FLAG_FILE`         | `/run/forge/maintenance`           | Wartungsflag (nginx 503)                   |
+| `PUSHGATEWAY_URL`               | leer                               | Celery-Queue-Metriken                      |
+| `LOG_TO_STDOUT`                 | `true` (Prod)                      | JSON-Logs auf stdout                       |
+| `DJANGO_SECURE_HSTS_SECONDS`    | `0`                                | HSTS nur mit vertrauenswürdigem Zertifikat |
 
 ## Frontend-Routing
 
@@ -134,19 +156,18 @@ Design-Tokens (Logo: `frontend/public/logo.svg`):
 | Blue (Akzent) | `#6D82F7` |
 | Red (Akzent)  | `#E42127` |
 
-## Deployment (Ziel: Raspberry Pi, Intranet)
+## Deployment (Single-Host Docker Compose)
 
-Ziel-Setup via Docker Compose:
+Aufbau nach dem Muster eines ähnlichen Projekts (ADR 006), Runbook: `deploy/README.md`.
 
-| Container       | Rolle                                 |
-| --------------- | ------------------------------------- |
-| `web`           | Django / Daphne (ASGI)                |
-| `frontend`      | React Build (Vite / nginx)            |
-| `nginx`         | Reverse Proxy + Static Files          |
-| `db`            | PostgreSQL 16                         |
-| `redis`         | Cache + Channel Layer + Celery Broker |
-| `celery-worker` | Async Task Execution                  |
-| `celery-beat`   | Scheduled Tasks (Bexio Sync)          |
-| `meilisearch`   | Volltextsuche                         |
-
-Docker Compose liegt in `docker/docker-compose.yml`.
+| Profil               | Container                                                                                                      | Rolle                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Kern                 | `nginx`                                                                                                        | TLS, SPA, Reverse Proxy, einziger Host-Port |
+| Kern                 | `web` ×2                                                                                                       | Django / Daphne (ASGI)                  |
+| Kern                 | `celery-worker`, `celery-beat`                                                                                 | Async-Tasks, Bexio-Sync, Search-Reconcile |
+| Kern                 | `postgres`, `pgbouncer`, `redis`, `meilisearch`                                                                | Daten, Pooling, Cache/Broker, Suche     |
+| Kern / `deployment`  | `django-migrate`, `search-index`                                                                               | One-shot: Migrationen, Static, Reindex  |
+| `observability`      | `prometheus`, `alertmanager`, `blackbox-exporter`, `grafana`, `loki`, `alloy`, `node-exporter`, `*-exporter`, `pushgateway` | Metriken, Logs, Alerts, Dashboards |
+| `administration`     | `pgadmin`                                                                                                      | DB-Administration hinter Basic-Auth     |
+| `backup`             | `backup`                                                                                                       | pg_dump + Checksummen + Transfer        |
+| `restore-verification` | `restore-postgres`, `restore-verify`                                                                         | isolierte Restore-Probe                 |

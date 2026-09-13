@@ -1,0 +1,103 @@
+rule_files: []
+
+evaluation_interval: 1m
+
+tests:
+  - name: curated_ratios_preserve_unknown_at_zero_denominator
+    interval: 1m
+    input_series:
+      - series: 'redis_memory_used_bytes{instance="zero",job="redis"}'
+        values: "100x6"
+      - series: 'redis_memory_max_bytes{instance="zero",job="redis"}'
+        values: "0x6"
+      - series: 'redis_memory_used_bytes{instance="bounded",job="redis"}'
+        values: "100x6"
+      - series: 'redis_memory_max_bytes{instance="bounded",job="redis"}'
+        values: "200x6"
+      - series: 'pgbouncer_stats_client_wait_seconds_total{database="zero"}'
+        values: "0+0x6"
+      - series: 'pgbouncer_stats_queries_total{database="zero"}'
+        values: "0+0x6"
+      - series: 'pgbouncer_stats_client_wait_seconds_total{database="bounded"}'
+        values: "0+0.05x6"
+      - series: 'pgbouncer_stats_queries_total{database="bounded"}'
+        values: "0+0.1x6"
+      - series: 'pgbouncer_stats_query_duration_seconds_total{database="zero"}'
+        values: "0+0x6"
+      - series: 'pgbouncer_stats_query_duration_seconds_total{database="bounded"}'
+        values: "0+0.2x6"
+      - series: 'pgbouncer_stats_transactions_total{database="zero"}'
+        values: "0+0x6"
+      - series: 'pgbouncer_stats_transactions_total{database="bounded"}'
+        values: "0+0.1x6"
+      - series: 'pgbouncer_stats_transaction_duration_seconds_total{database="zero"}'
+        values: "0+0x6"
+      - series: 'pgbouncer_stats_transaction_duration_seconds_total{database="bounded"}'
+        values: "0+0.3x6"
+      - series: 'pg_stat_database_blks_hit{datname="app"}'
+        values: "0+0.1x6"
+      - series: 'pg_stat_database_blks_read{datname="app"}'
+        values: "0+0.1x6"
+    promql_expr_test:
+      - expr: (redis_memory_used_bytes / redis_memory_max_bytes) and on(instance, job) (redis_memory_max_bytes > 0)
+        eval_time: 5m
+        exp_samples:
+          - labels: '{instance="bounded",job="redis"}'
+            value: 0.5
+      - expr: (rate(pgbouncer_stats_client_wait_seconds_total[5m]) / rate(pgbouncer_stats_queries_total[5m])) and (rate(pgbouncer_stats_queries_total[5m]) > 0)
+        eval_time: 5m
+        exp_samples:
+          - labels: '{database="bounded"}'
+            value: 0.5
+      - expr: (rate(pgbouncer_stats_query_duration_seconds_total{database=~".*"}[5m]) / rate(pgbouncer_stats_queries_total{database=~".*"}[5m])) and (rate(pgbouncer_stats_queries_total{database=~".*"}[5m]) > 0)
+        eval_time: 5m
+        exp_samples:
+          - labels: '{database="bounded"}'
+            value: 2
+      - expr: (rate(pgbouncer_stats_transaction_duration_seconds_total{database=~".*"}[5m]) / rate(pgbouncer_stats_transactions_total{database=~".*"}[5m])) and (rate(pgbouncer_stats_transactions_total{database=~".*"}[5m]) > 0)
+        eval_time: 5m
+        exp_samples:
+          - labels: '{database="bounded"}'
+            value: 3
+      - expr: (sum(rate(pg_stat_database_blks_hit[5m])) / (sum(rate(pg_stat_database_blks_hit[5m])) + sum(rate(pg_stat_database_blks_read[5m])))) and on() ((sum(rate(pg_stat_database_blks_hit[5m])) + sum(rate(pg_stat_database_blks_read[5m]))) > 0)
+        eval_time: 5m
+        exp_samples:
+          - labels: '{}'
+            value: 0.5
+
+  - name: replacement_and_long_transaction_queries_preserve_incident_signals
+    interval: 1m
+    input_series:
+      - series: 'container_start_time_seconds{compose_service="web",container="old"}'
+        values: "100 stale"
+      - series: 'container_start_time_seconds{compose_service="web",container="new"}'
+        values: "_ 200"
+      - series: 'pg_long_running_transactions{instance="postgres"}'
+        values: "1x2"
+      - series: 'pg_long_running_transactions_oldest_timestamp_seconds{instance="postgres"}'
+        values: "120x2"
+    promql_expr_test:
+      - expr: changes((max by (compose_service) (container_start_time_seconds))[1h:])
+        eval_time: 1m
+        exp_samples:
+          - labels: '{compose_service="web"}'
+            value: 1
+      - expr: max(pg_long_running_transactions_oldest_timestamp_seconds) and on() (sum(pg_long_running_transactions) > 0)
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 120
+
+  - name: loki_compactor_age_ignores_zero_sentinel
+    interval: 1m
+    input_series:
+      - series: 'loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{instance="zero"}'
+        values: "0x6"
+      - series: 'loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{instance="bounded"}'
+        values: "120x6"
+    promql_expr_test:
+      - expr: (time() - loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{instance=~".*"}) and on(instance) (loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{instance=~".*"} > 0)
+        eval_time: 5m
+        exp_samples:
+          - labels: '{instance="bounded"}'
+            value: 180

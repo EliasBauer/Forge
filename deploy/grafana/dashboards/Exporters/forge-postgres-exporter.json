@@ -1,0 +1,1125 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Overview",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-overview?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "PostgreSQL and PgBouncer",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-postgres-pgbouncer?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Logs and Changes",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-logs-changes?${__url_time_range}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=\"postgres\"}",
+          "instant": true,
+          "legendFormat": "{{instance}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Target health",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "scrape_duration_seconds{job=\"postgres\"}",
+          "instant": false,
+          "legendFormat": "Duration",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "scrape_samples_scraped{job=\"postgres\"}",
+          "instant": false,
+          "legendFormat": "Samples",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Scrape duration and samples",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(process_cpu_seconds_total{job=\"postgres\"}[5m])",
+          "instant": false,
+          "legendFormat": "CPU",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes{job=\"postgres\"}",
+          "instant": false,
+          "legendFormat": "Resident memory",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Process CPU and resident memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "postgres_exporter_build_info{job=\"postgres\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{version}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Build information",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "pg_exporter_last_scrape_error",
+          "instant": false,
+          "legendFormat": "Scrape error",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(pg_stat_activity_count{datname=~\"$datname\"})",
+          "instant": false,
+          "legendFormat": "Connections",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "pg_settings_max_connections",
+          "instant": false,
+          "legendFormat": "Limit",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Exporter errors and connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (state) (pg_stat_activity_count{datname=~\"$datname\"})",
+          "instant": false,
+          "legendFormat": "{{state}}",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max(pg_long_running_transactions_oldest_timestamp_seconds) and on() (sum(pg_long_running_transactions) > 0)",
+          "instant": false,
+          "legendFormat": "Oldest transaction",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Sessions and longest transaction",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (mode) (pg_locks_count{datname=~\"$datname\"})",
+          "instant": false,
+          "legendFormat": "{{mode}} locks",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_xact_commit{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Commits",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_xact_rollback{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Rollbacks",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_deadlocks{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Deadlocks",
+          "queryType": "range",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Locks, commits, rollbacks and deadlocks",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 8,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_blks_hit{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Hits",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_blks_read{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Reads",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Cache block hits and reads",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Bps"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 9,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_temp_files{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Files",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_temp_bytes{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Bytes",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Temporary files and bytes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 10,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_tup_fetched{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Fetched",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_tup_returned{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Returned",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_tup_inserted{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Inserted",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_tup_updated{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Updated",
+          "queryType": "range",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_tup_deleted{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Deleted",
+          "queryType": "range",
+          "range": true,
+          "refId": "E"
+        }
+      ],
+      "title": "Tuple activity",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 11,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "pg_database_size_bytes{datname=~\"$datname\"}",
+          "instant": false,
+          "legendFormat": "{{datname}} size",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "pg_database_size_bytes{datname=~\"$datname\"} - pg_database_size_bytes{datname=~\"$datname\"} offset 24h",
+          "instant": false,
+          "legendFormat": "{{datname}} growth",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Database size and 24h growth",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 12,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "pg_wal_size_bytes",
+          "instant": false,
+          "legendFormat": "WAL size",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_bgwriter_buffers_alloc_total[5m])",
+          "instant": false,
+          "legendFormat": "Buffers allocated",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pg_stat_database_conflicts{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "Database conflicts",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "WAL and background writes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 13,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, rate(pg_stat_user_tables_seq_scan{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "{{relname}} sequential",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, rate(pg_stat_user_tables_idx_scan{datname=~\"$datname\"}[5m]))",
+          "instant": false,
+          "legendFormat": "{{relname}} index",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, pg_stat_user_tables_n_dead_tup{datname=~\"$datname\"})",
+          "instant": false,
+          "legendFormat": "{{relname}} dead tuples",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Table scans and dead tuples",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [
+    "forge",
+    "production"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(pg_database_size_bytes{job=\"postgres\"}, datname)",
+        "includeAll": true,
+        "label": "Datname",
+        "multi": true,
+        "name": "datname",
+        "options": [],
+        "query": "label_values(pg_database_size_bytes{job=\"postgres\"}, datname)",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "PostgreSQL Exporter Detail",
+  "uid": "forge-postgres-exporter",
+  "version": 1
+}

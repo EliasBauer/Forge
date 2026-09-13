@@ -1,0 +1,1049 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Overview",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-overview?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Continuity",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-continuity?${__url_time_range}"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Logs and Changes",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/forge-logs-changes?${__url_time_range}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=\"prometheus\",instance=~\"$instance\"}",
+          "instant": true,
+          "legendFormat": "{{instance}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Target health",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "scrape_duration_seconds{job=\"prometheus\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Duration",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "scrape_samples_scraped{job=\"prometheus\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Samples",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Scrape duration and samples",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(process_cpu_seconds_total{job=\"prometheus\",instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "CPU",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes{job=\"prometheus\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Resident memory",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Process CPU and resident memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "prometheus_build_info{job=\"prometheus\",instance=~\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{version}}",
+          "queryType": "instant",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Build information",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Global cross-target scrape overview; intentionally not filtered by the Prometheus self-instance variable.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job) (up)",
+          "instant": false,
+          "legendFormat": "{{job}} up",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max by (job) (scrape_duration_seconds)",
+          "instant": false,
+          "legendFormat": "{{job}} duration",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job) (scrape_samples_scraped)",
+          "instant": false,
+          "legendFormat": "{{job}} samples",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job) (scrape_series_added)",
+          "instant": false,
+          "legendFormat": "{{job}} series added",
+          "queryType": "range",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Target scrape health",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max(prometheus_rule_group_duration_seconds{instance=~\"$instance\"})",
+          "instant": false,
+          "legendFormat": "Group duration",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(prometheus_rule_evaluation_failures_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Failures",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(prometheus_rule_group_iterations_missed_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Missed",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Rule evaluation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Alert states are global synthetic series; notification queue and error metrics honor the selected Prometheus instance.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (alertstate) (ALERTS{alertstate=~\"firing|pending\"})",
+          "instant": false,
+          "legendFormat": "{{alertstate}}",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "prometheus_notifications_queue_length{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Queue",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(prometheus_notifications_errors_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Errors",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Alert states and notification queue",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 8,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "prometheus_tsdb_head_series{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Series",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "prometheus_tsdb_head_chunks{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Chunks",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(prometheus_tsdb_head_samples_appended_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Samples",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "TSDB head",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 9,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(prometheus_tsdb_wal_fsync_duration_seconds_sum{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "WAL fsync",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(prometheus_tsdb_compactions_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Compactions",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(prometheus_tsdb_compactions_failed_total{instance=~\"$instance\"}[5m])",
+          "instant": false,
+          "legendFormat": "Failures",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "WAL and compaction",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 10,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "prometheus_tsdb_storage_blocks_bytes{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Blocks",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Block storage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 11,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "prometheus_engine_queries{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Active",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "prometheus_engine_queries_concurrent_max{instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Maximum",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (slice, le) (rate(prometheus_engine_query_duration_histogram_seconds_bucket{instance=~\"$instance\"}[5m])))",
+          "instant": false,
+          "legendFormat": "{{slice}} p95",
+          "queryType": "range",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Engine concurrency and duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 12,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "go_goroutines{job=\"prometheus\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Goroutines",
+          "queryType": "range",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "go_memstats_heap_alloc_bytes{job=\"prometheus\",instance=~\"$instance\"}",
+          "instant": false,
+          "legendFormat": "Heap",
+          "queryType": "range",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Go runtime",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [
+    "forge",
+    "production"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(prometheus_build_info{job=\"prometheus\"}, instance)",
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(prometheus_build_info{job=\"prometheus\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Prometheus Detail",
+  "uid": "forge-prometheus-detail",
+  "version": 1
+}

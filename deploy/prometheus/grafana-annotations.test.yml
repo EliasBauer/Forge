@@ -1,0 +1,27 @@
+rule_files: []
+
+evaluation_interval: 30s
+
+tests:
+  - name: dashboard_change_annotations_keep_operator_context
+    interval: 30s
+    input_series:
+      - series: 'forge_deployment_timestamp_seconds{revision="old"}'
+        values: "100x1 stale"
+      - series: 'forge_deployment_timestamp_seconds{revision="new"}'
+        values: "_ _ 200x1"
+      - series: 'forge_maintenance_mode{instance="host",job="node"}'
+        values: "0x1 1x1"
+      - series: 'forge_maintenance_info{instance="host",job="node",reason="updates",revision="new"}'
+        values: "1x3"
+    promql_expr_test:
+      - expr: (changes(max(forge_deployment_timestamp_seconds)[1m:]) > 0) * on() group_left(revision) topk(1, forge_deployment_timestamp_seconds)
+        eval_time: 1m
+        exp_samples:
+          - labels: '{revision="new"}'
+            value: 200
+      - expr: (changes(forge_maintenance_mode[1m]) != 0) * on(instance, job) group_left(reason, revision) forge_maintenance_info
+        eval_time: 1m
+        exp_samples:
+          - labels: '{instance="host",job="node",reason="updates",revision="new"}'
+            value: 1
