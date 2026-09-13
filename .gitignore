@@ -28,7 +28,9 @@ CONTEXT.md
 
 # Secrets
 .env
+deploy/.env
+deploy/.env.*
+deploy/secrets/*.txt
 
-# Docker
-postgres-data/
-meilisearch-data/
+# Deploy (Runtime-Artefakte, siehe deploy/README.md)
+deploy/tests/__pycache__/

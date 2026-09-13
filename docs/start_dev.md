@@ -5,8 +5,7 @@
 - Python ≥ 3.12 (empfohlen: via `pyenv`)
 - Node.js ≥ 20 + npm
 - [uv](https://docs.astral.sh/uv/) installiert
-- PostgreSQL 16 laufend (lokal oder via Docker)
-- Redis laufend (lokal oder via Docker)
+- Kein PostgreSQL/Redis nötig: `FORGE_ENV=dev` nutzt SQLite und In-Memory-Cache
 
 ## Ersteinrichtung
 
@@ -47,15 +46,16 @@ Anschließend: [http://localhost:5173](http://localhost:5173)
 
 ## Umgebungsvariablen (Dev-Defaults)
 
-Die App läuft ohne `.env`-Datei mit folgenden Defaults:
+Der Devcontainer setzt `FORGE_ENV=dev`; außerhalb davon `export FORGE_ENV=dev`.
 
-| Variable       | Default                                    |
-| -------------- | ------------------------------------------ |
-| `DATABASE_URL` | `postgres://forge:forge@localhost:5432/forge` |
-| `REDIS_URL`    | `redis://localhost:6379/0`                 |
-| `DEBUG`        | `true`                                     |
+| Variable            | Default (Dev)               | Bedeutung                                   |
+| ------------------- | --------------------------- | ------------------------------------------- |
+| `FORGE_ENV`         | `production` (!)            | `dev` = SQLite, DEBUG, Bexio-Fixtures       |
+| `REDIS_URL`         | leer                        | gesetzt: Redis-Cache + RedisChannelLayer    |
+| `MEILISEARCH_URL`   | leer                        | gesetzt: Meilisearch statt DevSearchBackend |
+| `BEXIO_ACCESS_TOKEN`| leer                        | gesetzt: echte Bexio-API statt Fixtures     |
 
-Für andere Werte eine `.env`-Datei anlegen (siehe `.env.example`).
+Vollständige Liste: `docs/architektur.md`, Abschnitt Settings.
 
 ## Tests
 
@@ -78,9 +78,9 @@ uv run pre-commit run --all-files
 | `http://localhost:8000/graphql/` | GraphiQL (GraphQL Explorer) |
 | `http://localhost:8000/admin/`   | Django Admin                |
 
-## Schnellstart mit Docker (optional)
+## Deployment
 
-> Noch nicht implementiert – kommt in Phase 2.
+Produktions-Stack (Docker Compose, nginx, Observability): siehe `deploy/README.md`.
 
 ## Pre-commit Checks
 
