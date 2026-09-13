@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from apps.projekt.models.projekt import Projekt
 
 
-class ProjektStatus(GeneralManager):
-    """Statische Liste der Projekt-Status (Offen, In Arbeit, Fertig)."""
+class ProjektPhase(GeneralManager):
+    """Statische Liste der Projekt-Phasen (Offen, In Arbeit, Fertig)."""
 
     _data = [
         {"id": 1, "name": "Offen", "is_active": True},
@@ -38,9 +38,9 @@ class ProjektStatus(GeneralManager):
         name = models.CharField(max_length=50, unique=True)
 
         class Meta:
-            verbose_name = "Projekt-Status"
-            verbose_name_plural = "Projekt-Status"
-            db_table = "projekt_projektstatus"
+            verbose_name = "Projekt-Phase"
+            verbose_name_plural = "Projekt-Phasen"
+            db_table = "projekt_projektphase"
             ordering = ["id"]
 
     class Permission(AdditiveManagerPermission):

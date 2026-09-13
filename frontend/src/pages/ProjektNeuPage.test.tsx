@@ -4,7 +4,7 @@ import { MockedProvider } from "@apollo/client/testing/react";
 import { describe, expect, it, vi } from "vitest";
 
 import ProjektNeuPage from "./ProjektNeuPage";
-import { GET_PROJEKT_STATUS_IDS, PROJEKTLEITER } from "../graphql/queries";
+import { GET_PROJEKT_PHASE_IDS, PROJEKTLEITER } from "../graphql/queries";
 
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({
@@ -34,11 +34,11 @@ const projektleiterMock = {
   },
 };
 
-const projektStatusMock = {
-  request: { query: GET_PROJEKT_STATUS_IDS },
+const projektPhaseMock = {
+  request: { query: GET_PROJEKT_PHASE_IDS },
   result: {
     data: {
-      projektStatusList: {
+      projektPhaseList: {
         items: [
           { id: "1", name: "Offen" },
           { id: "2", name: "In Arbeit" },
@@ -53,7 +53,7 @@ describe("ProjektNeuPage", () => {
   it("befüllt das Projektleiter-Dropdown aus der PROJEKTLEITER-Query", async () => {
     render(
       <MemoryRouter>
-        <MockedProvider mocks={[projektleiterMock, projektStatusMock]}>
+        <MockedProvider mocks={[projektleiterMock, projektPhaseMock]}>
           <ProjektNeuPage />
         </MockedProvider>
       </MemoryRouter>,
@@ -61,16 +61,16 @@ describe("ProjektNeuPage", () => {
     expect(await screen.findByText("anna")).toBeInTheDocument();
   });
 
-  it("belegt den Status standardmässig mit 'Offen' vor", async () => {
+  it("belegt die Phase standardmässig mit 'Offen' vor", async () => {
     render(
       <MemoryRouter>
-        <MockedProvider mocks={[projektleiterMock, projektStatusMock]}>
+        <MockedProvider mocks={[projektleiterMock, projektPhaseMock]}>
           <ProjektNeuPage />
         </MockedProvider>
       </MemoryRouter>,
     );
     const select = (await screen.findByLabelText(
-      "Status *",
+      "Phase *",
     )) as HTMLSelectElement;
     expect(await screen.findByText("Offen")).toBeInTheDocument();
     expect(select.value).toBe("1");

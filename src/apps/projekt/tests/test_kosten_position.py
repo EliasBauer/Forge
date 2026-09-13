@@ -11,7 +11,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 from general_manager.measurement import Measurement
 
-from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektStatus
+from apps.projekt.models import Kostenart, KostenPosition, Projekt, ProjektPhase
 from apps.stunden.models import Stundensatz
 
 _KostenartModel: Any = Kostenart.Interface._model  # type: ignore[misc]
@@ -42,10 +42,10 @@ def _lade_kostenart_daten() -> None:
     )
 
 
-def _offen() -> ProjektStatus:
-    status = ProjektStatus.filter(name="Offen").first()
-    assert status is not None
-    return status
+def _offen() -> ProjektPhase:
+    phase = ProjektPhase.filter(name="Offen").first()
+    assert phase is not None
+    return phase
 
 
 class KostenPositionModelTest(TestCase):
@@ -56,7 +56,7 @@ class KostenPositionModelTest(TestCase):
         _lade_kostenart_daten()
         self.projekt_db = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="KP-Projekt",
             auftragsnummer="KP-001",
             jahr=_TESTJAHR,
@@ -121,7 +121,7 @@ class KostenPositionBerechnungTest(TestCase):
         _lade_kostenart_daten()
         self.projekt_db = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Berechnungsprojekt",
             auftragsnummer="CALC-001",
             jahr=_TESTJAHR,
@@ -197,7 +197,7 @@ class KostenPositionBerechnungTest(TestCase):
     def test_offerte_kosten_wert_prozent_none_wenn_offerte_summe_null(self) -> None:
         proj_null = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Null-Offerte",
             auftragsnummer="CALC-002",
             jahr=_TESTJAHR,
@@ -233,7 +233,7 @@ class KostenPositionBerechnungTest(TestCase):
     def test_wv_kosten_wert_none_wenn_offerte_summe_null(self) -> None:
         proj_null = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Null-Offerte 2",
             auftragsnummer="CALC-003",
             jahr=_TESTJAHR,
@@ -259,7 +259,7 @@ class KostenPositionBerechnungTest(TestCase):
     def test_wv_kosten_wert_none_wenn_wv_summe_none(self) -> None:
         proj_ohne_wv = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Ohne WV",
             auftragsnummer="CALC-004",
             jahr=_TESTJAHR,
@@ -336,7 +336,7 @@ class KostenPositionBerechnungTest(TestCase):
     def test_wv_kosten_wert_apparate_none_wenn_wv_summe_none(self) -> None:
         proj_ohne_wv = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Ohne WV App",
             auftragsnummer="CALC-010",
             jahr=_TESTJAHR,
@@ -370,7 +370,7 @@ class KostenPositionBerechnungTest(TestCase):
     def test_wv_kosten_wert_apparate_none_wenn_offerte_summe_null(self) -> None:
         proj_null = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="Null-Offerte App",
             auftragsnummer="CALC-011",
             jahr=_TESTJAHR,
@@ -418,7 +418,7 @@ class KostenPositionBerechnungTest(TestCase):
     def test_wv_kosten_wert_prozent_none_wenn_wv_summe_null(self) -> None:
         proj_null_wv = Projekt.create(
             ignore_permission=True,
-            projekt_status=_offen(),
+            projekt_phase=_offen(),
             name="WV Summe Null",
             auftragsnummer="CALC-020",
             jahr=_TESTJAHR,

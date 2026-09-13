@@ -106,7 +106,7 @@ Rein mechanisch, aber breit. Muss zuerst passieren, damit der Begriff
   Mutations-Argument `projektPhase: ID`. Frontend-Export
   `GET_PROJEKT_PHASE_IDS` (Operation `ProjektPhaseIds`).
 
-- [ ] **Step 1: Modelldatei umbenennen und Klasse anpassen**
+- [x] **Step 1: Modelldatei umbenennen und Klasse anpassen**
 
 ```bash
 git mv src/apps/projekt/models/projekt_status.py src/apps/projekt/models/projekt_phase.py
@@ -169,7 +169,7 @@ In `src/apps/projekt/models/projekt.py` vier Stellen: Import
 (`from apps.projekt.models.projekt_phase import ProjektPhase`), Annotation
 (`projekt_phase: ProjektPhase`), Feld (`projekt_phase = models.ForeignKey("projekt.ProjektPhase", on_delete=models.PROTECT, related_name="projekte")`).
 
-- [ ] **Step 2: Restliche Backend-Referenzen umschreiben**
+- [x] **Step 2: Restliche Backend-Referenzen umschreiben**
 
 ```bash
 grep -rl "ProjektStatus\|projekt_status" \
@@ -189,7 +189,7 @@ Danach von Hand nachziehen, was die Ersetzung nicht trifft:
   und der Listen-Mockup ab Zeile 215 (Spaltentitel `Status` → `Phase`).
 - `src/apps/projekt/tests/test_projekt_phase.py`: Docstring/Testnamen.
 
-- [ ] **Step 3: Migration schreiben**
+- [x] **Step 3: Migration schreiben**
 
 `src/apps/projekt/migrations/0012_rename_projektstatus_projektphase.py`:
 
@@ -229,7 +229,7 @@ class Migration(migrations.Migration):
     ]
 ```
 
-- [ ] **Step 4: Migration gegen die Modelle prüfen**
+- [x] **Step 4: Migration gegen die Modelle prüfen**
 
 Run: `devcontainer exec --workspace-folder . uv run python manage.py makemigrations --check --dry-run`
 Expected: `No changes detected`.
@@ -240,7 +240,7 @@ diese Operation ergänzen und erneut prüfen. **Nicht** `makemigrations` ohne
 `--check` laufen lassen: Django fragt bei Renames interaktiv nach und legt
 sonst Delete+Create an, was die Daten verlöre.
 
-- [ ] **Step 5: Frontend-Referenzen umschreiben**
+- [x] **Step 5: Frontend-Referenzen umschreiben**
 
 ```bash
 grep -rl "projektStatus\|ProjektStatus\|PROJEKT_STATUS" frontend/src \
@@ -266,7 +266,7 @@ weil „Status" auch anderswo steht:
   Die Mock-Daten selbst hat `sed` bereits umgestellt (`projektPhase`,
   `projektPhaseList`).
 
-- [ ] **Step 6: Volles Gate**
+- [x] **Step 6: Volles Gate**
 
 Run: `devcontainer exec --workspace-folder . uv run pre-commit run --all-files`
 Expected: ruff, pytest, mypy, vitest alle **Passed**.
@@ -275,7 +275,7 @@ Häufigster Fehler an dieser Stelle: eine Teststelle, die den GraphQL-Query-Text
 als String enthält (`tests/test_graphql_*.py`) und noch `projektStatus` schreibt
 — der Server antwortet dann mit `errors` statt `data`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A

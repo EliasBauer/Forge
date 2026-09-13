@@ -8,7 +8,7 @@ export const CREATE_PROJEKT = gql`
     $offerteSumme: MeasurementScalar!
     $wvSumme: MeasurementScalar
     $projektleiter: ID
-    $projektStatus: ID!
+    $projektPhase: ID!
   ) {
     createProjekt(
       name: $name
@@ -17,7 +17,7 @@ export const CREATE_PROJEKT = gql`
       offerteSumme: $offerteSumme
       wvSumme: $wvSumme
       projektleiter: $projektleiter
-      projektStatus: $projektStatus
+      projektPhase: $projektPhase
     ) {
       success
       Projekt {
@@ -34,7 +34,7 @@ export const UPDATE_PROJEKT = gql`
     $offerteSumme: MeasurementScalar
     $wvSumme: MeasurementScalar
     $projektleiter: ID
-    $projektStatus: ID
+    $projektPhase: ID
   ) {
     updateProjekt(
       id: $id
@@ -42,7 +42,7 @@ export const UPDATE_PROJEKT = gql`
       offerteSumme: $offerteSumme
       wvSumme: $wvSumme
       projektleiter: $projektleiter
-      projektStatus: $projektStatus
+      projektPhase: $projektPhase
     ) {
       success
     }

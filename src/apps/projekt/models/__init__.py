@@ -3,6 +3,6 @@ from __future__ import annotations
 from .kosten_position import KostenPosition
 from .kostenart import Kostenart
 from .projekt import Projekt
-from .projekt_status import ProjektStatus
+from .projekt_phase import ProjektPhase
 
-__all__ = ["Projekt", "KostenPosition", "Kostenart", "ProjektStatus"]
+__all__ = ["Projekt", "KostenPosition", "Kostenart", "ProjektPhase"]
