@@ -904,7 +904,7 @@ Claude-Session: https://claude.ai/code/session_01Wn4HSteRch4Z7TwLgvAoQ3"
   `utils/format.ts`.
 - Produces: `<ProjektStatusChart planWV sollWV ist ak />` (Default-Export).
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 `frontend/src/components/ProjektStatusChart.test.tsx`:
 
@@ -953,12 +953,12 @@ describe("ProjektStatusChart", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run ProjektStatusChart`
 Expected: FAIL — `Failed to resolve import "./ProjektStatusChart"`
 
-- [ ] **Step 3: Komponente implementieren**
+- [x] **Step 3: Komponente implementieren**
 
 `frontend/src/components/ProjektStatusChart.tsx`:
 
@@ -1154,12 +1154,12 @@ export default function ProjektStatusChart({ planWV, sollWV, ist, ak }: Props) {
 }
 ```
 
-- [ ] **Step 4: Test laufen lassen**
+- [x] **Step 4: Test laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run ProjektStatusChart`
 Expected: PASS (4 Tests)
 
-- [ ] **Step 5: In die Detailseite einbauen und Überschriften anpassen**
+- [x] **Step 5: In die Detailseite einbauen und Überschriften anpassen**
 
 In `frontend/src/pages/ProjektDetailPage.tsx`:
 
@@ -1204,7 +1204,7 @@ import ProjektStatusChart from "../components/ProjektStatusChart";
 (Zeilen 392 und 402). Plan-WV = Soll-WV = `wvSumme`, AK = 0, bis das Backend
 eigene Werte liefert.
 
-- [ ] **Step 6: Seitentest ergänzen**
+- [x] **Step 6: Seitentest ergänzen**
 
 In `frontend/src/pages/ProjektDetailPage.test.tsx`. Der vorhandene Helfer
 heisst `renderPage(capabilities)` (Zeile 115) und nimmt
@@ -1243,12 +1243,12 @@ alten Kartentitel, der jetzt der neuen Karte gehört:
 `await screen.findByText("Offerte")` ist eindeutig: „Offerte exkl. MwSt."
 ist ein anderer, vollständiger Textknoten, und `findByText` matcht exakt.
 
-- [ ] **Step 7: Frontend-Tests laufen lassen**
+- [x] **Step 7: Frontend-Tests laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run`
 Expected: PASS (alle Dateien)
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/src/components/ProjektStatusChart.tsx \
