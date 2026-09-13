@@ -51,7 +51,7 @@ Diese vier Punkte weichen von der Spec ab bzw. konkretisieren sie. Ohne sie bric
 
 ---
 
-- [ ] **Step 1: Failing test für das `"never"`-Prädikat schreiben**
+- [x] **Step 1: Failing test für das `"never"`-Prädikat schreiben**
 
 In `src/apps/authentication/tests/test_authentication.py`, Import-Zeile ergänzen und eine neue Test-Klasse direkt nach `PermissionIsMonteurTest` einfügen:
 
@@ -72,12 +72,12 @@ class PermissionNeverTest(TestCase):
         self.assertFalse(_permission_never(MagicMock(), _make_user(None), []))
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/authentication/tests/test_authentication.py::PermissionNeverTest -v`
 Expected: FAIL mit `ImportError: cannot import name '_permission_never'`
 
-- [ ] **Step 3: `"never"`-Prädikat implementieren**
+- [x] **Step 3: `"never"`-Prädikat implementieren**
 
 In `src/apps/authentication/permission.py`, direkt vor `@register_permission("isMonteur")` einfügen:
 
@@ -91,12 +91,12 @@ def _permission_never(
     return False
 ```
 
-- [ ] **Step 4: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 4: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/authentication/tests/test_authentication.py::PermissionNeverTest -v`
 Expected: PASS
 
-- [ ] **Step 5: Failing GraphQL-Tests für `Benutzer`/`Gruppe` schreiben**
+- [x] **Step 5: Failing GraphQL-Tests für `Benutzer`/`Gruppe` schreiben**
 
 Neue Datei `src/apps/authentication/tests/test_benutzer.py`:
 
@@ -287,12 +287,12 @@ class GruppeWriteDeniedTest(TestCase):
         self.assertIn("errors", result)
 ```
 
-- [ ] **Step 6: Tests laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 6: Tests laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/authentication/tests/test_benutzer.py src/apps/authentication/tests/test_gruppe.py -v`
 Expected: FAIL (ImportError / `Cannot query field "benutzer"`), da `Benutzer`/`Gruppe` noch nicht existieren.
 
-- [ ] **Step 7: `models.py` anlegen**
+- [x] **Step 7: `models.py` anlegen**
 
 `src/apps/authentication/models.py`:
 
@@ -308,7 +308,7 @@ ModuleNotFoundError fehl.
 """
 ```
 
-- [ ] **Step 8: `managers.py` anlegen**
+- [x] **Step 8: `managers.py` anlegen**
 
 `src/apps/authentication/managers.py`:
 
@@ -392,7 +392,7 @@ class Benutzer(GeneralManager):
         log_entry_list = {"read": ["isAdminGroup"]}
 ```
 
-- [ ] **Step 9: `apps.py` verdrahten**
+- [x] **Step 9: `apps.py` verdrahten**
 
 In `src/apps/authentication/apps.py`:
 
@@ -402,7 +402,7 @@ In `src/apps/authentication/apps.py`:
         importlib.import_module("apps.authentication.managers")
 ```
 
-- [ ] **Step 10: Migration erzeugen**
+- [x] **Step 10: Migration erzeugen**
 
 ```bash
 devcontainer exec --workspace-folder . mkdir -p src/apps/authentication/migrations
@@ -423,7 +423,7 @@ Migrations for 'authentication':
 
 Falls die Ausgabe auch `Migrations for 'auth': .venv/lib/.../django/contrib/auth/migrations/...` zeigt: Step 8 wurde nicht korrekt übernommen (History-Vorregistrierung fehlt für `Group` oder `User`) — Migration NICHT anwenden/committen, `managers.py` prüfen, `.venv`-Datei löschen, erneut versuchen.
 
-- [ ] **Step 11: `test_projekt.py` und `tests/test_graphql_queries.py` an den Seiteneffekt anpassen**
+- [x] **Step 11: `test_projekt.py` und `tests/test_graphql_queries.py` an den Seiteneffekt anpassen**
 
 In `src/apps/projekt/tests/test_projekt.py`, zwei Stellen:
 
@@ -449,12 +449,12 @@ In `_QUERY_PROJEKT_DETAIL`:
 ```
 (ersetzt bare `projektleiter`; `capabilities { canUpdate canDelete }` kommt erst in Task 3 dazu — hier nur die Sub-Selection fixen)
 
-- [ ] **Step 12: Alle Tests laufen lassen, Erfolg bestätigen**
+- [x] **Step 12: Alle Tests laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest --no-cov`
 Expected: alle PASS (voller Suite-Lauf, nicht nur die neuen Dateien — Step 11 behebt genau die Regression, die Task 1 sonst hinterlässt)
 
-- [ ] **Step 13: mypy + ruff prüfen**
+- [x] **Step 13: mypy + ruff prüfen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev mypy src tests`
 Expected: `Success: no issues found in N source files`
@@ -462,7 +462,7 @@ Expected: `Success: no issues found in N source files`
 Run: `devcontainer exec --workspace-folder . uv run --group dev ruff check . && devcontainer exec --workspace-folder . uv run --group dev ruff format --check .`
 Expected: beide grün
 
-- [ ] **Step 14: Commit**
+- [x] **Step 14: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add src/apps/authentication/models.py src/apps/authentication/managers.py src/apps/authentication/migrations/ src/apps/authentication/permission.py src/apps/authentication/apps.py src/apps/authentication/tests/test_authentication.py src/apps/authentication/tests/test_benutzer.py src/apps/authentication/tests/test_gruppe.py src/apps/projekt/tests/test_projekt.py tests/test_graphql_queries.py
@@ -484,7 +484,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(auth): Benutzer/Grupp
 
 ---
 
-- [ ] **Step 1: Failing GraphQL-Test für `me` schreiben**
+- [x] **Step 1: Failing GraphQL-Test für `me` schreiben**
 
 In `src/apps/authentication/tests/test_authentication.py`, neue Klasse (nach `CurrentUserViewTest`):
 
@@ -566,12 +566,12 @@ class CurrentUserCapabilitiesTest(TestCase):
         )
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/authentication/tests/test_authentication.py::CurrentUserCapabilitiesTest -v`
 Expected: FAIL — `me` liefert keine `capabilities` (Feld existiert nicht im Schema, da `GRAPHQL_GLOBAL_CAPABILITIES_PROVIDER` noch nicht gesetzt ist).
 
-- [ ] **Step 3: `graphql_capabilities.py` anlegen**
+- [x] **Step 3: `graphql_capabilities.py` anlegen**
 
 `src/apps/authentication/graphql_capabilities.py`:
 
@@ -635,7 +635,7 @@ Hinweis: benannte `def`-Funktionen statt Lambdas — mit Lambdas würde mypy str
 erwartete Evaluator-Typ `Callable[[object, object], bool]` ist. Die
 `isinstance`-Schranke in `_user_or_none` engt `object` mypy-sauber ein.
 
-- [ ] **Step 4: Settings verdrahten**
+- [x] **Step 4: Settings verdrahten**
 
 In `src/forge/settings.py`, im bestehenden `GENERAL_MANAGER`-Dict, nach `"DEFAULT_PERMISSIONS": {...},`:
 
@@ -645,12 +645,12 @@ In `src/forge/settings.py`, im bestehenden `GENERAL_MANAGER`-Dict, nach `"DEFAUL
     ),
 ```
 
-- [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/authentication/tests/test_authentication.py::CurrentUserCapabilitiesTest -v`
 Expected: PASS (alle drei Tests)
 
-- [ ] **Step 6: mypy + ruff + voller Suite-Lauf**
+- [x] **Step 6: mypy + ruff + voller Suite-Lauf**
 
 ```bash
 devcontainer exec --workspace-folder . uv run --group dev mypy src tests
@@ -659,7 +659,7 @@ devcontainer exec --workspace-folder . uv run --group dev pytest --no-cov
 ```
 Expected: alle grün
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add src/apps/authentication/graphql_capabilities.py src/forge/settings.py src/apps/authentication/tests/test_authentication.py
@@ -681,7 +681,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(auth): globale Capabi
 
 ---
 
-- [ ] **Step 1: Failing Test für `capabilities` schreiben**
+- [x] **Step 1: Failing Test für `capabilities` schreiben**
 
 In `tests/test_graphql_queries.py`, `_QUERY_PROJEKT_DETAIL` erweitern:
 
@@ -724,12 +724,12 @@ class ProjektCapabilitiesTest(_SharedSetup):
         self.assertEqual(caps, {"canUpdate": False, "canDelete": False})
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest tests/test_graphql_queries.py::ProjektCapabilitiesTest -v`
 Expected: FAIL — `Cannot query field "capabilities" on type "ProjektType"`
 
-- [ ] **Step 3: `projekt.py` anpassen**
+- [x] **Step 3: `projekt.py` anpassen**
 
 Import-Block (ersetzt den bisherigen `from django.contrib.auth.models import User`):
 
@@ -800,7 +800,7 @@ def _register_graphql_capabilities() -> None:
     )
 ```
 
-- [ ] **Step 4: `apps.py` verdrahten**
+- [x] **Step 4: `apps.py` verdrahten**
 
 In `src/apps/projekt/apps.py`:
 
@@ -813,12 +813,12 @@ In `src/apps/projekt/apps.py`:
         _register_graphql_capabilities()
 ```
 
-- [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest tests/test_graphql_queries.py -v`
 Expected: alle PASS, inkl. `ProjektCapabilitiesTest`
 
-- [ ] **Step 6: mypy + ruff + voller Suite-Lauf**
+- [x] **Step 6: mypy + ruff + voller Suite-Lauf**
 
 ```bash
 devcontainer exec --workspace-folder . uv run --group dev mypy src tests
@@ -827,7 +827,7 @@ devcontainer exec --workspace-folder . uv run --group dev pytest --no-cov
 ```
 Expected: alle grün. Falls `mypy` mit `INTERNAL ERROR` abbricht: Step 3/4 falsch übernommen (Zuweisung landet doch auf Modulebene) — prüfen, dass `Projekt.Permission.graphql_capabilities = (...)` ausschließlich innerhalb von `_register_graphql_capabilities()` steht, aufgerufen aus `ready()`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add src/apps/projekt/models/projekt.py src/apps/projekt/apps.py tests/test_graphql_queries.py
@@ -849,7 +849,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(projekt): Objekt-Capa
 
 ---
 
-- [ ] **Step 1: Regressionstest schreiben, der die Entfernung erzwingt**
+- [x] **Step 1: Regressionstest schreiben, der die Entfernung erzwingt**
 
 In `src/apps/authentication/tests/test_authentication.py`, `UsersViewTest`- und `CurrentUserViewTest`-Klassen ENTFERNEN (sie testen Views, die wegfallen) und durch einen einzigen Test ersetzen, der die Abwesenheit prüft:
 
@@ -868,12 +868,12 @@ class RemovedRestEndpointsTest(TestCase):
             reverse("auth-me")
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/authentication/tests/test_authentication.py::RemovedRestEndpointsTest -v`
 Expected: FAIL — `reverse("auth-users")` löst NICHT `NoReverseMatch` aus, weil die URL noch existiert.
 
-- [ ] **Step 3: `urls.py` bereinigen**
+- [x] **Step 3: `urls.py` bereinigen**
 
 `src/apps/authentication/urls.py`:
 
@@ -888,16 +888,16 @@ urlpatterns = [
 ]
 ```
 
-- [ ] **Step 4: `views.py` bereinigen**
+- [x] **Step 4: `views.py` bereinigen**
 
 In `src/apps/authentication/views.py`: `users_view` und `current_user_view` (inkl. ihrer `@require_GET`-Decorators) komplett entfernen. `login_view`/`logout_view` unverändert lassen. Falls dadurch `User`-Import ungenutzt wird (er wird noch für `authenticate`/`auth_login` gebraucht — prüfen, ob `from django.contrib.auth.models import User` noch verwendet wird; falls nicht, Import entfernen).
 
-- [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/authentication/tests/test_authentication.py -v`
 Expected: alle PASS
 
-- [ ] **Step 6: mypy + ruff + voller Suite-Lauf**
+- [x] **Step 6: mypy + ruff + voller Suite-Lauf**
 
 ```bash
 devcontainer exec --workspace-folder . uv run --group dev mypy src tests
@@ -906,7 +906,7 @@ devcontainer exec --workspace-folder . uv run --group dev pytest --no-cov
 ```
 Expected: alle grün
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add src/apps/authentication/views.py src/apps/authentication/urls.py src/apps/authentication/tests/test_authentication.py
@@ -928,7 +928,7 @@ devcontainer exec --workspace-folder . git commit -m "refactor(auth): REST-Endpu
 
 ---
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 Neue Datei `frontend/src/contexts/AuthContext.test.tsx`:
 
@@ -1004,12 +1004,12 @@ describe("AuthContext", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- AuthContext`
 Expected: FAIL — `ME` existiert noch nicht in `queries.ts`, `AuthContext` fetcht noch über REST.
 
-- [ ] **Step 3: `ME`-Query ergänzen**
+- [x] **Step 3: `ME`-Query ergänzen**
 
 In `frontend/src/graphql/queries.ts`, am Dateiende:
 
@@ -1028,7 +1028,7 @@ export const ME = gql`
 `;
 ```
 
-- [ ] **Step 4: `AuthContext.tsx` umbauen**
+- [x] **Step 4: `AuthContext.tsx` umbauen**
 
 Komplette neue Fassung von `frontend/src/contexts/AuthContext.tsx`:
 
@@ -1203,12 +1203,12 @@ bei einer Warnung `navigate("/login", { state: { logoutWarning } })` setzen,
 ist zum Zeitpunkt dieser Task (vor Task 6/Layout) noch nicht vorhanden und
 wurde nachträglich ergänzt, nicht Teil des ursprünglichen Task-6-Plans.
 
-- [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- AuthContext`
 Expected: PASS (beide Tests)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add frontend/src/graphql/queries.ts frontend/src/contexts/AuthContext.tsx frontend/src/contexts/AuthContext.test.tsx
@@ -1232,7 +1232,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(frontend): AuthContex
 
 ---
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 Neue Datei `frontend/src/components/ProtectedRoute.test.tsx`:
 
@@ -1292,12 +1292,12 @@ describe("ProtectedRoute", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProtectedRoute`
 Expected: FAIL — Prop `requiredCapability` existiert noch nicht (TypeScript-Fehler / `allowedGroups`-Fallback greift nicht).
 
-- [ ] **Step 3: `ProtectedRoute.tsx` umbauen**
+- [x] **Step 3: `ProtectedRoute.tsx` umbauen**
 
 ```tsx
 import { Navigate } from "react-router-dom";
@@ -1331,7 +1331,7 @@ export default function ProtectedRoute({ children, requiredCapability }: Props) 
 }
 ```
 
-- [ ] **Step 4: `App.tsx` anpassen**
+- [x] **Step 4: `App.tsx` anpassen**
 
 Zwei Stellen:
 
@@ -1357,7 +1357,7 @@ Zwei Stellen:
           />
 ```
 
-- [ ] **Step 5: `Layout.tsx` anpassen**
+- [x] **Step 5: `Layout.tsx` anpassen**
 
 ```tsx
 import type { ReactNode } from "react";
@@ -1375,7 +1375,7 @@ import { useAuth } from "../contexts/AuthContext";
             )}
 ```
 
-- [ ] **Step 6: `permissions.ts` löschen**
+- [x] **Step 6: `permissions.ts` löschen**
 
 ```bash
 devcontainer exec --workspace-folder . rm frontend/src/utils/permissions.ts
@@ -1383,12 +1383,12 @@ devcontainer exec --workspace-folder . rm frontend/src/utils/permissions.ts
 
 (Alle verbleibenden Importeure werden in Task 7–9 umgestellt; nach diesem Step ist `npm run build`/`tsc` bis Task 9 abgeschlossen erwartungsgemäß rot — das ist normal für einen mehrteiligen Umbau und wird am Ende in Task 10 final verifiziert.)
 
-- [ ] **Step 7: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 7: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProtectedRoute`
 Expected: PASS (alle drei Tests)
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add frontend/src/components/ProtectedRoute.tsx frontend/src/components/ProtectedRoute.test.tsx frontend/src/App.tsx frontend/src/components/Layout.tsx
@@ -1411,7 +1411,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(frontend): ProtectedR
 
 ---
 
-- [ ] **Step 1: Bestehenden Test an die neue Shape anpassen (failing)**
+- [x] **Step 1: Bestehenden Test an die neue Shape anpassen (failing)**
 
 In `frontend/src/pages/ProjektListePage.test.tsx`:
 
@@ -1452,12 +1452,12 @@ function projekt(overrides: Record<string, unknown> = {}) {
 }
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProjektListePage`
 Expected: FAIL — `ProjektListePage.tsx` erwartet noch `projektleiter: string | null` und importiert das gelöschte `utils/permissions`.
 
-- [ ] **Step 3: `GET_PROJEKTE`/`SEARCH_PROJEKTE` in `queries.ts` anpassen**
+- [x] **Step 3: `GET_PROJEKTE`/`SEARCH_PROJEKTE` in `queries.ts` anpassen**
 
 Beide Vorkommen von bare `projektleiter` (in `GET_PROJEKTE` und `SEARCH_PROJEKTE`) ersetzen durch:
 
@@ -1465,7 +1465,7 @@ Beide Vorkommen von bare `projektleiter` (in `GET_PROJEKTE` und `SEARCH_PROJEKTE
         projektleiter { id username }
 ```
 
-- [ ] **Step 4: `ProjektListePage.tsx` anpassen**
+- [x] **Step 4: `ProjektListePage.tsx` anpassen**
 
 ```tsx
 import { useApolloClient, useQuery, useSubscription } from "@apollo/client/react";
@@ -1507,12 +1507,12 @@ type Projekt = {
                     </td>
 ```
 
-- [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProjektListePage`
 Expected: PASS (alle bestehenden Tests weiterhin grün)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add frontend/src/graphql/queries.ts frontend/src/pages/ProjektListePage.tsx frontend/src/pages/ProjektListePage.test.tsx
@@ -1533,7 +1533,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(frontend): ProjektLis
 
 ---
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 Neue Datei `frontend/src/pages/ProjektNeuPage.test.tsx`:
 
@@ -1571,12 +1571,12 @@ describe("ProjektNeuPage", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProjektNeuPage`
 Expected: FAIL — `PROJEKTLEITER` existiert noch nicht, Seite fetcht noch über `/api/users/`.
 
-- [ ] **Step 3: `PROJEKTLEITER`-Query ergänzen**
+- [x] **Step 3: `PROJEKTLEITER`-Query ergänzen**
 
 In `frontend/src/graphql/queries.ts`:
 
@@ -1593,7 +1593,7 @@ export const PROJEKTLEITER = gql`
 `;
 ```
 
-- [ ] **Step 4: `ProjektNeuPage.tsx` anpassen**
+- [x] **Step 4: `ProjektNeuPage.tsx` anpassen**
 
 ```tsx
 import { useMutation, useQuery } from "@apollo/client/react";
@@ -1629,12 +1629,12 @@ export default function ProjektNeuPage() {
 
 (die bisherige `useState<UserOption[]>([])`-Zeile und der ganze `useEffect(() => { fetch("/api/users/") ... }, [])`-Block entfallen ersatzlos; `<option key={u.id} value={String(u.id)}>` bleibt unverändert, da `u.id` jetzt schon ein `string` ist — `String(u.id)` ist redundant, aber unschädlich, kann so bleiben oder zu `value={u.id}` vereinfacht werden)
 
-- [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProjektNeuPage`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add frontend/src/graphql/queries.ts frontend/src/pages/ProjektNeuPage.tsx frontend/src/pages/ProjektNeuPage.test.tsx
@@ -1656,7 +1656,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(frontend): ProjektNeu
 
 ---
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 Neue Datei `frontend/src/pages/ProjektDetailPage.test.tsx`:
 
@@ -1768,12 +1768,12 @@ describe("ProjektDetailPage – Bearbeiten-Button folgt projekt.capabilities.can
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProjektDetailPage`
 Expected: FAIL — `capabilities` fehlt im lokalen `Projekt`-Typ/Query, Button folgt noch `canEdit(user)`.
 
-- [ ] **Step 3: `GET_PROJEKT` in `queries.ts` anpassen**
+- [x] **Step 3: `GET_PROJEKT` in `queries.ts` anpassen**
 
 ```
       projektStatus {
@@ -1791,7 +1791,7 @@ Expected: FAIL — `capabilities` fehlt im lokalen `Projekt`-Typ/Query, Button f
       projektKennzahlenList {
 ```
 
-- [ ] **Step 4: `ProjektDetailPage.tsx` anpassen**
+- [x] **Step 4: `ProjektDetailPage.tsx` anpassen**
 
 Imports:
 
@@ -1911,12 +1911,12 @@ Anzeige außerhalb des Edit-Modus:
 
 Der "Bearbeiten"-Button-JSX (`{canEditData && !editingHeader && (...)}`) bleibt syntaktisch unverändert — `canEditData` ist jetzt aus `data?.projekt?.capabilities.canUpdate` abgeleitet statt aus `canEdit(user)`.
 
-- [ ] **Step 5: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 5: Test laufen lassen, Erfolg bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- ProjektDetailPage`
 Expected: PASS (beide Tests)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . git add frontend/src/graphql/queries.ts frontend/src/pages/ProjektDetailPage.tsx frontend/src/pages/ProjektDetailPage.test.tsx
@@ -1933,7 +1933,7 @@ devcontainer exec --workspace-folder . git commit -m "feat(frontend): ProjektDet
 
 ---
 
-- [ ] **Step 1: Backend-Gate**
+- [x] **Step 1: Backend-Gate**
 
 ```bash
 devcontainer exec --workspace-folder . uv run --group dev ruff check .
@@ -1943,7 +1943,7 @@ devcontainer exec --workspace-folder . uv run --group dev mypy src tests
 ```
 Expected: alle vier grün (inkl. 100%-Coverage-Gate von `pytest`, falls konfiguriert)
 
-- [ ] **Step 2: Frontend-Gate**
+- [x] **Step 2: Frontend-Gate**
 
 ```bash
 devcontainer exec --workspace-folder . npm --prefix frontend test
@@ -1951,14 +1951,14 @@ devcontainer exec --workspace-folder . npx --prefix frontend tsc --noEmit
 ```
 Expected: beide grün. **Wichtig:** `npm run build` (= `vite build`, esbuild-basiert) prüft KEINE Typen und würde eine vergessene Anpassung (z. B. noch vorhandenes `allowedGroups` irgendwo, oder ein Import von `utils/permissions`) nicht zuverlässig aufdecken — verifiziert: `vite build` läuft auch mit einer nicht-existenten Prop klaglos durch, `tsc --noEmit` (nutzt das vorhandene `frontend/tsconfig.json`, `strict: true`, `noEmit: true` — offenbar für genau diesen Zweck vorgesehen, aber bisher in keinem npm-Script/Pre-commit-Hook verdrahtet) meldet es zuverlässig. `tsc --noEmit` ist daher hier der eigentliche Typ-Gate-Schritt, nicht `build`.
 
-- [ ] **Step 3: Volles pre-commit-Gate**
+- [x] **Step 3: Volles pre-commit-Gate**
 
 ```bash
 devcontainer exec --workspace-folder . pre-commit run --all-files
 ```
 Expected: `ruff (lint)`, `ruff (format check)`, `pytest (backend)`, `mypy (type check)`, `vitest (frontend)` — alle "Passed"
 
-- [ ] **Step 4: Manuelle Stichprobe im Browser (optional, empfohlen)**
+- [x] **Step 4: Manuelle Stichprobe im Browser (optional, empfohlen)**
 
 Kurzer manueller Smoke-Test über die `run`-Skill: Login als je ein User pro Rolle (Admin/Projektleiter/Betrachter/Monteur), prüfen:
 - "Neues Projekt"-Button nur für Admin/Projektleiter sichtbar

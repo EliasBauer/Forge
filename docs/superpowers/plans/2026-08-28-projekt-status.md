@@ -30,7 +30,7 @@
 **Interfaces:**
 - Produces: `ProjektStatus` (GM class) with field `name: str`, class attribute `_data` (list of `{"name": ...}` dicts, 3 entries: "Offen", "In Arbeit", "Fertig"), `ProjektStatus.Interface._model` (raw Django model, for direct ORM seeding in tests/migrations, exactly like `Kostenart.Interface._model`).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/apps/projekt/tests/test_projekt_status.py`:
 
@@ -70,12 +70,12 @@ class ProjektStatusDatenTest(TestCase):
             _ProjektStatusModel.objects.create(name="Offen")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_projekt_status.py -v`
 Expected: FAIL/ERROR — `ImportError: cannot import name 'ProjektStatus' from 'apps.projekt.models'`
 
-- [ ] **Step 3: Create the model**
+- [x] **Step 3: Create the model**
 
 Create `src/apps/projekt/models/projekt_status.py`:
 
@@ -117,7 +117,7 @@ class ProjektStatus(GeneralManager):
         __delete__ = ["isAdmin"]
 ```
 
-- [ ] **Step 4: Register in the app's model package**
+- [x] **Step 4: Register in the app's model package**
 
 Modify `src/apps/projekt/models/__init__.py` (full file):
 
@@ -132,17 +132,17 @@ from .projekt import Projekt
 __all__ = ["Projekt", "KostenPosition", "Kostenart", "ProjektStatus"]
 ```
 
-- [ ] **Step 5: Generate the migration**
+- [x] **Step 5: Generate the migration**
 
 Run: `uv run python manage.py makemigrations projekt`
 Expected output: a new migration listing `Create model ProjektStatus`. Note the exact filename it created (e.g. `0006_projektstatus.py`) — you'll reference the previous migration's dependency name in Task 2.
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_projekt_status.py -v`
 Expected: PASS (3 tests)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/apps/projekt/models/projekt_status.py src/apps/projekt/models/__init__.py src/apps/projekt/tests/test_projekt_status.py src/apps/projekt/migrations/
@@ -169,7 +169,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 #### Part A: global test fixture (needed before `Projekt.create()` requires a status)
 
-- [ ] **Step 1: Add the autouse seed fixture**
+- [x] **Step 1: Add the autouse seed fixture**
 
 Read `conftest.py` first (to preserve the existing `clear_django_cache` fixture), then modify it to this full content:
 
@@ -220,7 +220,7 @@ This fixture has no test of its own — it's verified implicitly by every test i
 
 #### Part B: add the field (nullable), default logic, migration
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Modify `src/apps/projekt/tests/test_projekt.py`: replace the `test_auftrag_fertig_default_ist_false` test (currently at line ~98) with:
 
@@ -238,12 +238,12 @@ Modify `src/apps/projekt/tests/test_projekt.py`: replace the `test_auftrag_ferti
 
 Also modify `test_felder_vorhanden` (currently at line ~38) — replace `"auftrag_fertig",` with `"projekt_status",` in the tuple of expected field names.
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_projekt.py -v`
 Expected: FAIL — `AttributeError: 'Projekt' object has no attribute 'projekt_status'`
 
-- [ ] **Step 4: Add the field to the model**
+- [x] **Step 4: Add the field to the model**
 
 Modify `src/apps/projekt/models/projekt.py`. Add the import (after the existing `general_manager.rule` import):
 
@@ -302,17 +302,17 @@ So the full `create()` method reads:
         )
 ```
 
-- [ ] **Step 5: Generate the migration**
+- [x] **Step 5: Generate the migration**
 
 Run: `uv run python manage.py makemigrations projekt`
 Expected: one migration adding `projekt_status` (nullable FK) to `Projekt`. Note the filename.
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `uv run --group dev pytest src/apps/projekt/tests/test_projekt.py -v`
 Expected: PASS (all tests, including `test_projekt_status_default_ist_offen`)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add conftest.py src/apps/projekt/models/projekt.py src/apps/projekt/tests/test_projekt.py src/apps/projekt/migrations/
@@ -323,7 +323,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 #### Part C: backfill existing data, then finalize (remove `auftrag_fertig`, make FK required)
 
-- [ ] **Step 8: Hand-write the data migration**
+- [x] **Step 8: Hand-write the data migration**
 
 Run: `ls src/apps/projekt/migrations/` and note the migration filename from Step 5 (Part B) — use its name (without `.py`) as the `dependencies` entry below.
 
@@ -361,7 +361,7 @@ class Migration(migrations.Migration):
     ]
 ```
 
-- [ ] **Step 9: Apply migrations and manually verify the backfill**
+- [x] **Step 9: Apply migrations and manually verify the backfill**
 
 Run: `uv run python manage.py migrate projekt`
 Expected: migrations `0007` (or whatever Step 5 generated) and `0008_backfill_projekt_status` apply cleanly.
@@ -378,7 +378,7 @@ for p in Projekt.filter():
 ```
 Expected: every row shows `projekt_status` name `Fertig` when `auftrag_fertig` was `True`, `In Arbeit` when `False`; no row shows `None`.
 
-- [ ] **Step 10: Remove `auftrag_fertig`, make `projekt_status` required**
+- [x] **Step 10: Remove `auftrag_fertig`, make `projekt_status` required**
 
 Modify `src/apps/projekt/models/projekt.py`:
 
@@ -393,7 +393,7 @@ Modify `src/apps/projekt/models/projekt.py`:
         )
 ```
 
-- [ ] **Step 11: Generate the finalizing migration**
+- [x] **Step 11: Generate the finalizing migration**
 
 Run: `uv run python manage.py makemigrations projekt`
 Expected: one migration with `AlterField` (projekt_status, `null=False`) and `RemoveField` (auftrag_fertig).
@@ -401,7 +401,7 @@ Expected: one migration with `AlterField` (projekt_status, `null=False`) and `Re
 Run: `uv run python manage.py migrate projekt`
 Expected: applies cleanly (no NOT NULL violations — Step 9 already backfilled every row).
 
-- [ ] **Step 12: Update `admin.py`**
+- [x] **Step 12: Update `admin.py`**
 
 Modify `src/apps/projekt/admin.py`:
 
@@ -431,7 +431,7 @@ class KostenPositionAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     raw_id_fields = ("projekt",)
 ```
 
-- [ ] **Step 13: Update the GraphQL integration test**
+- [x] **Step 13: Update the GraphQL integration test**
 
 Modify `tests/test_graphql_queries.py`:
 
@@ -450,14 +450,14 @@ In `test_projekt_detail_shape`, add after `self.assertEqual(p["auftragsnummer"],
         self.assertEqual(p["projektStatus"]["name"], "Offen")
 ```
 
-- [ ] **Step 14: Run the full backend test suite**
+- [x] **Step 14: Run the full backend test suite**
 
 Run: `uv run --group dev pytest src/apps/projekt tests/ -v`
 Expected: PASS, all tests green (no remaining reference to `auftrag_fertig` anywhere in `src/` or `tests/`).
 
 Verify: `grep -rn "auftrag_fertig" src/ tests/` → no output.
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add src/apps/projekt/models/projekt.py src/apps/projekt/admin.py src/apps/projekt/migrations/ tests/test_graphql_queries.py
@@ -478,7 +478,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: `GET_PROJEKT_STATUS_IDS` query (returns `{ projektStatusList: { items: { id: string; name: string }[] } }`), used by Task 5.
 
-- [ ] **Step 1: Update `queries.ts`**
+- [x] **Step 1: Update `queries.ts`**
 
 In `GET_PROJEKTE` (the `_QUERY_PROJEKT_LISTE`-equivalent), replace the line `auftragFertig` with:
 
@@ -508,7 +508,7 @@ export const GET_PROJEKT_STATUS_IDS = gql`
 `;
 ```
 
-- [ ] **Step 2: Update `mutations.ts`**
+- [x] **Step 2: Update `mutations.ts`**
 
 In `UPDATE_PROJEKT`, replace `$auftragFertig: Boolean` with `$projektStatus: ID`, and replace `auftragFertig: $auftragFertig` with `projektStatus: $projektStatus`. Full updated mutation:
 
@@ -538,7 +538,7 @@ export const UPDATE_PROJEKT = gql`
 
 (`CREATE_PROJEKT` is unchanged — new projects get the "Offen" default from the backend.)
 
-- [ ] **Step 3: Update `subscriptions.ts`**
+- [x] **Step 3: Update `subscriptions.ts`**
 
 In `PROJEKT_DETAIL_SUBSCRIPTION`, replace the line `auftragFertig` with:
 
@@ -549,12 +549,12 @@ In `PROJEKT_DETAIL_SUBSCRIPTION`, replace the line `auftragFertig` with:
         }
 ```
 
-- [ ] **Step 4: Verify no stale references remain**
+- [x] **Step 4: Verify no stale references remain**
 
 Run: `grep -rn "auftragFertig" frontend/src/graphql/`
 Expected: no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/graphql/queries.ts frontend/src/graphql/mutations.ts frontend/src/graphql/subscriptions.ts
@@ -574,7 +574,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `Projekt.projektStatus: { id: string; name: string }` (Task 3's `GET_PROJEKTE`/`SEARCH_PROJEKTE`).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Modify `frontend/src/pages/ProjektListePage.test.tsx`. In the `projekt()` factory function, replace the line `auftragFertig: false,` with:
 
@@ -594,12 +594,12 @@ Add a new test after the existing tests in the file (find the last `it(...)` blo
 
 (`renderPage()` is the existing helper in this file that renders `<ProjektListePage />` wrapped in `<MockedProvider mocks={[listePage1Mock, subscriptionMock]}>` — reuse it as-is.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm --prefix frontend test -- ProjektListePage`
 Expected: FAIL — badge still renders "Aktiv"/"Archiviert", not "In Arbeit"; also a TypeScript error since `Projekt.auftragFertig` no longer matches the mock shape (once Step 3 changes the type).
 
-- [ ] **Step 3: Update the type and StatusBadge component**
+- [x] **Step 3: Update the type and StatusBadge component**
 
 Modify `frontend/src/pages/ProjektListePage.tsx`. Replace the `Projekt` type's `auftragFertig: boolean;` line with:
 
@@ -640,12 +640,12 @@ Replace the table-row usage `<StatusBadge archived={p.auftragFertig} />` with:
                       <StatusBadge status={p.projektStatus.name} />
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm --prefix frontend test -- ProjektListePage`
 Expected: PASS, all tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/pages/ProjektListePage.tsx frontend/src/pages/ProjektListePage.test.tsx
@@ -664,7 +664,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `GET_PROJEKT_STATUS_IDS` (Task 3), `Projekt.projektStatus: { id: string; name: string }` (Task 3's `GET_PROJEKT`), `UPDATE_PROJEKT`'s `$projektStatus: ID` (Task 3).
 
-- [ ] **Step 1: Update imports and types**
+- [x] **Step 1: Update imports and types**
 
 In `frontend/src/pages/ProjektDetailPage.tsx`, change the import line:
 
@@ -703,7 +703,7 @@ type ProjektStatusIdItem = { id: string; name: string };
 type ProjektStatusIdsData = { projektStatusList: { items: ProjektStatusIdItem[] } };
 ```
 
-- [ ] **Step 2: Load the status options**
+- [x] **Step 2: Load the status options**
 
 Directly below the existing `kostenartData` query hook (`const { data: kostenartData } = useQuery<KostenartIdsData>(GET_KOSTENART_IDS);`), add:
 
@@ -711,15 +711,15 @@ Directly below the existing `kostenartData` query hook (`const { data: kostenart
   const { data: projektStatusData } = useQuery<ProjektStatusIdsData>(GET_PROJEKT_STATUS_IDS);
 ```
 
-- [ ] **Step 3: Include status in `startEditHeader()`**
+- [x] **Step 3: Include status in `startEditHeader()`**
 
 In `startEditHeader()`, the `setHeaderForm({...})` call currently sets `name`, `offerteSumme`, `wvSumme`, `projektleiter`. Add `projektStatus: p.projektStatus.id,` as an additional key in that object (any position).
 
-- [ ] **Step 4: Include status in `saveHeader()`**
+- [x] **Step 4: Include status in `saveHeader()`**
 
 In `saveHeader()`, the `updateProjekt({ variables: {...} })` call currently passes `id`, `name`, `offerteSumme`, `wvSumme`, `projektleiter`. Add `projektStatus: headerForm.projektStatus || undefined` as an additional key in that `variables` object.
 
-- [ ] **Step 5: Remove the old toggle button and function**
+- [x] **Step 5: Remove the old toggle button and function**
 
 Delete the `toggleArchivieren()` function entirely (it calls `updateProjekt({ variables: { id: p.id, auftragFertig: !p.auftragFertig } })`).
 
@@ -742,7 +742,7 @@ And delete the "Archivieren/Reaktivieren" button:
 
 (Leave the "Bearbeiten" button and the "Speichern"/"Abbrechen" buttons untouched.)
 
-- [ ] **Step 6: Add the status field to the edit-form grid**
+- [x] **Step 6: Add the status field to the edit-form grid**
 
 In the grid section below the header (`<div className="border-t border-gray-100 px-6 py-5 grid ...">`), immediately after the "Projektleiter" `<div>` block and before the "Jahr" `<div>` block, insert:
 
@@ -763,19 +763,19 @@ In the grid section below the header (`<div className="border-t border-gray-100 
               </div>
 ```
 
-- [ ] **Step 7: Type-check and build**
+- [x] **Step 7: Type-check and build**
 
 Run: `npm --prefix frontend run build`
 Expected: no TypeScript errors (in particular, no remaining reference to `p.auftragFertig` or `auftragFertig` anywhere in this file).
 
 Verify: `grep -n "auftragFertig\|toggleArchivieren" frontend/src/pages/ProjektDetailPage.tsx` → no output.
 
-- [ ] **Step 8: Run the frontend test suite**
+- [x] **Step 8: Run the frontend test suite**
 
 Run: `npm --prefix frontend test`
 Expected: PASS, all existing tests green (no test file specifically exercises `ProjektDetailPage`'s status UI today, so this step only guards against regressions elsewhere).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add frontend/src/pages/ProjektDetailPage.tsx
@@ -790,16 +790,16 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the complete pre-commit gate**
+- [x] **Step 1: Run the complete pre-commit gate**
 
 Run: `pre-commit run --all-files`
 Expected: `ruff (lint)`, `ruff (format check)`, `pytest (backend)`, `mypy (type check)`, `vitest (frontend)` all pass.
 
-- [ ] **Step 2: Confirm no leftover references**
+- [x] **Step 2: Confirm no leftover references**
 
 Run: `grep -rn "auftrag_fertig\|auftragFertig" src/ tests/ frontend/src/ docs/adr/ 2>/dev/null`
 Expected: no output (only this plan and the spec doc may still mention the old name historically — that's fine, they're documentation of the migration itself, not code).
 
-- [ ] **Step 3: Manual smoke check (optional but recommended)**
+- [x] **Step 3: Manual smoke check (optional but recommended)**
 
 Start the dev servers (`uv run python manage.py runserver` and `npm --prefix frontend run dev`), open a project's detail page, click "Bearbeiten", confirm the Status dropdown shows "Offen"/"In Arbeit"/"Fertig", change it, save, and confirm the badge in the project list reflects the new value after navigating back.
