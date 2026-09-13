@@ -302,7 +302,7 @@ Claude-Session: https://claude.ai/code/session_01Wn4HSteRch4Z7TwLgvAoQ3"
   und `IstWert.rechnungen -> list[Lieferantenrechnung]`, im Schema
   `istWertList { items { rechnungen { ... } } }`.
 
-- [ ] **Step 1: Failing Test schreiben**
+- [x] **Step 1: Failing Test schreiben**
 
 `src/apps/projekt/tests/test_rechnungen_properties.py`:
 
@@ -447,12 +447,12 @@ class IstWertRechnungenTest(RechnungenBasis):
         self.assertEqual(Decimal(iw.ist_kosten_wert.magnitude), summe)
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/projekt/tests/test_rechnungen_properties.py -v --no-cov`
 Expected: FAIL — `AttributeError: 'IstWert' object has no attribute 'rechnungen'`
 
-- [ ] **Step 3: Implementieren**
+- [x] **Step 3: Implementieren**
 
 In `src/apps/projekt/calculation_manager/ist_wert.py` die Auswahl-Logik aus
 `ist_kosten_wert` in einen Helfer ziehen und beide Properties darauf stützen.
@@ -503,13 +503,13 @@ In `src/apps/projekt/calculation_manager/ist_wert.py` die Auswahl-Logik aus
 Die alte `ist_kosten_wert` (mit der inline-Auswahl) wird dabei vollständig
 ersetzt.
 
-- [ ] **Step 4: Tests laufen lassen**
+- [x] **Step 4: Tests laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest src/apps/projekt/tests/test_rechnungen_properties.py src/apps/projekt/tests/test_ist_wert.py -v --no-cov`
 Expected: PASS (alle, auch die bestehenden `test_ist_wert.py` — das Verhalten
 von `ist_kosten_wert` ändert sich nicht).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/apps/projekt/calculation_manager/ist_wert.py \
