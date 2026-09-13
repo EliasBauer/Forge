@@ -1,6 +1,7 @@
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing/react";
+import { MockLink } from "@apollo/client/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ProjektDetailPage from "./ProjektDetailPage";
@@ -155,7 +156,7 @@ const rechnungenMock = {
 
 function renderPage(
   capabilities: { canUpdate: boolean; canDelete: boolean },
-  extraMocks: Parameters<typeof MockedProvider>[0]["mocks"] = [],
+  extraMocks: MockLink.MockedResponse[] = [],
 ) {
   return render(
     <MemoryRouter initialEntries={["/projekte/1"]}>
