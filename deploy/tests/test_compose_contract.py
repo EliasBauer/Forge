@@ -412,6 +412,10 @@ def test_blackbox_exporter_reaches_public_and_internal_targets() -> None:
     assert _services()["blackbox-exporter"]["extra_hosts"] == [
         "${APP_DOMAIN}:host-gateway"
     ]
+    assert (
+        "${TLS_CERT_FILE}:/run/tls/tls.crt:ro"
+        in _services()["blackbox-exporter"]["volumes"]
+    )
 
 
 def test_pushgateway_is_reachable_from_application_jobs() -> None:

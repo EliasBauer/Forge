@@ -401,6 +401,9 @@ services:
       - --config.file=/etc/blackbox_exporter/config.yml
     volumes:
       - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+      # Das ausgelieferte Zertifikat (fullchain) dient der Probe als CA-Datei:
+      # funktioniert fuer selbstsignierte und CA-signierte Zertifikate.
+      - ${TLS_CERT_FILE}:/run/tls/tls.crt:ro
     # Die oeffentliche Probe muss den App-Namen aufloesen koennen, auch wenn er
     # nur per mDNS/hosts bekannt ist: auf den Docker-Host (nginx) zeigen.
     extra_hosts:

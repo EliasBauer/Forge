@@ -547,6 +547,11 @@ def test_blackbox_modules_probe_public_and_internal_health() -> None:
     }
     graphql = config["modules"]["graphql_health"]["http"]
     assert graphql["fail_if_not_ssl"] is True
+    for module in ("https_2xx", "graphql_health"):
+        assert config["modules"][module]["http"]["tls_config"] == {
+            "ca_file": "/run/tls/tls.crt"
+        }
+    assert "tls_config" not in config["modules"]["internal_http_2xx"]["http"]
     pattern = re.compile(graphql["fail_if_body_not_matches_regexp"][0])
     assert pattern.match('{"data":{"__typename":"Query"}}')
     assert not pattern.match('{"data":{"__typename":"Query"},"errors":[{}]}')
