@@ -27,13 +27,22 @@ Visualisierungs-Sektion.
 │ │ ┌─ 9-Spalten-Tabelle (siehe §3) ────────────────────┐ │ │
 │ └───────────────────────────────────────────────────────┘ │
 │                                                           │
+│ ┌─ ProjektStatusChart Card ─────────────────────────────┐ │
+│ │ Projektstatus auf einen Blick     [Legende: 5 Swatches]│ │
+│ │ ┌─ 3 Linien + „Offen“-Kachel (siehe §5) ─────────────┐│ │
+│ └───────────────────────────────────────────────────────┘ │
+│                                                           │
 │ ┌─ ProjectVisualization Card ───────────────────────────┐ │
-│ │ Projektstatus auf einen Blick  [Legende grün/gelb/rot]│ │
+│ │ Projektkategorien auf einen Blick [Legende grün/gelb/rot]│
 │ │ Plan-WV vs. Ist je Kategorie                          │ │
-│ │ ┌─ Balkendiagramm (siehe §5) ───────────────────────┐ │ │
+│ │ ┌─ Balkendiagramm (siehe §6) ───────────────────────┐ │ │
 │ └───────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────┘
 ```
+
+> Reihenfolge von oben nach unten: Kostenpositionen-Tabelle (§3) →
+> Projektstatus auf einen Blick (§5, neu) → Projektkategorien auf einen
+> Blick (§6, hiess vorher „Projektstatus auf einen Blick“).
 
 ---
 
@@ -71,7 +80,7 @@ Jedes Feld:
 | #  | Header (Spaltenbreite) | Quelle           | Editierbar |
 |----|------------------------|------------------|------------|
 | 1  | Art (24 %)             | Static (Label)   | nein       |
-| 2  | Soll-Offerte (11 %)    | **User-Eingabe** | **ja**     |
+| 2  | Offerte (11 %)         | **User-Eingabe** | **ja**     |
 | 3  | %  (6 %)               | berechnet        | nein       |
 | 4  | Soll-WV (11 %)         | berechnet        | nein       |
 | 5  | %  (6 %)               | berechnet        | nein       |
@@ -81,7 +90,7 @@ Jedes Feld:
 | 9  | %  (6 %)               | ERP              | nein       |
 
 Spalten-Hintergründe:
-- Soll-Offerte (Sp. 2): weiss (editierbar)
+- Offerte (Sp. 2): weiss (editierbar)
 - Berechnete Spalten (3, 4, 5, 6, 7): `bg-gray-50 text-gray-500`
 - ERP-Spalten (8, 9): `bg-blue-50 text-blue-700` (Klassen `.erp-tint` / `.erp-text`)
 
@@ -210,6 +219,36 @@ Drei Mini-Swatches mit Beschriftung:
 - `bg-gray-100 border border-gray-200` → „berechnet"
 - `bg-blue-50 border border-blue-200` → „aus ERP"
 
+### 3.8 Klickbare Ist-Zellen — Rechnungen-Pop-up
+
+Eine Ist-Zelle ist klickbar, sobald sie einen Wert zeigt — es gibt **keine
+gepflegte Ausnahmeliste**, die Klickbarkeit folgt allein aus dem
+angezeigten Wert. Dass „Transport und Montage“, „Stunden“ und
+„Gemeinkosten“ heute nie klickbar sind, ergibt sich daher von selbst: diese
+Positionen zeigen aktuell nie einen Ist-Wert.
+
+Klick öffnet ein Pop-up mit den Lieferantenrechnungen hinter genau dieser
+Position. Die Ist-Zelle der Fusszeile „Summe der Kosten“ (§3.6) ist die
+einzige Ausnahme in der *Zielmenge*, nicht in der Regel: sie öffnet alle
+Rechnungen des Projekts statt der Rechnungen einer einzelnen Position.
+
+Das Pop-up:
+- lädt seine Daten bei **jedem** Öffnen frisch nach (kein Cache) — bewusste
+  Entscheidung des Auftraggebers: man verweilt hier nicht, dafür sind die
+  Zahlen immer aktuell
+- zeigt eine Tabelle, die nach **jeder** Spalte sortierbar ist
+
+**Berechtigung:** Lieferantenrechnungen liefert das Backend nur an Admin
+und Projektleiter aus (general_manager-Permission, nicht im Frontend
+geprüft). Einzelne Positionszeilen sieht ohnehin nur, wer Kostenpositionen
+lesen darf — für diese Rollen ist die Rechnungsfrage also bereits durch die
+Sichtbarkeit der Zeile entschieden. Die Fusszeile „Summe der Kosten“
+dagegen bleibt für jede Rolle sichtbar, die die Projektkennzahlen lesen
+darf (auch Betrachter, siehe [`projekt.md`](../projekt.md) für die
+Rollentabelle); deren Ist-Zelle ist entsprechend ebenfalls klickbar — das
+Pop-up liefert für sie aber ein leeres Ergebnis, weil das Rechnungen-Feld
+serverseitig auf Admin/Projektleiter beschränkt ist.
+
 ---
 
 ## 4. API
@@ -242,14 +281,82 @@ revertieren mit Toast.
 
 ---
 
-## 5. ProjectVisualization (Balkendiagramm)
+## 5. ProjektStatusChart — Projektstatus auf einen Blick
+
+Card zwischen der Kostenpositionen-Tabelle (§3) und der Kategorien-Karte
+(§6). Sie fasst den finanziellen Gesamtstatus des Projekts in drei gleich
+dicken Linien zusammen; die Aufschlüsselung je Kategorie bleibt Aufgabe von
+§6. Sichtbar unter derselben Bedingung wie die einzelnen
+Kostenpositionen-Zeilen (`canViewKostenPositionen`, heute Admin und
+Projektleiter) — Betrachter sieht diese Karte nicht.
+
+### 5.1 Drei Linien + „Offen“-Kachel
+
+Grid mit den drei Linien links und einer abgesetzten Kachel rechts:
+
+```
+Plan-WV          ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░              CHF 393'319.37
+Ist-Kosten kum.  ▓▓▓▓▓▓▓░░░░░░░░░░░░░              CHF 265'844.78    ┃ Offen (Plan-WV − AK)
+AK verrechnet    ░░░░░░░░░░░░░░░░░░░░              CHF 0.00         ┃ CHF 393'319.37
+                                                                     ┃ 100.0 % von Plan-WV
+```
+
+- **Plan-WV**: hellblau von 0 bis Soll-WV, dunkelblau als Auffüllung von
+  Soll-WV bis Plan-WV (Normalfall Plan-WV ≥ Soll-WV; siehe Sonderfälle)
+- **Ist-Kosten kum.**: rot
+- **AK verrechnet**: grün — bisher dem Kunden verrechnete
+  A-Konto-Zahlungen
+- **Offen** (rechte Kachel) = Plan-WV − AK verrechnet, als CHF-Betrag und
+  in Prozent von Plan-WV
+
+Alle drei Linien teilen sich denselben Massstab
+(`max(Plan-WV, Soll-WV, Ist)`), damit die Breiten vergleichbar bleiben.
+
+### 5.2 Heutige Datenquellen (provisorisch)
+
+| Kennzahl        | Quelle heute                                                        |
+| --------------- | -------------------------------------------------------------------- |
+| Plan-WV         | `wvSumme` (dieselbe Zahl wie „WV-Summe exkl. MwSt.“ im Kopf)         |
+| Soll-WV         | ebenfalls `wvSumme` — Plan-WV und Soll-WV sind aktuell identisch     |
+| Ist-Kosten kum. | `summeIstKosten` (= Fusszeile „Summe der Kosten“ der Kostentabelle)  |
+| AK verrechnet   | fest `0` — das Backend liefert diesen Wert noch nicht                |
+
+Weil Soll-WV und Plan-WV heute immer gleich sind, treten die unten
+beschriebenen „Soll-WV ≠ Plan-WV“-Fälle in der Praxis nicht auf; die
+Komponente unterstützt sie bereits für den Tag, an dem Plan-WV ein eigener
+Wert wird. Ebenso ist „Offen“ heute für jedes Projekt immer 100 % von
+Plan-WV, weil AK verrechnet konstant 0 ist.
+
+### 5.3 Sonderfälle
+
+- **Ist über Plan-WV**: der gemeinsame Massstab wächst auf den Ist-Wert;
+  die Überschreitung erscheint in der Plan-WV-Linie gestrichelt rot, die
+  Ist-Zahl wird rot mit „⚠“, und die Offen-Kachel bekommt eine Zusatzzeile
+  „Ist über Plan-WV: +CHF … (+…%)“.
+- **AK verrechnet über Plan-WV**: der grüne Balken wird bei Plan-WV
+  gedeckelt (auch „Offen“ rechnet mit dem gedeckelten Wert und wird nie
+  negativ); die angezeigte Zahl bleibt der echte AK-Wert, ergänzt um
+  „gedeckelt“.
+- **Soll-WV grösser als Plan-WV**: die Plan-WV-Linie zeigt dunkelblau bis
+  Plan-WV, der Überhang bis Soll-WV erscheint hellblau gestrichelt.
+- **Keine WV-Summe erfasst** (Plan-WV `null` oder ≤ 0): die Karte zeigt nur
+  den Hinweis „Keine WV-Summe erfasst — Plan-WV fehlt.“ — weder Linien noch
+  Legende.
+
+Ist-Überschreitung und AK-Deckelung sind unabhängige Bedingungen und können
+gleichzeitig auftreten.
+
+---
+
+## 6. ProjectVisualization (Balkendiagramm)
 
 Card mit:
-- Header: „Projektstatus auf einen Blick"
+- Header: „Projektkategorien auf einen Blick" (hiess vor der Einführung
+  von §5 „Projektstatus auf einen Blick")
 - Health-Legende rechts: Status-Counts grün / gelb / rot mit Anzahl Kategorien
 - Section-Titel: „Plan-WV vs. Ist je Kategorie"
 
-### 5.1 Pro Kategorie
+### 6.1 Pro Kategorie
 
 Grid `[160px 1fr 120px] gap-4`:
 
@@ -270,7 +377,7 @@ Beide Balken:
 Auf der Ist-Spur zusätzlich: 1 px senkrechte Linie an der Plan-WV-Position
 (`absolute top-[-2px] bottom-[-2px] w-px bg-gray-500/70`) — als 100 %-Marker.
 
-### 5.2 Status-Pill (rechts)
+### 6.2 Status-Pill (rechts)
 
 ```tsx
 <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium
@@ -282,14 +389,14 @@ Auf der Ist-Spur zusätzlich: 1 px senkrechte Linie an der Plan-WV-Position
 
 Wenn `ist === null && soll !== null`: kursives „noch offen" in `text-gray-400`.
 
-### 5.3 Welche Kategorien angezeigt werden
+### 6.3 Welche Kategorien angezeigt werden
 
 Nur **nicht-locked** Zeilen mit **mindestens einem** Wert (`soll` oder `ist`)
 erscheinen im Diagramm.
 
 ---
 
-## 6. Akzeptanzkriterien (seite-spezifisch)
+## 7. Akzeptanzkriterien (seite-spezifisch)
 
 - [ ] Sticky Table-Header bleibt **unter** der Navbar (top: 56 px) — kein Stack-Overlap
 - [ ] EditableMoneyCell: Enter / Escape / Blur korrekt, Apostroph-Eingabe akzeptiert
@@ -299,3 +406,9 @@ erscheinen im Diagramm.
 - [ ] Soll-Total ändert sich live wenn eine Soll-Zelle editiert wird (alle abhängigen Spalten ebenfalls)
 - [ ] Visualisierung zeigt keine locked rows
 - [ ] „Bearbeiten" oben rechts rendert; Klick öffnet das Edit-Formular inkl. Status-Dropdown
+- [ ] ProjektStatusChart erscheint nur, wenn `canViewKostenPositionen` true ist (Betrachter sieht die Karte nicht)
+- [ ] Ist > Plan-WV: Ist-Zeile rot mit „⚠", Überschreitung in der Plan-WV-Linie gestrichelt, Zusatzzeile in der Offen-Kachel
+- [ ] AK verrechnet > Plan-WV: Balken bei Plan-WV gedeckelt, Zahl zeigt echten Wert + „gedeckelt"
+- [ ] Ohne WV-Summe zeigt die Karte nur den Hinweistext, keine Linien
+- [ ] Ist-Zellen mit Wert öffnen das Rechnungen-Pop-up; Fusszeile „Summe der Kosten" öffnet alle Rechnungen des Projekts
+- [ ] Rechnungen-Pop-up lädt bei jedem Öffnen neu (kein veralteter Cache-Stand); Tabelle sortierbar nach jeder Spalte

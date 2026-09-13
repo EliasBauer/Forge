@@ -212,15 +212,22 @@ Kein anonymer Zugriff. Alle Routen (außer `/login`) leiten unauthentifizierte N
 ────────────────────────────────────────────────────────────────────────────
 [+ Neues Projekt]   [☐ Fertige anzeigen]
 
-  Auftragsnr.   Name                    PL            WV exkl.    WV + Zusätze   Phase
-  ─────────────────────────────────────────────────────────────────────────────────────
-  2022.0050     Hotel Glockenhof …      Karl-Heinz    319'220     393'319        In Arbeit [→]
-  2022.0055     Raiffeisenbank …        Karl-Heinz    131'848     156'537        Fertig    [→]
+  Auftragsnr.   Name                    PL            Offerte     Plan-WV     Projektstatus             Phase
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  2022.0050     Hotel Glockenhof …      Karl-Heinz    365'595     393'319     393'319 offen · 100 %      In Arbeit [→]
+  2022.0055     Raiffeisenbank …        Karl-Heinz    131'848     156'537     156'537 offen · 100 %      Fertig    [→]
 ```
 
 - Sortierung per Klick auf Spaltenköpfe (Standard: Auftragsnummer aufsteigend)
 - Projekte mit Status „Fertig“ (`projekt_phase`) standardmäßig ausgeblendet; Toggle zeigt sie ausgegraut
 - Monteur: sieht nur Auftragsnr., Name, Status (keine Finanzdaten)
+- **Projektstatus**: Mini-Balken (grün = AK verrechnet, hellblau = offen,
+  roter Strich = Ist) plus „Offen"-Betrag und -Prozentsatz (Details und
+  Sonderfälle: [`designs/projektdetail.md` §5](./designs/projektdetail.md#5-projektstatuschart--projektstatus-auf-einen-blick)).
+  Weil „AK verrechnet" heute serverseitig konstant 0 ist, zeigt die Spalte
+  aktuell für jedes Projekt 100 % offen; übersteigen die Ist-Kosten den
+  Plan-WV, wird der gesamte Zellentext rot mit „⚠", unabhängig vom
+  AK-Stand.
 
 ### 3. Projektdetail (`/projekte/:id`)
 
