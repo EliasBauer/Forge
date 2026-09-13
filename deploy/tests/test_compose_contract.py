@@ -409,6 +409,9 @@ def test_blackbox_exporter_reaches_public_and_internal_targets() -> None:
         "ingress",
         "application",
     }
+    assert _services()["blackbox-exporter"]["extra_hosts"] == [
+        "${APP_DOMAIN}:host-gateway"
+    ]
 
 
 def test_pushgateway_is_reachable_from_application_jobs() -> None:

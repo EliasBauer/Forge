@@ -83,7 +83,8 @@ selbstsignierte Zertifikate weiterhin akzeptieren; mit einem CA-Zertifikat
 
 Alle drei Namen müssen auf den Host zeigen (interner DNS oder `/etc/hosts` auf
 den Clients). mDNS (`.local`) löst keine Subdomains auf; für Tests auf den
-Clients eintragen:
+Clients eintragen (der Blackbox-Exporter erreicht `APP_DOMAIN` unabhängig davon
+über `host-gateway`):
 
 ```text
 192.168.1.10 forge.example.local monitoring.forge.example.local db.forge.example.local
