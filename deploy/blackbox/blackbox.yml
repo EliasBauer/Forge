@@ -1,0 +1,32 @@
+modules:
+  internal_http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]
+
+  https_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      fail_if_not_ssl: true
+      tls_config:
+        ca_file: /run/tls/tls.crt
+      valid_status_codes: [200]
+
+  graphql_health:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      fail_if_not_ssl: true
+      tls_config:
+        ca_file: /run/tls/tls.crt
+      valid_status_codes: [200]
+      fail_if_body_not_matches_regexp:
+        - '^\s*\{\s*"data"\s*:\s*\{\s*"__typename"\s*:\s*"Query"\s*\}\s*\}\s*$'

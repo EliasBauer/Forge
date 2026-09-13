@@ -1,0 +1,110 @@
+discovery.docker "container_logs" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+}
+
+discovery.relabel "container_logs" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    replacement   = "$1"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "container_logs" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.container_logs.targets
+  relabel_rules = discovery.relabel.container_logs.rules
+  forward_to    = [loki.process.container_logs.receiver]
+}
+
+loki.process "container_logs" {
+  stage.json {
+    expressions = {
+      raw_level = "levelname",
+    }
+  }
+
+  stage.regex {
+    source     = "raw_level"
+    expression = "^(?P<level>TRACE|DEBUG|INFO|WARN|WARNING|ERROR|CRITICAL|FATAL)$"
+  }
+
+  stage.regex {
+    expression = "^\\[[^\\]]+: (?P<level>ERROR|CRITICAL|FATAL)(/[^\\]]+)?\\]"
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+prometheus.exporter.cadvisor "docker" {
+  docker_host                  = "unix:///var/run/docker.sock"
+  docker_only                  = true
+  storage_duration             = "5m"
+  store_container_labels       = false
+  allowlisted_container_labels = [
+    "com.docker.compose.project",
+    "com.docker.compose.service",
+  ]
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.docker.targets
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.cadvisor.receiver]
+}
+
+prometheus.relabel "cadvisor" {
+  rule {
+    source_labels = ["container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+
+  rule {
+    source_labels = ["container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+
+  rule {
+    action = "labeldrop"
+    regex  = "container_label_.*"
+  }
+
+  forward_to = [prometheus.remote_write.local.receiver]
+}
+
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
