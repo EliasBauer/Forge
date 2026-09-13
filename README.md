@@ -24,13 +24,13 @@ Forge ist eine interne Projektcontrolling-Webanwendung für Handwerksbetriebe mi
 
 | Schicht    | Technologie                                      |
 |------------|--------------------------------------------------|
-| Backend    | Python 3.12, Django 5, GeneralManager 0.45       |
+| Backend    | Python 3.12, Django 6, GeneralManager 0.79       |
 | API        | GraphQL (graphene-django), WebSockets (Channels) |
 | Frontend   | React 18, TypeScript, Vite, Tailwind CSS         |
-| Datenbank  | PostgreSQL 16                                    |
+| Datenbank  | PostgreSQL 17 hinter pgBouncer                   |
 | Cache/RT   | Redis                                            |
 | Suche      | Meilisearch                                      |
-| Deployment | Docker Compose, Nginx, Daphne                    |
+| Deployment | Docker Compose, nginx, Daphne, Prometheus/Grafana/Loki |
 
 ## Lokale Entwicklung
 
@@ -53,18 +53,17 @@ uv sync --group dev
 # 3. Frontend-Abhängigkeiten installieren
 cd frontend && npm install && cd ..
 
-# 4. Umgebungsvariablen konfigurieren
-cp .env.example .env
-# FORGE_ENV=dev setzen, BEXIO_ACCESS_TOKEN optional
+# 4. Dev-Modus aktivieren (im Devcontainer bereits gesetzt: SQLite, Fixture-Bexio)
+export FORGE_ENV=dev
 
 # 5. Datenbank migrieren
-uv run python src/manage.py migrate
+uv run python manage.py migrate
 
 # 6. Dev-Daten anlegen (Gruppen, Testuser)
-uv run python src/manage.py setup_dev_data
+uv run python manage.py setup_dev_data
 
 # 7. Backend starten
-uv run python src/manage.py runserver
+uv run python manage.py runserver
 
 # 8. Frontend starten (separates Terminal)
 cd frontend && npm run dev -- --host
@@ -99,16 +98,23 @@ uv run python src/manage.py sync_bexio
 
 ## Deployment
 
-Ziel: Raspberry Pi im lokalen Intranet via Docker Compose.
+Produktion läuft als Single-Host-Docker-Compose-Stack nach dem Muster eines ähnlichen Projekts: nginx (TLS, einziger Host-Port), zwei Daphne-Instanzen,
+Celery Worker + Beat, PostgreSQL 17 hinter pgBouncer, Redis, Meilisearch,
+dazu die Profile `observability` (Prometheus, Alertmanager, Grafana, Loki,
+Alloy, Exporter), `administration` (pgAdmin), `backup` und
+`restore-verification`. Konfiguration, Skripte und Runbook liegen unter
+[`deploy/`](deploy/README.md).
+
+Kurzfassung (Details und Host-Vorbereitung im Runbook):
 
 ```bash
-cp .env.example .env
-# Alle Produktionswerte in .env setzen
-
-docker compose up -d
+cd deploy
+cp .env.example .env && for f in secrets/*.txt.example; do cp "$f" "${f%.example}"; done
+$EDITOR .env secrets/*.txt
+./scripts/validate-config.sh
+./scripts/deploy.sh
+./scripts/start-ops.sh
 ```
-
-Konfiguration für Nginx, Daphne, Redis, Celery und Meilisearch: `test_docker/`.
 
 ## Lizenz
 
