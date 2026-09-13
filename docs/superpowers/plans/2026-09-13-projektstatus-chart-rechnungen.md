@@ -2121,7 +2121,7 @@ Claude-Session: https://claude.ai/code/session_01Wn4HSteRch4Z7TwLgvAoQ3"
 - Consumes: alles Vorherige.
 - Produces: —
 
-- [ ] **Step 1: Detailseiten-Doku ergänzen**
+- [x] **Step 1: Detailseiten-Doku ergänzen**
 
 In `docs/specs/designs/projektdetail.md` einen Abschnitt zum Chart aufnehmen:
 Reihenfolge der Karten (Kostenpositionen → Projektstatus → Projektkategorien),
@@ -2130,17 +2130,17 @@ die vier Kennzahlen mit ihren heutigen Quellen (Plan-WV = Soll-WV =
 keine WV-Summe) und die Klickregel für die Ist-Zellen („klickbar, wenn ein
 Wert angezeigt wird").
 
-- [ ] **Step 2: Listen-Doku ergänzen**
+- [x] **Step 2: Listen-Doku ergänzen**
 
 In `docs/specs/projekt.md` den Listen-Mockup (ab Zeile 215) auf die neuen
 Spalten umstellen: `Offerte · Plan-WV · Projektstatus · Phase`.
 
-- [ ] **Step 3: Volles Gate**
+- [x] **Step 3: Volles Gate**
 
 Run: `devcontainer exec --workspace-folder . uv run pre-commit run --all-files`
 Expected: alle Hooks **Passed**
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/specs/designs/projektdetail.md docs/specs/projekt.md \
