@@ -1,10 +1,16 @@
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ProjektDetailPage from "./ProjektDetailPage";
-import { GET_PROJEKT, GET_KOSTENART_IDS, GET_PROJEKT_PHASE_IDS, PROJEKTLEITER } from "../graphql/queries";
+import {
+  GET_PROJEKT,
+  GET_KOSTENART_IDS,
+  GET_PROJEKT_PHASE_IDS,
+  GET_PROJEKT_RECHNUNGEN,
+  PROJEKTLEITER,
+} from "../graphql/queries";
 import { PROJEKT_DETAIL_SUBSCRIPTION } from "../graphql/subscriptions";
 
 const { mockCapabilities } = vi.hoisted(() => ({
@@ -55,14 +61,14 @@ function projektMock(capabilities: { canUpdate: boolean; canDelete: boolean }) {
               {
                 summeOfferteKosten: { value: 500, unit: "CHF" },
                 summeWvKosten: { value: 450, unit: "CHF" },
-                summeIstKosten: { value: 400, unit: "CHF" },
+                summeIstKosten: { value: 950, unit: "CHF" },
                 verbrauchsrate: 80,
                 deltaWvOff: { value: -50, unit: "CHF" },
                 deltaWvOffPct: -10,
                 deltaIstPlan: { value: -50, unit: "CHF" },
                 deltaIstPlanPct: -11.1,
                 summeWvPlus: { value: 450, unit: "CHF" },
-                bisherVerrechnet: { value: -400, unit: "CHF" },
+                bisherVerrechnet: { value: -950, unit: "CHF" },
               },
             ],
           },
@@ -111,12 +117,53 @@ const projektleiterMock = {
   request: { query: PROJEKTLEITER },
   result: { data: { benutzerList: { items: [{ id: "5", username: "anna" }] } } },
 };
+const rechnungenMock = {
+  request: { query: GET_PROJEKT_RECHNUNGEN, variables: { id: "1" } },
+  result: {
+    data: {
+      projekt: {
+        id: "1",
+        projektKennzahlenList: { items: [{ rechnungen: [] }] },
+        istWertList: {
+          items: [
+            {
+              kostenart: { schluessel: "apparate" },
+              rechnungen: [
+                {
+                  id: "7",
+                  dokumentNr: "LR-777",
+                  rechnungsdatum: "2024-05-02",
+                  firmenname: "Muster AG",
+                  zeilenTitel: "Lüfter",
+                  status: "paid",
+                  faelligkeitsdatum: "2024-06-01",
+                  ueberfaellig: false,
+                  betrag: 1077,
+                  steuerBerechnet: 77,
+                  nettoBetrag: 1000,
+                  buchungskonto: { accountNo: "4001", name: "Apparate" },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  },
+};
 
 function renderPage(capabilities: { canUpdate: boolean; canDelete: boolean }) {
   return render(
     <MemoryRouter initialEntries={["/projekte/1"]}>
       <MockedProvider
-        mocks={[projektMock(capabilities), kostenartMock, phaseMock, subscriptionMock, projektleiterMock]}
+        mocks={[
+          projektMock(capabilities),
+          kostenartMock,
+          phaseMock,
+          subscriptionMock,
+          projektleiterMock,
+          rechnungenMock,
+        ]}
       >
         <Routes>
           <Route path="/projekte/:id" element={<ProjektDetailPage />} />
@@ -191,5 +238,22 @@ describe("ProjektDetailPage – Visualisierungskarten", () => {
     renderPage({ canUpdate: false, canDelete: false });
     expect(await screen.findByText("Offerte")).toBeInTheDocument();
     expect(screen.queryByText("Soll-Offerte")).not.toBeInTheDocument();
+  });
+});
+
+describe("ProjektDetailPage – Rechnungen-Pop-up", () => {
+  it("öffnet das Rechnungen-Pop-up beim Klick auf einen Ist-Wert", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    const istZelle = await screen.findByRole("button", { name: /400\.00/ });
+    fireEvent.click(istZelle);
+    expect(await screen.findByText("LR-777")).toBeInTheDocument();
+    expect(screen.getByText("Rechnungen · Apparate")).toBeInTheDocument();
+  });
+
+  it("öffnet alle Rechnungen über die Summenzeile", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    const summe = await screen.findByRole("button", { name: /950\.00/ });
+    fireEvent.click(summe);
+    expect(await screen.findByText("Alle Rechnungen · Testprojekt")).toBeInTheDocument();
   });
 });

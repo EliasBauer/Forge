@@ -1480,7 +1480,7 @@ Claude-Session: https://claude.ai/code/session_01Wn4HSteRch4Z7TwLgvAoQ3"
 - Produces: `type RechnungRow`, `<RechnungenModal title rows loading error onClose />`
   (Default-Export); `deDate(iso: string | null): string`.
 
-- [ ] **Step 1: Failing Tests schreiben**
+- [x] **Step 1: Failing Tests schreiben**
 
 `frontend/src/components/RechnungenModal.test.tsx`:
 
@@ -1581,12 +1581,12 @@ describe("RechnungenModal", () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run RechnungenModal`
 Expected: FAIL — `Failed to resolve import "./RechnungenModal"`
 
-- [ ] **Step 3: `deDate` ergänzen**
+- [x] **Step 3: `deDate` ergänzen**
 
 Ans Ende von `frontend/src/utils/format.ts`:
 
@@ -1600,7 +1600,7 @@ export function deDate(iso: string | null | undefined): string {
 }
 ```
 
-- [ ] **Step 4: Modal implementieren**
+- [x] **Step 4: Modal implementieren**
 
 `frontend/src/components/RechnungenModal.tsx`:
 
@@ -1825,12 +1825,12 @@ export default function RechnungenModal({
 }
 ```
 
-- [ ] **Step 5: Tests laufen lassen**
+- [x] **Step 5: Tests laufen lassen**
 
 Run: `devcontainer exec --workspace-folder . npm --prefix frontend test -- --run RechnungenModal`
 Expected: PASS (7 Tests)
 
-- [ ] **Step 6: Query ergänzen**
+- [x] **Step 6: Query ergänzen**
 
 Ans Ende von `frontend/src/graphql/queries.ts`:
 
@@ -1883,7 +1883,7 @@ Und in `src/forge/graphql_metric_operations.py` den Eintrag `"ProjektRechnungen"
 in die Allowlist aufnehmen (alphabetisch zwischen `"ProjektListeUpdated"` und
 `"ProjektUpdated"`).
 
-- [ ] **Step 7: Detailseite verdrahten**
+- [x] **Step 7: Detailseite verdrahten**
 
 In `frontend/src/pages/ProjektDetailPage.tsx`:
 
@@ -1997,7 +1997,7 @@ type RechnungenData = {
       )}
 ```
 
-- [ ] **Step 8: Seitentest ergänzen**
+- [x] **Step 8: Seitentest ergänzen**
 
 In `frontend/src/pages/ProjektDetailPage.test.tsx` einen Mock für die neue
 Query ergänzen, ihn in die Mock-Liste von `renderPage` (Zeile 119)
@@ -2087,12 +2087,12 @@ Der Selektor der Summenzeile lautet dann `{ name: /950\.00/ }`.
 `fireEvent` aus `@testing-library/react` importieren, falls die Datei es noch
 nicht tut.
 
-- [ ] **Step 9: Volles Gate**
+- [x] **Step 9: Volles Gate**
 
 Run: `devcontainer exec --workspace-folder . uv run pre-commit run --all-files`
 Expected: ruff, pytest, mypy, vitest alle **Passed**
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add frontend/src/components/RechnungenModal.tsx \

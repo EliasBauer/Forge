@@ -36,3 +36,11 @@ export function signedPct(
   const text = val === 0 ? `0.0 %` : `${sign}${Math.abs(val).toFixed(1)} %`;
   return { text, colorClass };
 }
+
+/** ISO-Datum (2024-03-01) als 01.03.2024; leer bleibt leer. */
+export function deDate(iso: string | null | undefined): string {
+  if (!iso) return "–";
+  const [jahr, monat, tag] = iso.slice(0, 10).split("-");
+  if (!jahr || !monat || !tag) return "–";
+  return `${tag}.${monat}.${jahr}`;
+}
