@@ -80,18 +80,26 @@ Das Frontend kennt keine Kontonummern.
 - Permission: `IstWert.__read__` ist bereits `isForgeAdmin, isProjektleiter`
   — identisch mit `Lieferantenrechnung`.
 
-### `Projekt.lieferantenrechnungen -> list[Lieferantenrechnung]`
+### `ProjektKennzahlen.rechnungen -> list[Lieferantenrechnung]`
 
-- `@graph_ql_property`, liefert
-  `list(Lieferantenrechnung.filter(richtiger_titel=self.auftragsnummer))`.
-  Import von `Lieferantenrechnung` innerhalb der Methode (Projekt-App darf
-  nicht auf Modulebene von Bexio abhängen).
-- `ProjektKennzahlen._summe_ist` nutzt dieselbe Methode, damit „alle
-  Rechnungen" und `summe_ist_kosten` dieselbe Menge sind.
-- Attribut-Override in `Projekt.Permission`:
-  `lieferantenrechnungen = {"read": ["isForgeAdmin", "isProjektleiter"]}` —
-  gleiches Muster wie `offerte_summe`. Betrachter und Monteur sehen das Feld
-  nicht (GM prüft `check_permission("read", <feld>)` im Feld-Resolver).
+Die Gesamtliste hängt an `ProjektKennzahlen`, nicht an `Projekt`: dieser
+Manager importiert `Lieferantenrechnung` bereits auf Modulebene und berechnet
+mit `_summe_ist()` genau dieselbe Menge. Auf `Projekt` wäre ein
+Modulebenen-Import von Bexio nötig (die Return-Annotation muss zur Laufzeit
+auflösbar sein, ein `TYPE_CHECKING`-Import genügt GM nicht) — und
+`apps/projekt/models/` wird mitten in `apps.populate()` geladen.
+
+- Neuer `@cached`-Helfer `_rechnungen() -> tuple[Lieferantenrechnung, ...]`;
+  `_summe_ist()` summiert darüber, `rechnungen` gibt die Liste zurück.
+- Attribut-Override in `ProjektKennzahlen.Permission`:
+  `rechnungen = {"read": ["isForgeAdmin", "isProjektleiter"]}`. Nötig, weil
+  `__read__` dieses Managers auch `isBetrachter` enthält, `Lieferantenrechnung`
+  aber nicht — ohne Override würde ein Betrachter Rechnungen sehen (genau der
+  Fehler, den 5180928 behoben hat).
+
+**Verifiziert** (Spike gegen das echte Schema, danach zurückgebaut):
+`list[Lieferantenrechnung]` erzeugt das Feld `[LieferantenrechnungType]`; über
+GraphQL liefert ein Betrachter `rechnungen: null`, ein Projektleiter `[]`.
 
 ### Tests (pytest, `src/apps/projekt/tests/`)
 
@@ -191,14 +199,19 @@ Metrik-Allowlist aufnehmen):
 ```graphql
 projekt(id: $id) {
   id
-  lieferantenrechnungen { ...RechnungFelder }
+  projektKennzahlenList { items { rechnungen { ...RechnungFelder } } }
   istWertList { items { kostenart { schluessel } rechnungen { ...RechnungFelder } } }
 }
 ```
 
-Felder: `id dokumentNr rechnungsdatum firmenname zeilenTitel buchungskonto
-status faelligkeitsdatum ueberfaellig betrag steuerBerechnet nettoBetrag`.
-`buchungskonto` ist ein FK und kommt als String „4001 Apparate".
+Felder: `id dokumentNr rechnungsdatum firmenname zeilenTitel status
+faelligkeitsdatum ueberfaellig betrag steuerBerechnet nettoBetrag` plus
+`buchungskonto { accountNo name }`.
+
+**Verifiziert:** `buchungskonto` ist entgegen der Faustregel der
+`frontend`-Skill (»ForeignKey = String«) ein echter `KontoType` und verlangt
+eine Sub-Selection — ohne sie antwortet der Server mit HTTP 400. `Konto` ist
+für `isForgeAdmin`/`isProjektleiter` lesbar, passt also zur Query.
 
 Ausgeführt per `useLazyQuery` beim ersten Öffnen eines Pop-ups; Apollo
 cached, weitere Öffnungen sind sofort. Beim Refetch der Seite (Subscription)
