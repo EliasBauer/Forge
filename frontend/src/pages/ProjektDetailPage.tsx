@@ -858,7 +858,7 @@ export default function ProjektDetailPage() {
                         {footerCalc(<span className="font-semibold text-gray-900">{chf(summeWvKosten || null)}</span>, { ...pairDiv, backgroundColor: "#f3f4f6" })}
                         {footerCalc("100 %", { backgroundColor: "#f3f4f6" })}
                         {footerErp(
-                          summeIstKosten > 0 ? (
+                          showPositionen && summeIstKosten > 0 ? (
                             <button
                               type="button"
                               onClick={() => oeffneRechnungen(null, `Alle Rechnungen · ${p.name}`)}

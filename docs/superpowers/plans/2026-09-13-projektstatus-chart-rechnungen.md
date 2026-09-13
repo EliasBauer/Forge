@@ -1912,13 +1912,17 @@ type RechnungenData = {
   const [rechnungenModal, setRechnungenModal] = useState<
     { title: string; schluessel: string | null } | null
   >(null);
+  // fetchPolicy "no-cache": die Query teilt sich Felder unter `projekt(id)`
+  // mit GET_PROJEKT, deren `items`-Arrays keine `id` tragen und daher nicht
+  // normalisierbar sind — ein gemeinsamer Cache-Eintrag würde sich
+  // gegenseitig überschreiben. Jedes Öffnen lädt deshalb bewusst frisch.
   const [ladeRechnungen, rechnungenQuery] = useLazyQuery<RechnungenData>(
     GET_PROJEKT_RECHNUNGEN,
-    { variables: { id } },
+    { fetchPolicy: "no-cache" },
   );
 
   function oeffneRechnungen(schluessel: string | null, title: string) {
-    void ladeRechnungen();
+    void ladeRechnungen({ variables: { id } });
     setRechnungenModal({ title, schluessel });
   }
 
