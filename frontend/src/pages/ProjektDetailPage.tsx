@@ -1,10 +1,17 @@
-import { useMutation, useQuery, useSubscription } from "@apollo/client/react";
+import { useLazyQuery, useMutation, useQuery, useSubscription } from "@apollo/client/react";
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calculator, ChevronLeft, Database, Pencil } from "lucide-react";
 import Layout from "../components/Layout";
 import ProjektStatusChart from "../components/ProjektStatusChart";
-import { GET_KOSTENART_IDS, GET_PROJEKT, GET_PROJEKT_PHASE_IDS, PROJEKTLEITER } from "../graphql/queries";
+import RechnungenModal, { type RechnungRow } from "../components/RechnungenModal";
+import {
+  GET_KOSTENART_IDS,
+  GET_PROJEKT,
+  GET_PROJEKT_PHASE_IDS,
+  GET_PROJEKT_RECHNUNGEN,
+  PROJEKTLEITER,
+} from "../graphql/queries";
 import {
   CREATE_KOSTEN_POSITION,
   DELETE_KOSTEN_POSITION,
@@ -71,6 +78,12 @@ type ProjektPhaseIdItem = { id: string; name: string };
 type ProjektPhaseIdsData = { projektPhaseList: { items: ProjektPhaseIdItem[] } };
 type UserOption = { id: string; username: string };
 type ProjektleiterData = { benutzerList: { items: UserOption[] } };
+type RechnungenData = {
+  projekt: {
+    projektKennzahlenList: { items: { rechnungen: RechnungRow[] | null }[] };
+    istWertList: { items: { kostenart: { schluessel: string }; rechnungen: RechnungRow[] | null }[] };
+  } | null;
+};
 type HeaderForm = { name: string; offerteSumme: string; wvSumme: string; projektleiter: string; projektPhase: string };
 
 const ART_LABELS: Record<string, string> = {
@@ -342,6 +355,35 @@ export default function ProjektDetailPage() {
   } | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const skipPosBlurRef = useRef(false);
+
+  const [rechnungenModal, setRechnungenModal] = useState<
+    { title: string; schluessel: string | null } | null
+  >(null);
+  // no-cache: die Rechnungen-Query fragt dasselbe Feld `projekt(id)` mit anderer
+  // Sub-Selection ab wie GET_PROJEKT ("ProjektDetail") — im normalisierten Cache
+  // würde ein Ergebnis das andere sonst teilweise überschreiben.
+  const [ladeRechnungen, rechnungenQuery] = useLazyQuery<RechnungenData>(
+    GET_PROJEKT_RECHNUNGEN,
+    { fetchPolicy: "no-cache" },
+  );
+
+  function oeffneRechnungen(schluessel: string | null, title: string) {
+    void ladeRechnungen({ variables: { id } });
+    setRechnungenModal({ title, schluessel });
+  }
+
+  const modalRows: RechnungRow[] = (() => {
+    const projekt = rechnungenQuery.data?.projekt;
+    if (!rechnungenModal || !projekt) return [];
+    if (rechnungenModal.schluessel === null) {
+      return projekt.projektKennzahlenList.items[0]?.rechnungen ?? [];
+    }
+    return (
+      projekt.istWertList.items.find(
+        (item) => item.kostenart.schluessel === rechnungenModal.schluessel,
+      )?.rechnungen ?? []
+    );
+  })();
 
   const [updateProjekt, { loading: savingHeader }] =
     useMutation<UpdateProjektResult>(UPDATE_PROJEKT, {
@@ -758,11 +800,27 @@ export default function ProjektDetailPage() {
                           {pos === null || isErtragsblock || isStunden ? "–" : pct(pos.wvKostenWertProzent)}
                         </td>
 
-                        {/* Ist — heatmap color */}
+                        {/* Ist — heatmap color, klickbar wenn ein Wert da ist */}
                         <td className={istCls} style={pairDiv}>
-                          {devLevel === "over" || devLevel === "warn"
-                            ? <span className="inline-flex items-center gap-1"><span className="text-[10px]">⚠</span>{istDisplay}</span>
-                            : istDisplay}
+                          {istWert?.istKostenWert != null ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                oeffneRechnungen(
+                                  schluessel,
+                                  `Rechnungen · ${ART_LABELS[schluessel] ?? schluessel}`,
+                                )
+                              }
+                              className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-2 hover:decoration-solid cursor-pointer"
+                            >
+                              {(devLevel === "over" || devLevel === "warn") && (
+                                <span className="text-[10px]">⚠</span>
+                              )}
+                              {istDisplay}
+                            </button>
+                          ) : (
+                            istDisplay
+                          )}
                         </td>
 
                         {/* % Ist */}
@@ -783,7 +841,20 @@ export default function ProjektDetailPage() {
                         {footerCalc("100 %", { backgroundColor: "#f3f4f6" })}
                         {footerCalc(<span className="font-semibold text-gray-900">{chf(summeWvKosten || null)}</span>, { ...pairDiv, backgroundColor: "#f3f4f6" })}
                         {footerCalc("100 %", { backgroundColor: "#f3f4f6" })}
-                        {footerErp(<span className="font-semibold">{chf(summeIstKosten || null)}</span>, pairDiv)}
+                        {footerErp(
+                          summeIstKosten > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => oeffneRechnungen(null, `Alle Rechnungen · ${p.name}`)}
+                              className="font-semibold underline decoration-dotted underline-offset-2 hover:decoration-solid cursor-pointer"
+                            >
+                              {chf(summeIstKosten)}
+                            </button>
+                          ) : (
+                            <span className="font-semibold">{chf(summeIstKosten || null)}</span>
+                          ),
+                          pairDiv,
+                        )}
                         {footerErp(<span className="font-semibold">{pct(verbrauchsrate)}</span>)}
                       </tr>
 
@@ -875,6 +946,16 @@ export default function ProjektDetailPage() {
 
       {!loading && !error && data && !p && (
         <p className="text-gray-500">Projekt nicht gefunden.</p>
+      )}
+
+      {rechnungenModal && (
+        <RechnungenModal
+          title={rechnungenModal.title}
+          rows={modalRows}
+          loading={rechnungenQuery.loading}
+          error={rechnungenQuery.error ? rechnungenQuery.error.message : null}
+          onClose={() => setRechnungenModal(null)}
+        />
       )}
     </Layout>
   );
