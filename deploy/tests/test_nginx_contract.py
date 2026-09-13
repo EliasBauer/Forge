@@ -104,6 +104,7 @@ def test_nginx_maintenance_page_is_self_contained_and_branded() -> None:
 def test_nginx_upstream_avoids_unsupported_resolve_parameter() -> None:
     upstream = _block(TEMPLATE, "upstream forge_web")
     assert "server web:8000;" in upstream
+    assert "zone forge_web 256k;" in upstream
     assert "resolve" not in upstream
 
 

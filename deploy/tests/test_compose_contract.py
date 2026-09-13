@@ -472,6 +472,7 @@ def test_env_example_has_no_resolved_group_gid_and_documents_scaling() -> None:
     text = (DEPLOY / ".env.example").read_text()
     keys = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
     assert "DEPLOY_GROUP_GID" not in keys
+    assert "SOURCE_REVISION" not in keys
     assert keys["DEPLOY_GROUP"] == "forge-deploy"
     assert keys["WEB_REPLICAS"] == "2"
     assert keys["CELERY_REPLICAS"] == "1"
