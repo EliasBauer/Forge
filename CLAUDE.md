@@ -3,38 +3,38 @@
 > Prozess (Brainstorming, Planung, TDD, Code-Review, Branch-Flow) liegt bei **Superpowers** und triggert automatisch.
 > Diese Datei trägt nur, was Superpowers nicht wissen kann: Forge-Umgebung, Test-Befehle, GM- und Frontend-Regeln.
 
-## Umgebung — eigener Container pro Worktree
-Jeder Worktree läuft in seinem EIGENEN Container, gebaut aus `.devcontainer/devcontainer.json`. Der Agent läuft auf dem Host und spricht den Container über die `devcontainer`-CLI an — **nicht** über `docker exec`, **kein** fester Container-Name.
+## Umgebung — zwei Modi. ERST prüfen, dann handeln
+Die Session kann **im DevContainer** oder **auf dem Host** gestartet worden sein. Beides ist gültig; du entscheidest nicht, du stellst fest. Allererster Befehl der Session:
 
-Zu Beginn der Session einmal (baut/startet den Container für DIESEN Worktree):
 ```bash
-devcontainer up --workspace-folder .
+test -f /.dockerenv && echo MODUS-CONTAINER || echo MODUS-HOST
 ```
-Fehlt die CLI: `npm install -g @devcontainers/cli`.
 
-Danach JEDEN Dev-Befehl über `devcontainer exec` in genau diesen Container:
-```bash
-devcontainer exec --workspace-folder . uv run --group dev pytest tests/…
-devcontainer exec --workspace-folder . npm --prefix frontend test
-devcontainer exec --workspace-folder . git commit -m "…"
-```
-`--workspace-folder .` = aktueller Worktree; die CLI ordnet den passenden Container selbst zu.
+Das Ergebnis legt für die ganze Session das **Präfix** fest, das in dieser Datei `<EXEC>` heißt:
 
-**Einmal verifizieren (Worktree-Eigenheit!):** direkt nach dem ersten `up`:
-`devcontainer exec --workspace-folder . git status`
-Ein Worktree-`.git` verweist auf einen Host-Pfad. Kommt „not a git repository", fehlt dem Container die Git-Datenbank → Mount nötig (Ein-Zeilen-Fix in der devcontainer.json). Dann stoppen und melden, nicht basteln.
+| | Modus CONTAINER | Modus HOST |
+|---|---|---|
+| Wie gestartet | Claude Code läuft **in** dem DevContainer | Claude Code läuft daneben, der Container ist ein eigener Prozess |
+| `<EXEC>` | *leer* — Befehle direkt ausführen | `devcontainer exec --workspace-folder .` |
+| Container starten | entfällt, er läuft ja schon | einmal zu Beginn: `devcontainer up --workspace-folder .` |
+| Worktrees | **keine** anlegen/wechseln — der Container ist der Worktree; Isolation = Branch | ein Worktree pro Container ist das normale Vorgehen |
+| `docker` verfügbar | nein → Docker-Aufgaben an den Nutzer | ja |
+
+Also: `<EXEC> uv run --group dev pytest tests/…`, `<EXEC> npm --prefix frontend test`, `<EXEC> git commit -m "…"` — in Modus CONTAINER ohne Präfix, in Modus HOST mit. Niemals `docker exec` und niemals ein fester Container-Name; in Modus HOST ordnet `--workspace-folder .` den passenden Container selbst zu. Fehlt dort die CLI: `npm install -g @devcontainers/cli`.
+
+**Nur Modus HOST, einmal nach dem ersten `up` verifizieren:** `devcontainer exec --workspace-folder . git status`. Ein Worktree-`.git` verweist auf einen Host-Pfad; kommt „not a git repository", fehlt dem Container die Git-Datenbank → Mount nötig (Ein-Zeilen-Fix in der `devcontainer.json`). Dann stoppen und melden, nicht basteln.
 
 ## Schneller Test-Loop
-Gezielt (im Container): `pytest tests/pfad/test_x.py` (Backend) · `npm --prefix frontend test` (Frontend).
-„Erledigt" erst, wenn das volle Gate **grün** ist: `pre-commit run --all-files` (ruff, pytest, mypy, vitest).
+Gezielt: `<EXEC> uv run --group dev pytest tests/pfad/test_x.py` (Backend) · `<EXEC> npm --prefix frontend test` (Frontend).
+„Erledigt" erst, wenn das volle Gate **grün** ist: `<EXEC> pre-commit run --all-files` (ruff, pytest, mypy, vitest).
 
 ## Commit
-`git commit`; über `devcontainer exec` (dann laufen die pre-commit-Hooks im Container korrekt). **Niemals `--no-verify`** — das überspringt genau die Prüfung, die grün sein soll.
+`<EXEC> git commit` — so laufen die pre-commit-Hooks im Container, wo sie hingehören. **Niemals `--no-verify`** — das überspringt genau die Prüfung, die grün sein soll.
 Commit die Specs-Datei die von superpowers generiert wird.
 Bei jedem Task-Commit die zugehörige Plan-Datei mit in `git add` aufnehmen — sonst werden die abgehakten Boxen nie mitcommittet.
 
-## Compose-Smoke-Test (ganzer Stack, auf dem HOST)
-Zweck: prüfen, ob die *zusammengebaute* App startet — nicht Code ändern. Läuft roh auf dem Host, NICHT über devcontainer/exec.
+## Compose-Smoke-Test (ganzer Stack, immer auf dem HOST)
+Zweck: prüfen, ob die *zusammengebaute* App startet — nicht Code ändern. Der Compose-Stack ist eine ANDERE Umgebung als der DevContainer, deshalb roh auf dem Host, **nie** mit `<EXEC>` davor. In Modus CONTAINER gibt es `docker` hier gar nicht → die Befehle dem Nutzer geben, statt sie selbst zu versuchen.
 - Hoch: `docker compose -f <DATEI> up -d --build` · Status: `… ps` · Logs: `… logs -f <SERVICE>`
 - Check: <SMOKE-CHECK, z. B. curl auf einen Health-Endpoint> · Runter: `… down` (Volumes nur bewusst mit `-v`)
 „Grün" heißt: Stack kommt hoch, Services healthy, Ziel-Endpoint antwortet — NICHT die Test-Suite. Up/Down sind bewusste Aktionen, kein Teil des Task-Loops.
