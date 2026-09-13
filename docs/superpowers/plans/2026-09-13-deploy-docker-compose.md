@@ -57,7 +57,7 @@ Docs: `README.md`, `docs/architektur.md`, `docs/start_dev.md`, `docs/adr/006-dep
 **Interfaces:**
 - Produces: `forge.env.env_bool(name, default=False) -> bool`, `env_csv(name, default="") -> list[str]`, `env_int(name, default) -> int`, `env_secret(name, *, default=None, required=False) -> str`; Settings-Namen `IS_DEV`, `INTERNAL_METRICS_HOST`, `MAINTENANCE_FLAG_FILE`, `PUSHGATEWAY_URL`, `LOG_TO_STDOUT`.
 
-- [ ] **Step 1: Failing tests für `env.py`**
+- [x] **Step 1: Failing tests für `env.py`**
 
 `tests/test_env.py`:
 
@@ -121,12 +121,12 @@ def test_env_secret_required(monkeypatch: pytest.MonkeyPatch) -> None:
         env_secret("KEY", required=True)
 ```
 
-- [ ] **Step 2: Test läuft rot**
+- [x] **Step 2: Test läuft rot**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest tests/test_env.py -q --no-cov`
 Expected: `ModuleNotFoundError: No module named 'forge.env'`
 
-- [ ] **Step 3: `src/forge/env.py` schreiben**
+- [x] **Step 3: `src/forge/env.py` schreiben**
 
 ```python
 """Umgebungs-Helfer für Settings: Docker-Secrets (`NAME_FILE`) vor `NAME`."""
@@ -180,19 +180,19 @@ def env_secret(name: str, *, default: str | None = None, required: bool = False)
     return value or ""
 ```
 
-- [ ] **Step 4: Tests grün**
+- [x] **Step 4: Tests grün**
 
 Run: `devcontainer exec --workspace-folder . uv run --group dev pytest tests/test_env.py -q --no-cov`
 Expected: 6 passed
 
-- [ ] **Step 5: Abhängigkeiten**
+- [x] **Step 5: Abhängigkeiten**
 
 `pyproject.toml` `dependencies`: `dj-database-url>=2.0` entfernen; hinzufügen `django-prometheus>=2.4,<3`, `prometheus-client>=0.23,<1`, `python-json-logger>=3,<4`, `redis>=5`. Dev-Gruppe: `pyyaml>=6`. `[tool.pytest.ini_options] testpaths = ["tests", "src/apps", "deploy/tests"]`. `.pre-commit-config.yaml` mypy-Entry: `uv run --group dev mypy src tests deploy`.
 
 Run: `devcontainer exec --workspace-folder . uv lock && devcontainer exec --workspace-folder . uv sync --group dev`
 Expected: Lock aktualisiert, Sync ohne Fehler. Prüfen: `devcontainer exec --workspace-folder . uv run python -c "import django_prometheus, prometheus_client, pythonjsonlogger, redis, yaml"`.
 
-- [ ] **Step 6: `settings.py` umbauen**
+- [x] **Step 6: `settings.py` umbauen**
 
 Vollständige neue Fassung (ersetzt die Datei; Reihenfolge und Werte exakt so):
 
@@ -398,12 +398,12 @@ GRAPHQL_METRIC_OPERATION_ALLOWLIST = (
 
 Die Middleware-Module aus Task 3 existieren noch nicht: in Task 1 die beiden `forge.observability.*`-Einträge in `MIDDLEWARE` noch auskommentiert lassen und in Task 3 aktivieren.
 
-- [ ] **Step 7: Gate**
+- [x] **Step 7: Gate**
 
 Run: `devcontainer exec --workspace-folder . uv run pre-commit run --all-files`
 Expected: alle Hooks grün (pytest inkl. 100 % Coverage; `settings.py` ist coverage-omitted).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 devcontainer exec --workspace-folder . sh -c 'export PATH=$PWD/.venv/bin:$PATH; git add src/forge/env.py src/forge/settings.py src/forge/graphql_metric_operations.py tests/test_env.py pyproject.toml uv.lock .pre-commit-config.yaml docs/superpowers/plans/2026-09-13-deploy-docker-compose.md docs/superpowers/specs/2026-09-13-deploy-docker-compose-design.md && git -c user.name=EliasBauer -c user.email=el-bauer@web.de commit -m "feat(settings): Prod-Settings mit Datei-Secrets, Prometheus-DB-Backend und JSON-Logs" -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"'
@@ -420,7 +420,7 @@ devcontainer exec --workspace-folder . sh -c 'export PATH=$PWD/.venv/bin:$PATH; 
 **Interfaces:**
 - Produces: Views `forge.health.live`, `ready`, `maintenance`; URLs `/health/live/`, `/health/ready/`, `/health/maintenance/`, `/metrics`; ASGI `application` mit `websocket`-Mapping.
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 `tests/test_health.py`:
 
@@ -510,9 +510,9 @@ def test_graphql_websocket_route_accepts_graphql_transport_ws() -> None:
     assert subprotocol == "graphql-transport-ws"
 ```
 
-- [ ] **Step 2: Rot laufen lassen** — `pytest tests/test_health.py tests/test_asgi.py -q --no-cov` → 404 bzw. Verbindung abgelehnt.
+- [x] **Step 2: Rot laufen lassen** — `pytest tests/test_health.py tests/test_asgi.py -q --no-cov` → 404 bzw. Verbindung abgelehnt.
 
-- [ ] **Step 3: Implementieren**
+- [x] **Step 3: Implementieren**
 
 `src/forge/health.py`:
 
@@ -615,7 +615,7 @@ application = ProtocolTypeRouter(
 )
 ```
 
-- [ ] **Step 4: Grün + Gate + Commit** — `feat(backend): Health-Endpoints, /metrics und WebSocket-Route für Subscriptions`
+- [x] **Step 4: Grün + Gate + Commit** — `feat(backend): Health-Endpoints, /metrics und WebSocket-Route für Subscriptions`
 
 ---
 
@@ -638,7 +638,7 @@ Quelle: `<Referenzprojekt>/backend/utils/observability/{api_metrics,graphql_prob
 
 Tests: Port der relevanten Fälle aus `<Referenzprojekt>/backend/tests/test_observability_metrics.py` (Klassifikation, Probe-Lookalikes, Middleware sync/async/Redirect, Counter-Inkrement, Metrics-Host-Grammatik inkl. IP-Host-Akzeptanz auf `/metrics` und Ablehnung sonst) und `tests/test_celery.py` (Queue-Depth/Age, ungültige Nachrichten, Clamp, Best-Effort-Publish per `monkeypatch` auf `redis.Redis.from_url` und `requests.put`), plus `test_graphql_metric_allowlist_includes_frontend_source` (Regex-Scan über `frontend/src/**/*.ts(x)` ohne Tests) und `tests/test_celery_config.py` (Beat-Eintrag in Prod, Events-Flags, Default-Queue, Task registriert unter dem erwarteten Namen). Jede Zeile der neuen Module muss von Tests erreicht werden (Coverage 100 %).
 
-- [ ] Tests rot → Module → grün → Gate → Commit `feat(observability): API-/Queue-Metriken, Metrics-Host-Adapter, Probe-Erkennung`
+- [x] Tests rot → Module → grün → Gate → Commit `feat(observability): API-/Queue-Metriken, Metrics-Host-Adapter, Probe-Erkennung`
 
 ---
 
@@ -649,7 +649,7 @@ Tests: Port der relevanten Fälle aus `<Referenzprojekt>/backend/tests/test_obse
 - Create: `.dockerignore`, `docs/adr/006-deploy-docker-compose.md`
 - Modify: `.gitignore`, `README.md`, `docs/architektur.md`, `docs/start_dev.md`
 
-- [ ] `.dockerignore` (Root):
+- [x] `.dockerignore` (Root):
 
 ```
 .git
@@ -672,9 +672,9 @@ staticfiles
 docs
 ```
 
-- [ ] `.gitignore` ergänzen: `deploy/.env`, `deploy/.env.*`, `deploy/secrets/*.txt`, `deploy/tests/__pycache__/`; die Einträge `postgres-data/`, `meilisearch-data/` entfernen.
-- [ ] README: Setup-Schritt 4 (`cp .env.example`) streichen (Dev braucht keine `.env`, `FORGE_ENV=dev` kommt aus dem Devcontainer); Abschnitt "Deployment" ersetzen durch Verweis auf `deploy/README.md` (Kurzform: Voraussetzungen, `validate-config.sh`, `deploy.sh`, `start-ops.sh`); Tech-Stack-Tabelle (Postgres 17, GM 0.79). `docs/architektur.md`: Verzeichnisstruktur (`deploy/` statt `docker/`+`nginx/`), Settings-Tabelle (`POSTGRES_*`, `*_FILE`, `CSRF_TRUSTED_ORIGINS`, `INTERNAL_METRICS_HOST`), Deployment-Tabelle = Spec-Service-Tabelle. `docs/start_dev.md`: "Schnellstart mit Docker" → Verweis auf `deploy/README.md`; Env-Tabelle korrigieren. ADR 006 (Kontext, Entscheidung: Single-Host Compose nach dem Muster eines ähnlichen Projekts, Konsequenzen, verworfene Alternativen: k3s, systemd-Units, Cloud).
-- [ ] Gate → Commit `chore: alte Deploy-Reste entfernen, dockerignore, Docs und ADR 006`
+- [x] `.gitignore` ergänzen: `deploy/.env`, `deploy/.env.*`, `deploy/secrets/*.txt`, `deploy/tests/__pycache__/`; die Einträge `postgres-data/`, `meilisearch-data/` entfernen.
+- [x] README: Setup-Schritt 4 (`cp .env.example`) streichen (Dev braucht keine `.env`, `FORGE_ENV=dev` kommt aus dem Devcontainer); Abschnitt "Deployment" ersetzen durch Verweis auf `deploy/README.md` (Kurzform: Voraussetzungen, `validate-config.sh`, `deploy.sh`, `start-ops.sh`); Tech-Stack-Tabelle (Postgres 17, GM 0.79). `docs/architektur.md`: Verzeichnisstruktur (`deploy/` statt `docker/`+`nginx/`), Settings-Tabelle (`POSTGRES_*`, `*_FILE`, `CSRF_TRUSTED_ORIGINS`, `INTERNAL_METRICS_HOST`), Deployment-Tabelle = Spec-Service-Tabelle. `docs/start_dev.md`: "Schnellstart mit Docker" → Verweis auf `deploy/README.md`; Env-Tabelle korrigieren. ADR 006 (Kontext, Entscheidung: Single-Host Compose nach dem Muster eines ähnlichen Projekts, Konsequenzen, verworfene Alternativen: k3s, systemd-Units, Cloud).
+- [x] Gate → Commit `chore: alte Deploy-Reste entfernen, dockerignore, Docs und ADR 006`
 
 ---
 
@@ -702,7 +702,7 @@ Dockerfiles/Entrypoints/nginx wie Spec-Abschnitte "Images" und "nginx". `deploy/
 
 Contract-Tests: Ports der Tests des Referenzprojekts ohne Wiki/Legacy/Automation/MS: Service-Menge (`CORE_RENDERED_SERVICES = {postgres, pgbouncer, redis, meilisearch, django-migrate, web, celery-worker, celery-beat, nginx}`), Profile per `docker compose config --services` (Skip ohne Docker; Env `DEPLOY_GROUP_GID=1000`), nur nginx publiziert Ports, `group_add` == Secret-Konsumenten, `search-index` one-shot, `web.deploy.replicas == "${WEB_REPLICAS:-2}"`, Singletons 1 Replikat, read-only Runtime, Worker-Queues, Observability profile-gated + gepinnte Images (Docker Hub oder `ghcr.io/danihodovic/celery-exporter`), Alloy-Host-Zugriff, Alertmanager-Egress, node-exporter Textfile, blackbox-Netze, Retention, Prometheus-DNS-SD `forge-web`, pgadmin intern; nginx: Virtual-Hosts, Redirects, WebSocket-Header, Maintenance-Guard, kein `resolve`, SPA-Revalidierung, http2; image: Basis-Images, non-root, `uv sync --frozen --no-dev`, `postgresql-client`, EXPOSE, `.dockerignore`, Secrets-Beispiele = `CHANGE_ME` (außer `bexio_access_token`, `teams_workflow_url`, `smtp_password` leer).
 
-- [ ] Tests → Dateien → `devcontainer exec … pytest deploy/tests -q --no-cov` grün → auf dem Host zusätzlich `docker compose --env-file deploy/.env.example -f deploy/compose.yml config --quiet` (mit `DEPLOY_GROUP_GID=1000 RESTORE_BACKUP=/tmp`) für alle Profile → Gate → Commit `feat(deploy): Compose-Stack, Images, nginx, Secrets-Vorlagen und Contract-Tests`
+- [x] Tests → Dateien → `devcontainer exec … pytest deploy/tests -q --no-cov` grün → auf dem Host zusätzlich `docker compose --env-file deploy/.env.example -f deploy/compose.yml config --quiet` (mit `DEPLOY_GROUP_GID=1000 RESTORE_BACKUP=/tmp`) für alle Profile → Gate → Commit `feat(deploy): Compose-Stack, Images, nginx, Secrets-Vorlagen und Contract-Tests`
 
 ---
 
@@ -724,7 +724,7 @@ Quelle: jeweils gleichnamige Datei des Referenzprojekts. Änderungen:
 
 Tests (`deploy/tests/test_scripts.py`, Port ausgewählter Fälle des Referenzprojekts mit denselben Fake-Bin-Harnessen): Preflight (Gruppe fehlt/keine Mitgliedschaft/flock fehlt/GID nicht numerisch/Shared-Mode/Env-Secret-Modi/Platzhalter-Secret/Zertifikat-Mismatch/Bexio-leer-Warnung), Operation-Lock (blockiert zweiten Prozess, wiederverwendbar, Metadaten ohne Token), Maintenance (start/finish Metriken, ungültige Eingaben, status, reset-all mit Confirm, falscher Token), deploy.sh (Reihenfolge backup<migrate<reindex<up, Fehler vor/nach Maintenance, Signale), Backup-/Restore-Finalizer-Metriken, restore-postgres (Confirm + Pfad), render-observability (atomar, Teams aus, SMTP-Auth aus, Rollback), compose-Lib (v2/Standalone/Fehler), Start-Helfer (`sh -n`, exakte Service-Listen, Stop bei Fehler), alle Skripte ausführbar + `sh -n`.
 
-- [ ] Tests → Skripte → grün → Gate → Commit `feat(deploy): Betriebsskripte (deploy, maintenance, lock, backup, restore, ops) mit Tests`
+- [x] Tests → Skripte → grün → Gate → Commit `feat(deploy): Betriebsskripte (deploy, maintenance, lock, backup, restore, ops) mit Tests`
 
 ---
 
@@ -741,7 +741,7 @@ Zusätzlich auf dem Host (Docker) ausführen und im README dokumentieren:
 docker run --rm -v "$PWD/deploy/prometheus:/rules:ro" --entrypoint /bin/promtool prom/prometheus:v3.12.0 test rules /rules/tests/alerts.test.yml /rules/recording-rules.test.yml /rules/grafana-annotations.test.yml /rules/grafana-curated.test.yml
 ```
 
-- [ ] Tests → Dateien → grün → promtool grün → Gate → Commit `feat(deploy): Prometheus-Regeln, Alertmanager, Blackbox, Loki, Alloy, Runbook`
+- [x] Tests → Dateien → grün → promtool grün → Gate → Commit `feat(deploy): Prometheus-Regeln, Alertmanager, Blackbox, Loki, Alloy, Runbook`
 
 ---
 
@@ -755,7 +755,7 @@ Generieren: `devcontainer exec --workspace-folder . uv run python deploy/grafana
 
 Tests: Port der dashboardlib-Einheitentests (Query-Target-Form, Grid, Thresholds, Ref-IDs, Verbote), Render-Sicherheit (Duplikate, unsichere Pfade), `test_generated_dashboards_are_current`, Provisioning, exakte Dashboard-Menge je Ordner, Links auf Overview/Detail, Variablen referenziert, keine `or vector(0)`, Logs-Panels ohne Data-Links, Continuity nutzt `backup_*`-Namen, Overview-Annotationen mit `forge_deployment_timestamp_seconds`/`forge_maintenance_*`.
 
-- [ ] Tests → Dateien → generieren → grün → Gate → Commit `feat(deploy): Grafana-Provisioning und deterministischer Dashboard-Generator`
+- [x] Tests → Dateien → generieren → grün → Gate → Commit `feat(deploy): Grafana-Provisioning und deterministischer Dashboard-Generator`
 
 ---
 
@@ -779,15 +779,15 @@ sudo chgrp forge-deploy /srv/forge/data/{run,runtime} && sudo chmod 2770 /srv/fo
 sudo chgrp forge-deploy /srv/forge/data/runtime/node-exporter && sudo chmod 2775 /srv/forge/data/runtime/node-exporter
 ```
 
-- [ ] Schreiben → Runbook-Tests aus Task 6/7 (Abschnitte vorhanden, Code-Fences balanciert) grün → Gate → Commit `docs(deploy): Runbook`
+- [x] Schreiben → Runbook-Tests aus Task 6/7 (Abschnitte vorhanden, Code-Fences balanciert) grün → Gate → Commit `docs(deploy): Runbook`
 
 ---
 
 ### Task 10: Gesamtgate, Review, Push
 
-- [ ] `devcontainer exec --workspace-folder . uv run pre-commit run --all-files` grün; `npm --prefix frontend run build` im Container erfolgreich (Vite-Build, wie im nginx-Image).
-- [ ] Host: `docker compose … config --quiet` für Default und jedes Profil; promtool-Tests; `docker build -f deploy/backend/Dockerfile .` und `docker build -f deploy/nginx/Dockerfile .` auf dem Mac (arm64) als Vorab-Test der Images.
-- [ ] `git push -u origin implement_deploy`.
+- [x] `devcontainer exec --workspace-folder . uv run pre-commit run --all-files` grün; `npm --prefix frontend run build` im Container erfolgreich (Vite-Build, wie im nginx-Image).
+- [x] Host: `docker compose … config --quiet` für Default und jedes Profil; promtool-Tests; `docker build -f deploy/backend/Dockerfile .` und `docker build -f deploy/nginx/Dockerfile .` auf dem Mac (arm64) als Vorab-Test der Images.
+- [x] `git push -u origin implement_deploy`.
 
 ---
 
@@ -800,7 +800,15 @@ sudo openssl req -x509 -nodes -newkey rsa:4096 -sha256 -days 3650 -keyout /etc/f
 sudo chmod 0600 /etc/forge/tls/privkey.pem; sudo chmod 0644 /etc/forge/tls/fullchain.pem
 ```
   Hinweis: nginx läuft als root im Container und liest den Key; die Datei bleibt 0600 root.
-- [ ] `git clone -b implement_deploy https://github.com/EliasBauer/Forge.git ~/forge`; `deploy/.env` aus Beispiel (Domains `<testserver>`, `monitoring.<testserver>`, `db.<testserver>`; `CSRF_TRUSTED_ORIGINS=https://<testserver>`; `APP_HOST_ALIASES=localhost,127.0.0.1,<LAN-IP>`); Secrets per `openssl rand -base64 48 | tr -d '\n' > secrets/<name>.txt`, `admin_htpasswd.txt` = `printf 'admin:%s\n' "$(openssl passwd -apr1 "$PW")"`, `bexio_access_token.txt`, `teams_workflow_url.txt` leer (`install -m 0640 /dev/null`), `smtp_password.txt` leer; `chgrp forge-deploy .env secrets/*.txt; chmod 0640 …`. Erzeugte Admin-/Grafana-/pgAdmin-Passwörter dem Benutzer ausschließlich als Dateipfade nennen, nie im Chat ausgeben.
+- [x] `git clone -b implement_deploy https://github.com/EliasBauer/Forge.git ~/forge`; `deploy/.env` aus Beispiel (Domains `<testserver>`, `monitoring.<testserver>`, `db.<testserver>`; `CSRF_TRUSTED_ORIGINS=https://<testserver>`; `APP_HOST_ALIASES=localhost,127.0.0.1,<LAN-IP>`); Secrets per `openssl rand -base64 48 | tr -d '\n' > secrets/<name>.txt`, `admin_htpasswd.txt` = `printf 'admin:%s\n' "$(openssl passwd -apr1 "$PW")"`, `bexio_access_token.txt`, `teams_workflow_url.txt` leer (`install -m 0640 /dev/null`), `smtp_password.txt` leer; `chgrp forge-deploy .env secrets/*.txt; chmod 0640 …`. Erzeugte Admin-/Grafana-/pgAdmin-Passwörter dem Benutzer ausschließlich als Dateipfade nennen, nie im Chat ausgeben.
 - [ ] Neue SSH-Sitzung (Gruppe), `./scripts/validate-config.sh`, `./scripts/deploy.sh`, `./scripts/start-ops.sh`, `./scripts/compose.sh ps`.
 - [ ] Smoke vom Mac mit `curl --resolve`: `/health/live/`, `/health/ready/`, GraphQL-Probe, WebSocket-Handshake (`connection_init` → `connection_ack` per `python3 - websockets`-Skript oder `curl --include --http1.1 -H "Upgrade: websocket"` auf 101), `/api/login/` mit Superuser (`compose.sh exec web python manage.py createsuperuser --noinput` mit `DJANGO_SUPERUSER_*`), Grafana `/api/health`, pgAdmin Basic-Auth 401→200, Maintenance-Status, Backup-Profil, Restore-Verification, `maintenance.sh status`, Speicherverbrauch (`free -h`, `docker stats --no-stream`).
 - [ ] Erkenntnisse (falsche Eigentümer, fehlende Pakete, Timing) ins README/Preflight zurückspielen, committen, pushen, auf dem Pi `git pull` + erneut deployen, bis der dokumentierte Pfad ohne Handarbeit durchläuft.
+
+
+## Rollout-Protokoll (2026-09-13)
+
+- Host-Vorbereitung auf `<testserver>` wartet auf Root: `sudo sh ~/forge-host-prep.sh` (Skript liegt auf dem Pi, Inhalt = README-Block + Zertifikat + chgrp/chmod von `.env`/Secrets).
+- `.env` und Secrets liegen unter `~/forge/deploy` (0600, nach dem Prep-Skript 0640 `forge-deploy`); Zugangsdaten für nginx-Basic-Auth, Grafana und pgAdmin in `~/forge-admin-credentials.txt` auf dem Pi.
+- Image-Vorbau (`docker compose build`/`pull` für alle Profile) läuft per nohup, Log `~/forge-prebuild.log`.
+- Gefunden und behoben: `.env.example` war durch `deploy/.env.*` gitignored (Commit 047039f); Blackbox-Probe braucht `extra_hosts: APP_DOMAIN:host-gateway` (Commit 30410d0).
