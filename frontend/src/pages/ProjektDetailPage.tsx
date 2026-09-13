@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calculator, ChevronLeft, Database, Pencil } from "lucide-react";
 import Layout from "../components/Layout";
+import ProjektStatusChart from "../components/ProjektStatusChart";
 import { GET_KOSTENART_IDS, GET_PROJEKT, GET_PROJEKT_PHASE_IDS, PROJEKTLEITER } from "../graphql/queries";
 import {
   CREATE_KOSTEN_POSITION,
@@ -195,7 +196,7 @@ function ProjectVisualization({ rows }: { rows: VizRow[] }) {
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm mt-5">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 className="text-[15px] font-semibold text-gray-900">Projektstatus auf einen Blick</h2>
+        <h2 className="text-[15px] font-semibold text-gray-900">Projektkategorien auf einen Blick</h2>
         <div className="flex items-center gap-4 text-[11px] font-medium">
           {countOver > 0 && (
             <span className="inline-flex items-center gap-1.5 text-rose-700">
@@ -633,7 +634,7 @@ export default function ProjektDetailPage() {
                   <tr className="border-b border-gray-200 bg-white">
                     <th className="px-6 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-left w-[24%]">Art</th>
                     <th className="px-3 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-500 text-right" style={artDiv}>
-                      <span className="inline-flex items-center justify-end gap-1"><Pencil size={11} className="text-gray-400" />Soll-Offerte</span>
+                      <span className="inline-flex items-center justify-end gap-1"><Pencil size={11} className="text-gray-400" />Offerte</span>
                     </th>
                     <th className={clsCalcH}>
                       <span className="inline-flex items-center justify-end gap-1"><Calculator size={11} />%</span>
@@ -856,6 +857,16 @@ export default function ProjektDetailPage() {
               </table>
             </div>
           </div>
+
+          {/* Projektstatus (Plan-WV / Ist / AK verrechnet) */}
+          {showPositionen && (
+            <ProjektStatusChart
+              planWV={wvSummeNum}
+              sollWV={wvSummeNum}
+              ist={summeIstKosten}
+              ak={0}
+            />
+          )}
 
           {/* Visualisierung */}
           {showPositionen && <ProjectVisualization rows={vizRows} />}

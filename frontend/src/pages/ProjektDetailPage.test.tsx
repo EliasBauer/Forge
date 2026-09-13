@@ -161,6 +161,9 @@ describe("ProjektDetailPage – Positionszeilen folgen canViewKostenPositionen",
     expect(
       screen.queryByText("Projektstatus auf einen Blick"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Projektkategorien auf einen Blick"),
+    ).not.toBeInTheDocument();
   });
 
   it("zeigt Header-Summen und den Footer auch ohne Positionszeilen", async () => {
@@ -172,5 +175,21 @@ describe("ProjektDetailPage – Positionszeilen folgen canViewKostenPositionen",
     expect(screen.getByText("WV-Summe exkl. MwSt.")).toBeInTheDocument();
     expect(screen.getByText("Summe der Kosten")).toBeInTheDocument();
     expect(screen.getByText("Gewinn / Verlust")).toBeInTheDocument();
+  });
+});
+
+describe("ProjektDetailPage – Visualisierungskarten", () => {
+  it("zeigt beide Karten mit ihren Titeln", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    expect(
+      await screen.findByText("Projektstatus auf einen Blick"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Projektkategorien auf einen Blick")).toBeInTheDocument();
+  });
+
+  it("nennt die erste Wertspalte Offerte", async () => {
+    renderPage({ canUpdate: false, canDelete: false });
+    expect(await screen.findByText("Offerte")).toBeInTheDocument();
+    expect(screen.queryByText("Soll-Offerte")).not.toBeInTheDocument();
   });
 });
