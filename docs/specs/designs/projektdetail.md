@@ -17,9 +17,9 @@ Visualisierungs-Sektion.
 │ ← Projekte (Breadcrumb, klein, klickbar)                  │
 │                                                           │
 │ ┌─ ProjectHeader Card ──────────────────────────────────┐ │
-│ │ Titel · ID                       [Bearbeiten][Archiv] │ │
+│ │ Titel                            [Bearbeiten][Archiv] │ │
 │ │ ───────────────────────────────────────────────────── │ │
-│ │ Projektleiter│Jahr│Offerte│WV│Plan-WV  (5-col grid)   │ │
+│ │ Projektleiter│Phase│Jahr│Offerte│WV│Plan-WV (6-col)   │ │
 │ └───────────────────────────────────────────────────────┘ │
 │                                                           │
 │ ┌─ CostTable Card ──────────────────────────────────────┐ │
