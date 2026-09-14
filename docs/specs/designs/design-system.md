@@ -83,7 +83,7 @@ ratio < 0.95 → "under" (grün)
 Wird verwendet für:
 - Zeilen-Heatmap in der Kostentabelle (Plan-WV vs. Ist je Position)
 - „Abweichung zu Ist"-Spalte in der Projektübersicht (WV vs. Ist je Projekt)
-- `ProjektKategorienChart` — Statusfarbe von Punkt, Ist-Betrag und Pill je Kategorie
+- `ProjektKategorienChart` — je Kategorie ein statusfarbener Punkt, der Ist-Betrag und die Abweichung als statusfarbener Text (keine Pill)
 
 `DEV_STYLES` mappt Level → Tailwind-Klassen:
 

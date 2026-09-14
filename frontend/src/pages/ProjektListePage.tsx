@@ -404,7 +404,7 @@ export default function ProjektListePage() {
                         </td>
                       </>
                     )}
-                    <td className="px-4 py-3">
+                    <td className={`px-4 py-3${gedaempft}`}>
                       <PhaseBadge phase={p.projektPhase.name} />
                     </td>
                   </tr>
