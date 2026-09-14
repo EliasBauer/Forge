@@ -31,7 +31,7 @@ hier die Kurzform:
 ```bash
 sudo groupadd --force forge-deploy && sudo usermod -aG forge-deploy "$USER"
 sudo mkdir -p /srv/forge/data/{postgres,redis,meilisearch,static,run,runtime/node-exporter,backups,celerybeat,alertmanager,prometheus,grafana,loki,alloy,pushgateway,pgadmin,restore-verification/files} /srv/forge/backup-share /etc/forge/tls /etc/forge/secrets
-sudo chgrp forge-deploy /etc/forge/secrets && sudo chmod 0750 /etc/forge/secrets
+sudo chgrp forge-deploy /etc/forge/secrets && sudo chmod 2770 /etc/forge/secrets
 sudo chown -R 1000:1000 /srv/forge/data/{static,backups,celerybeat,restore-verification} /srv/forge/backup-share
 sudo chmod 0755 /srv/forge/data/static
 sudo chmod 0750 /srv/forge/data/{backups,celerybeat,restore-verification} /srv/forge/backup-share
@@ -86,21 +86,24 @@ Alerting (SMTP). `DATA_ROOT`, `BACKUP_SHARE` und die TLS-Pfade passen zu
 Schritt 1 und 2.
 
 Die Secrets liegen in `SECRETS_DIR`, also außerhalb des Checkouts: ein
-`git clean` oder ein neuer Clone kann sie nicht löschen. Erzeugen
-(Zufallswerte; nie in Chats oder Logs einfügen):
+`git clean` oder ein neuer Clone kann sie nicht löschen. Vier Werte wählst
+du selbst und trägst sie in eine Datei ein (nie in Chats oder Logs einfügen):
 
 ```bash
-umask 077
-S=/etc/forge/secrets
-for f in secrets/*.txt.example; do sudo cp -n "$f" "$S/$(basename "${f%.example}")"; done
-for name in django_secret_key postgres_password meilisearch_api_key grafana_admin_password pgadmin_password; do
-  openssl rand -base64 48 | tr -d '\n' | sudo tee "$S/$name.txt" >/dev/null
-done
-printf 'admin:%s\n' "$(openssl passwd -apr1)" | sudo tee "$S/admin_htpasswd.txt" >/dev/null   # fragt ein Passwort ab
-printf '%s' 'DEIN-BEXIO-TOKEN' | sudo tee "$S/bexio_access_token.txt" >/dev/null           # oder leer lassen
-sudo chgrp forge-deploy .env "$S"/*.txt
-sudo chmod 0640 .env "$S"/*.txt
+umask 027
+cat > /etc/forge/secrets/forge-secrets.env <<'EOT'
+ADMIN_BASIC_AUTH_PASSWORD=DEIN-PASSWORT
+GRAFANA_ADMIN_PASSWORD=DEIN-PASSWORT
+PGADMIN_PASSWORD=DEIN-PASSWORT
+BEXIO_ACCESS_TOKEN=DEIN-BEXIO-TOKEN
+EOT
+./scripts/secrets-from-env.sh
+sudo chgrp forge-deploy .env && sudo chmod 0640 .env
 ```
+
+Den Rest (Django-Key, Postgres, Meilisearch) erzeugt das Skript zufällig.
+Läuft das Bexio-Token ab: neuen Wert eintragen, Skript erneut ausführen,
+danach `./scripts/compose.sh up -d --force-recreate web celery-worker celery-beat`.
 
 `teams_workflow_url.txt` und `smtp_password.txt` bleiben leer, solange Teams
 und SMTP-Auth in `.env` aus sind. Die Werte in `grafana_admin_password.txt`,

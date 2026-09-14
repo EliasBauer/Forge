@@ -54,8 +54,9 @@ chown 5050:5050 "$DATA_ROOT/pgadmin" && chmod 0750 "$DATA_ROOT/pgadmin"
 chgrp forge-deploy "$DATA_ROOT/run" "$DATA_ROOT/runtime" && chmod 2770 "$DATA_ROOT/run" "$DATA_ROOT/runtime"
 chgrp forge-deploy "$DATA_ROOT/runtime/node-exporter" && chmod 2775 "$DATA_ROOT/runtime/node-exporter"
 
-# Secrets outside the checkout; files inside get 0640 forge-deploy (see start_prod.md).
-chgrp forge-deploy "$SECRETS_DIR" && chmod 0750 "$SECRETS_DIR"
+# Secrets outside the checkout, managed by the deploy group without root;
+# files inside get 0640 forge-deploy (see start_prod.md).
+chgrp forge-deploy "$SECRETS_DIR" && chmod 2770 "$SECRETS_DIR"
 
 # Self-signed certificate for the three host names, only when none exists.
 if [ ! -f "$TLS_DIR/fullchain.pem" ]; then

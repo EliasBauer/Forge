@@ -116,20 +116,35 @@ eintragen; die GID wird zur Laufzeit aufgelöst. Bei einem HTTPS-Port ungleich
 im Checkout). Auf Servern gehören sie außerhalb des Checkouts, damit `git
 clean`, ein neuer Clone oder ein Wechsel des Verzeichnisses sie nicht
 anfassen: `SECRETS_DIR=/etc/forge/secrets` in `.env` setzen und das
-Verzeichnis als root anlegen (`0750`, Gruppe `forge-deploy`).
+Verzeichnis als root anlegen (`2770`, Gruppe `forge-deploy`, damit Operatoren Secrets ohne root pflegen).
 
-Secrets erzeugen (nie in Logs oder Chats einfügen), `$SECRETS_DIR` wie in `.env`:
+Secrets erzeugen: die vier vom Betreiber gewählten Werte in
+`$SECRETS_DIR/forge-secrets.env` eintragen (`0640`, Gruppe `forge-deploy`,
+nie in Logs oder Chats einfügen), dann daraus die Dateien schreiben lassen:
+
+```dotenv
+ADMIN_BASIC_AUTH_PASSWORD=   # Basic-Auth vor pgAdmin, Benutzer admin
+GRAFANA_ADMIN_PASSWORD=
+PGADMIN_PASSWORD=            # mindestens 6 Zeichen
+BEXIO_ACCESS_TOKEN=          # leer = Bexio-Dev-Modus
+```
 
 ```bash
-umask 077
-for file in secrets/*.txt.example; do cp -n "$file" "$SECRETS_DIR/$(basename "${file%.example}")"; done
-for name in django_secret_key postgres_password meilisearch_api_key grafana_admin_password pgadmin_password; do
-  openssl rand -base64 48 | tr -d '\n' > "$SECRETS_DIR/$name.txt"
-done
-printf 'admin:%s\n' "$(openssl passwd -apr1)" > "$SECRETS_DIR/admin_htpasswd.txt"   # fragt das Passwort ab
-sudo chgrp forge-deploy .env "$SECRETS_DIR"/*.txt
-sudo chmod 0640 .env "$SECRETS_DIR"/*.txt
+./scripts/secrets-from-env.sh
 ```
+
+Das Skript hasht das Basic-Auth-Passwort, erzeugt `django_secret_key`,
+`postgres_password` und `meilisearch_api_key` beim ersten Lauf zufällig
+(und lässt sie danach unangetastet) und legt leere Dateien für Teams und
+SMTP an. Nach einer Änderung in `forge-secrets.env` (z. B. neues Bexio-Token)
+erneut ausführen und die lesenden Container neu erzeugen:
+
+```bash
+./scripts/secrets-from-env.sh && ./scripts/compose.sh up -d --force-recreate web celery-worker celery-beat
+```
+
+Grafana und pgAdmin lesen ihr Passwort nur beim ersten Start; später in der
+jeweiligen Oberfläche ändern.
 
 | Secret | Pflicht | Hinweis |
 | --- | --- | --- |

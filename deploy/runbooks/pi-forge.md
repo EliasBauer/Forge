@@ -54,7 +54,7 @@ Was es tut, und warum:
 - `/srv/forge/data/...` mit den festen Container-UIDs (Backend 1000,
   Prometheus 65534, Grafana 472, Loki 10001, pgAdmin 5050). Der Preflight
   prüft genau diese Eigentümer und repariert nichts.
-- `/etc/forge/secrets` (0750, Gruppe `forge-deploy`): Secrets liegen
+- `/etc/forge/secrets` (2770, Gruppe `forge-deploy`, Operatoren schreiben ohne root): Secrets liegen
   außerhalb des Checkouts, `SECRETS_DIR` in `.env` zeigt dorthin.
 - Selbstsigniertes Zertifikat für `forge.local`,
   `monitoring.forge.local`, `db.forge.local`. Bewusst **ohne IP**

@@ -623,6 +623,82 @@ def test_preflight_keeps_stateful_services_off_host_ports() -> None:
         assert name in text
 
 
+# --- secrets-from-env.sh ----------------------------------------------------------
+
+
+def test_secrets_from_env_writes_group_private_files_and_keeps_generated_ones(
+    tmp_path: Path,
+) -> None:
+    secrets = tmp_path / "secrets"
+    secrets.mkdir()
+    source = secrets / "forge-secrets.env"
+    source.write_text(
+        "ADMIN_BASIC_AUTH_PASSWORD=basic-pw\n"
+        "GRAFANA_ADMIN_PASSWORD=grafana-pw\n"
+        "PGADMIN_PASSWORD=pgadmin-pw\n"
+        "BEXIO_ACCESS_TOKEN=token-1\n"
+    )
+    env_file = tmp_path / "deploy.env"
+    env_file.write_text(f"SECRETS_DIR={secrets}\nDEPLOY_GROUP={_deployment_group()}\n")
+    env = {**os.environ, "ENV_FILE": str(env_file)}
+
+    first = subprocess.run(
+        [str(SCRIPTS / "secrets-from-env.sh")],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert first.returncode == 0, first.stderr
+    assert "basic-pw" not in first.stdout + first.stderr
+    written = {path.name for path in secrets.glob("*.txt")}
+    assert written == {
+        "admin_htpasswd.txt",
+        "grafana_admin_password.txt",
+        "pgadmin_password.txt",
+        "bexio_access_token.txt",
+        "django_secret_key.txt",
+        "postgres_password.txt",
+        "meilisearch_api_key.txt",
+        "teams_workflow_url.txt",
+        "smtp_password.txt",
+    }
+    for name in written:
+        assert (secrets / name).stat().st_mode & 0o777 == 0o640, name
+    assert (secrets / "grafana_admin_password.txt").read_text() == "grafana-pw"
+    assert (secrets / "bexio_access_token.txt").read_text() == "token-1"
+    htpasswd = (secrets / "admin_htpasswd.txt").read_text()
+    assert htpasswd.startswith("admin:$apr1$") and htpasswd.endswith("\n")
+    assert (secrets / "teams_workflow_url.txt").read_text() == ""
+    generated = (secrets / "postgres_password.txt").read_text()
+    assert len(generated) >= 50
+
+    source.write_text(source.read_text().replace("token-1", "token-2"))
+    second = subprocess.run(
+        [str(SCRIPTS / "secrets-from-env.sh")],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert second.returncode == 0, second.stderr
+    assert (secrets / "bexio_access_token.txt").read_text() == "token-2"
+    assert (secrets / "postgres_password.txt").read_text() == generated
+
+    source.write_text(
+        "ADMIN_BASIC_AUTH_PASSWORD=\nGRAFANA_ADMIN_PASSWORD=x\nPGADMIN_PASSWORD=x\n"
+    )
+    refused = subprocess.run(
+        [str(SCRIPTS / "secrets-from-env.sh")],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert refused.returncode != 0
+    assert "ADMIN_BASIC_AUTH_PASSWORD is empty" in refused.stderr
+
+
 # --- deploy.sh --------------------------------------------------------------------
 
 
