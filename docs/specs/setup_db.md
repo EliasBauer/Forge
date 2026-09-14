@@ -44,7 +44,9 @@ Idempotent (`get_or_create` / `update_or_create`). Reihenfolge entscheidet
 | --- | -------- | -------- | ------------ | -------- | ------------- |
 | 1   | admin    | admin    | true         | true     | Admin         |
 | 2   | simon    | simon    | false        | false    | Projektleiter |
-| 3   | tina     | tina     | false        | false    | Betrachter    |
+| 3   | kalle    | kalle    | false        | false    | Projektleiter |
+| 4   | tina     | tina     | false        | false    | Betrachter    |
+| 5   | monte    | monte    | false        | false    | Monteur       |
 
 Passwörter werden via `set_password()` gesetzt (Hash). Bei bereits existenten
 Usern werden Passwort und Gruppen-Zuweisung neu gesetzt, damit der Stand
@@ -79,7 +81,7 @@ ohnehin Fixture-Daten — Sync läuft also auch ohne Internet.
 - [ ] Nach dem Lauf existiert `src/db.sqlite3` neu.
 - [ ] In jeder App liegt `0001_initial.py` (und ggf. weitere) neu erstellt vor.
 - [ ] `auth_group` enthält genau die vier Gruppen mit IDs 1–4.
-- [ ] `auth_user` enthält die drei User mit IDs 1–3, korrekten Passwörtern, korrekten Flags.
+- [ ] `auth_user` enthält die fünf User mit IDs 1–5, korrekten Passwörtern, korrekten Flags.
 - [ ] `auth_user_groups` weist die User wie spezifiziert zu.
 - [ ] Bexio-Tabellen sind im Dev-Mode mit Fixture-Daten gefüllt.
 - [ ] Zehn Projekte mit Auftragsnummern `JJJJ.NNNN`, je mit Kostenpositionen; Stundensätze für alle Projektjahre.
