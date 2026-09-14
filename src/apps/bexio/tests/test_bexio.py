@@ -112,6 +112,21 @@ class SyncLieferantenrechnungenTest(TestCase):
         sync_lieferantenrechnungen()
         assert Model.objects.get(dokument_nr="01558").status == "BOOKED"
 
+    def test_sync_accepts_bills_without_title(self) -> None:
+        """405 von 1760 echten Bexio-Belegen haben title=None (kein Projektbezug)."""
+        from apps.bexio.services import _DEV_FIXTURE
+
+        bill = {**_DEV_FIXTURE[0], "title": None}
+        with patch("apps.bexio.sync.BexioClient") as MockClient:
+            MockClient.return_value.get_all_bills.return_value = [bill]
+            count = sync_lieferantenrechnungen()
+
+        assert count == len(bill["line_items"])
+        row = Lieferantenrechnung.all().first()
+        assert row is not None
+        assert row.titel == ""
+        assert row.richtiger_titel == ""
+
     def test_sync_returns_zero_for_empty_response(self) -> None:
         with patch("apps.bexio.sync.BexioClient") as MockClient:
             MockClient.return_value.get_all_bills.return_value = []

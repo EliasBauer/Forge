@@ -43,8 +43,8 @@ class Lieferantenrechnung(GeneralManager):
         bexio_id = models.UUIDField()
         bexio_zeilen_id = models.UUIDField(unique=True, default=uuid.uuid4)
         dokument_nr = models.CharField(max_length=20)
-        titel = models.CharField(max_length=100)
-        richtiger_titel = models.CharField(max_length=100)
+        titel = models.CharField(max_length=100, blank=True)  # Bexio: oft ohne Titel
+        richtiger_titel = models.CharField(max_length=100, blank=True)
         status = models.CharField(max_length=20)
         rechnungsdatum = models.DateField()
         faelligkeitsdatum = models.DateField(null=True, blank=True)
