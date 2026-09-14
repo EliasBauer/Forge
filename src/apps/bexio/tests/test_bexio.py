@@ -178,32 +178,61 @@ class BexioClientRealApiTest(TestCase):
         assert client._headers["Authorization"] == "Bearer test-token"
         assert client._headers["Accept"] == "application/json"
 
+    def _route(self, pages: list[MagicMock]) -> Any:
+        """Listenaufrufe liefern die Seiten der Reihe nach, Detailaufrufe den Beleg.
+
+        Die Liste von /4.0/purchase/bills ist eine Kurzfassung ohne supplier_id
+        und line_items; erst /4.0/purchase/bills/{id} liefert die Felder, die
+        die Synchronisation braucht.
+        """
+        remaining = iter(pages)
+
+        def side_effect(url: str, **_: Any) -> MagicMock:
+            if url.endswith("/purchase/bills"):
+                return next(remaining)
+            bill_id = url.rsplit("/", 1)[1]
+            return self._make_response(
+                {"id": bill_id, "supplier_id": 144, "line_items": []}
+            )
+
+        return side_effect
+
     def test_get_all_bills_sends_page_and_limit(self) -> None:
         """Der 4.0-Endpoint kennt page/limit; offset wird stillschweigend ignoriert."""
         from apps.bexio.services import _PAGE_SIZE, BexioClient
 
         with patch("apps.bexio.services.requests.get") as mock_get:
-            mock_get.return_value = self._make_page([{"id": "abc"}], page_count=1)
+            mock_get.side_effect = self._route(
+                [self._make_page([{"id": "abc"}], page_count=1)]
+            )
             BexioClient().get_all_bills()
 
-        assert mock_get.call_args.kwargs["params"] == {"page": 1, "limit": _PAGE_SIZE}
+        list_call = mock_get.call_args_list[0]
+        assert list_call.kwargs["params"] == {"page": 1, "limit": _PAGE_SIZE}
 
-    def test_get_all_bills_single_page(self) -> None:
-        from apps.bexio.services import BexioClient
+    def test_get_all_bills_returns_details_not_list_summaries(self) -> None:
+        from apps.bexio.services import BEXIO_API_BASE, BexioClient
 
-        fake_bills = [{"id": f"id-{i}"} for i in range(3)]
+        summaries = [{"id": "id-0", "vendor": "x"}, {"id": "id-1", "vendor": "y"}]
         with patch("apps.bexio.services.requests.get") as mock_get:
-            mock_get.return_value = self._make_page(fake_bills, page_count=1)
+            mock_get.side_effect = self._route([self._make_page(summaries, 1)])
             result = BexioClient().get_all_bills()
 
-        assert result == fake_bills
-        assert mock_get.call_count == 1
+        assert [b["id"] for b in result] == ["id-0", "id-1"]
+        assert all(b["supplier_id"] == 144 for b in result)
+        assert all("line_items" in b for b in result)
+        urls = [c.args[0] for c in mock_get.call_args_list]
+        assert urls == [
+            f"{BEXIO_API_BASE}/4.0/purchase/bills",
+            f"{BEXIO_API_BASE}/4.0/purchase/bills/id-0",
+            f"{BEXIO_API_BASE}/4.0/purchase/bills/id-1",
+        ]
 
     def test_get_all_bills_empty(self) -> None:
         from apps.bexio.services import BexioClient
 
         with patch("apps.bexio.services.requests.get") as mock_get:
-            mock_get.return_value = self._make_page([], page_count=0)
+            mock_get.side_effect = self._route([self._make_page([], page_count=0)])
             result = BexioClient().get_all_bills()
 
         assert result == []
@@ -214,16 +243,33 @@ class BexioClientRealApiTest(TestCase):
         from apps.bexio.services import BexioClient
 
         with patch("apps.bexio.services.requests.get") as mock_get:
-            mock_get.side_effect = [
-                self._make_page([{"id": "a"}, {"id": "b"}], page_count=3),
-                self._make_page([{"id": "c"}, {"id": "d"}], page_count=3),
-                self._make_page([{"id": "e"}], page_count=3),
-            ]
+            mock_get.side_effect = self._route(
+                [
+                    self._make_page([{"id": "a"}, {"id": "b"}], page_count=3),
+                    self._make_page([{"id": "c"}, {"id": "d"}], page_count=3),
+                    self._make_page([{"id": "e"}], page_count=3),
+                ]
+            )
             result = BexioClient().get_all_bills()
 
         assert [b["id"] for b in result] == ["a", "b", "c", "d", "e"]
-        pages = [c.kwargs["params"]["page"] for c in mock_get.call_args_list]
+        pages = [
+            c.kwargs["params"]["page"]
+            for c in mock_get.call_args_list
+            if c.args[0].endswith("/purchase/bills")
+        ]
         assert pages == [1, 2, 3]
+
+    def test_get_bill_raises_on_unexpected_detail(self) -> None:
+        from apps.bexio.services import BexioClient
+
+        with patch("apps.bexio.services.requests.get") as mock_get:
+            mock_get.side_effect = [
+                self._make_page([{"id": "abc"}], page_count=1),
+                self._make_response({"data": []}),
+            ]
+            with self.assertRaisesMessage(RuntimeError, "Unerwartetes Antwortformat"):
+                BexioClient().get_all_bills()
 
     def test_get_all_bills_raises_on_unexpected_format(self) -> None:
         from apps.bexio.services import BexioClient

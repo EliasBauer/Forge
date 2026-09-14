@@ -1056,15 +1056,29 @@ class BexioClient:
         if self._dev_mode:
             return _DEV_FIXTURE
 
-        results: list[dict[str, Any]] = []
+        bill_ids: list[str] = []
         page = 1
         while True:
             batch, page_count = self._fetch_bills_page(page=page, limit=_PAGE_SIZE)
-            results.extend(batch)
+            bill_ids.extend(bill["id"] for bill in batch)
             if page >= page_count:
                 break
             page += 1
-        return results
+        # Die Liste ist eine Kurzfassung ohne supplier_id, line_items und
+        # amount_calc; erst der Detail-Endpoint liefert die Felder für den Sync.
+        # ponytail: ein Request pro Beleg (~1800 nächtlich); Zwischenspeicher nach
+        # (id, status, pending_amount) erst, wenn Bexio drosselt oder es zu lange dauert
+        return [self._fetch_bill(bill_id) for bill_id in bill_ids]
+
+    def _fetch_bill(self, bill_id: str) -> dict[str, Any]:
+        """Holt einen Beleg vollständig (mit supplier_id und line_items)."""
+        url = f"{BEXIO_API_BASE}/4.0/purchase/bills/{bill_id}"
+        response = requests.get(url, headers=self._headers, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        if not isinstance(result, dict) or result.get("id") != bill_id:
+            raise RuntimeError(f"Unerwartetes Antwortformat von {url}")
+        return result
 
     def _fetch_bills_page(
         self, page: int, limit: int
