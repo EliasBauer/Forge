@@ -17,6 +17,10 @@ internen Compose-Netzen.
 
 Der Operator-Account braucht Docker-Zugriff ohne `sudo` (`docker info`).
 
+Alle Root-Schritte dieses Abschnitts (Gruppe, Verzeichnisse, Zertifikat,
+Secrets-Verzeichnis, SSH nur mit Schlüssel, Sicherheitsupdates) bündelt
+`scripts/host-prep.sh`: `sudo OPERATOR=$USER APP_DOMAIN=<host> sh scripts/host-prep.sh`.
+
 ### Deploy-Gruppe
 
 `.env` und die Secret-Dateien in `SECRETS_DIR` sind gruppenprivat (`0640`). Die Gruppe aus

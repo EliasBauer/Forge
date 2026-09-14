@@ -30,7 +30,8 @@ hier die Kurzform:
 
 ```bash
 sudo groupadd --force forge-deploy && sudo usermod -aG forge-deploy "$USER"
-sudo mkdir -p /srv/forge/data/{postgres,redis,meilisearch,static,run,runtime/node-exporter,backups,celerybeat,alertmanager,prometheus,grafana,loki,alloy,pushgateway,pgadmin,restore-verification/files} /srv/forge/backup-share /etc/forge/tls
+sudo mkdir -p /srv/forge/data/{postgres,redis,meilisearch,static,run,runtime/node-exporter,backups,celerybeat,alertmanager,prometheus,grafana,loki,alloy,pushgateway,pgadmin,restore-verification/files} /srv/forge/backup-share /etc/forge/tls /etc/forge/secrets
+sudo chgrp forge-deploy /etc/forge/secrets && sudo chmod 0750 /etc/forge/secrets
 sudo chown -R 1000:1000 /srv/forge/data/{static,backups,celerybeat,restore-verification} /srv/forge/backup-share
 sudo chmod 0755 /srv/forge/data/static
 sudo chmod 0750 /srv/forge/data/{backups,celerybeat,restore-verification} /srv/forge/backup-share
@@ -43,6 +44,9 @@ sudo chgrp forge-deploy /srv/forge/data/runtime/node-exporter && sudo chmod 2775
 ```
 
 Danach **neu anmelden** (die Gruppe gilt erst in einer neuen Sitzung).
+Derselbe Block als Skript, inklusive Zertifikat (Schritt 2), SSH nur mit
+Schlüssel und automatischen Sicherheitsupdates:
+`sudo OPERATOR=$USER APP_DOMAIN=forge.firma.local sh deploy/scripts/host-prep.sh`.
 
 ## 2. TLS-Zertifikat
 
@@ -73,25 +77,29 @@ liegen unter `deploy/scripts/`.
 
 ```bash
 cp .env.example .env
-for f in secrets/*.txt.example; do cp "$f" "${f%.example}"; done
 ```
 
 In `.env` anpassen: `APP_DOMAIN`, `MONITORING_DOMAIN`, `ADMIN_DOMAIN`,
 `CSRF_TRUSTED_ORIGINS` (= `https://<APP_DOMAIN>`), `PGADMIN_DEFAULT_EMAIL`
-(keine `.local`-Adresse), bei Bedarf Alerting (SMTP). `DATA_ROOT`,
-`BACKUP_SHARE` und die TLS-Pfade passen zu Schritt 1 und 2.
+(keine `.local`-Adresse), `SECRETS_DIR=/etc/forge/secrets`, bei Bedarf
+Alerting (SMTP). `DATA_ROOT`, `BACKUP_SHARE` und die TLS-Pfade passen zu
+Schritt 1 und 2.
 
-Secrets erzeugen (Zufallswerte; nie in Chats oder Logs einfügen):
+Die Secrets liegen in `SECRETS_DIR`, also außerhalb des Checkouts: ein
+`git clean` oder ein neuer Clone kann sie nicht löschen. Erzeugen
+(Zufallswerte; nie in Chats oder Logs einfügen):
 
 ```bash
 umask 077
+S=/etc/forge/secrets
+for f in secrets/*.txt.example; do sudo cp -n "$f" "$S/$(basename "${f%.example}")"; done
 for name in django_secret_key postgres_password meilisearch_api_key grafana_admin_password pgadmin_password; do
-  openssl rand -base64 48 | tr -d '\n' > "secrets/$name.txt"
+  openssl rand -base64 48 | tr -d '\n' | sudo tee "$S/$name.txt" >/dev/null
 done
-printf 'admin:%s\n' "$(openssl passwd -apr1)" > secrets/admin_htpasswd.txt   # fragt ein Passwort ab
-printf '%s' 'DEIN-BEXIO-TOKEN' > secrets/bexio_access_token.txt              # oder leer lassen
-sudo chgrp forge-deploy .env secrets/*.txt
-sudo chmod 0640 .env secrets/*.txt
+printf 'admin:%s\n' "$(openssl passwd -apr1)" | sudo tee "$S/admin_htpasswd.txt" >/dev/null   # fragt ein Passwort ab
+printf '%s' 'DEIN-BEXIO-TOKEN' | sudo tee "$S/bexio_access_token.txt" >/dev/null           # oder leer lassen
+sudo chgrp forge-deploy .env "$S"/*.txt
+sudo chmod 0640 .env "$S"/*.txt
 ```
 
 `teams_workflow_url.txt` und `smtp_password.txt` bleiben leer, solange Teams
