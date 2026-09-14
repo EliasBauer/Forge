@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 
 BEXIO_API_BASE = "https://api.bexio.com"
-_PAGE_SIZE = 100
+_PAGE_SIZE = 500  # dokumentiertes Maximum für /4.0/purchase/bills
 
 _DEV_FIXTURE_KONTEN: list[dict[str, Any]] = [
     {
@@ -1057,28 +1057,38 @@ class BexioClient:
             return _DEV_FIXTURE
 
         results: list[dict[str, Any]] = []
-        offset = 0
+        page = 1
         while True:
-            batch = self._fetch_bills_page(offset=offset, limit=_PAGE_SIZE)
+            batch, page_count = self._fetch_bills_page(page=page, limit=_PAGE_SIZE)
             results.extend(batch)
-            if len(batch) < _PAGE_SIZE:
+            if page >= page_count:
                 break
-            offset += _PAGE_SIZE
+            page += 1
         return results
 
-    def _fetch_bills_page(self, offset: int, limit: int) -> list[dict[str, Any]]:
+    def _fetch_bills_page(
+        self, page: int, limit: int
+    ) -> tuple[list[dict[str, Any]], int]:
+        """
+        Holt eine Seite Lieferantenrechnungen. Gibt (Belege, Gesamtseitenzahl) zurück.
+
+        Der 4.0-Endpoint paginiert über ``page`` (ab 1) und ``limit`` (max. 500);
+        ``offset`` wird von Bexio stillschweigend ignoriert. Die Antwort trägt
+        ``paging.page_count``, das die Abbruchbedingung liefert.
+        """
         url = f"{BEXIO_API_BASE}/4.0/purchase/bills"
         response = requests.get(
             url,
             headers=self._headers,
-            params={"offset": offset, "limit": limit},
+            params={"page": page, "limit": limit},
             timeout=30,
         )
         response.raise_for_status()
         result = response.json()
-        # Bexio v4 list endpoints können {"data": [...]} oder direkt [...] zurückgeben
-        if isinstance(result, dict):  # pragma: no branch
-            for key in ("data", "bills", "items"):  # pragma: no branch
-                if key in result and isinstance(result[key], list):  # pragma: no branch
-                    return result[key]  # type: ignore[no-any-return]
-        return result  # type: ignore[no-any-return]
+        if (
+            not isinstance(result, dict)
+            or not isinstance(result.get("data"), list)
+            or not isinstance(result.get("paging"), dict)
+        ):
+            raise RuntimeError(f"Unerwartetes Antwortformat von {url}")
+        return result["data"], int(result["paging"]["page_count"])

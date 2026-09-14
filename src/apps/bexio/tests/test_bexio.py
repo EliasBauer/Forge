@@ -159,12 +159,17 @@ class BexioClientDevModeTest(TestCase):
 
 @override_settings(BEXIO_DEV_MODE=False, BEXIO_ACCESS_TOKEN="test-token")
 class BexioClientRealApiTest(TestCase):
-    def _make_response(self, data: list[Any], status_code: int = 200) -> MagicMock:
+    def _make_response(self, data: Any, status_code: int = 200) -> MagicMock:
         resp = MagicMock()
         resp.status_code = status_code
         resp.json.return_value = data
         resp.raise_for_status = MagicMock()
         return resp
+
+    def _make_page(self, bills: list[dict[str, Any]], page_count: int) -> MagicMock:
+        return self._make_response(
+            {"data": bills, "paging": {"page_count": page_count}}
+        )
 
     def test_headers_contain_bearer_token(self) -> None:
         from apps.bexio.services import BexioClient
@@ -173,46 +178,60 @@ class BexioClientRealApiTest(TestCase):
         assert client._headers["Authorization"] == "Bearer test-token"
         assert client._headers["Accept"] == "application/json"
 
+    def test_get_all_bills_sends_page_and_limit(self) -> None:
+        """Der 4.0-Endpoint kennt page/limit; offset wird stillschweigend ignoriert."""
+        from apps.bexio.services import _PAGE_SIZE, BexioClient
+
+        with patch("apps.bexio.services.requests.get") as mock_get:
+            mock_get.return_value = self._make_page([{"id": "abc"}], page_count=1)
+            BexioClient().get_all_bills()
+
+        assert mock_get.call_args.kwargs["params"] == {"page": 1, "limit": _PAGE_SIZE}
+
     def test_get_all_bills_single_page(self) -> None:
         from apps.bexio.services import BexioClient
 
         fake_bills = [{"id": f"id-{i}"} for i in range(3)]
         with patch("apps.bexio.services.requests.get") as mock_get:
-            mock_get.return_value = self._make_response(fake_bills)
-            client = BexioClient()
-            result = client.get_all_bills()
+            mock_get.return_value = self._make_page(fake_bills, page_count=1)
+            result = BexioClient().get_all_bills()
 
         assert result == fake_bills
         assert mock_get.call_count == 1
 
-    def test_get_all_bills_paginates(self) -> None:
-        from apps.bexio.services import _PAGE_SIZE, BexioClient
+    def test_get_all_bills_empty(self) -> None:
+        from apps.bexio.services import BexioClient
 
-        full_page = [{"id": f"id-{i}"} for i in range(_PAGE_SIZE)]
-        last_page = [{"id": "id-last"}]
+        with patch("apps.bexio.services.requests.get") as mock_get:
+            mock_get.return_value = self._make_page([], page_count=0)
+            result = BexioClient().get_all_bills()
+
+        assert result == []
+        assert mock_get.call_count == 1
+
+    def test_get_all_bills_paginates_until_page_count(self) -> None:
+        """Abbruch über paging.page_count, nicht über eine "kurze" letzte Seite."""
+        from apps.bexio.services import BexioClient
 
         with patch("apps.bexio.services.requests.get") as mock_get:
             mock_get.side_effect = [
-                self._make_response(full_page),
-                self._make_response(last_page),
+                self._make_page([{"id": "a"}, {"id": "b"}], page_count=3),
+                self._make_page([{"id": "c"}, {"id": "d"}], page_count=3),
+                self._make_page([{"id": "e"}], page_count=3),
             ]
-            client = BexioClient()
-            result = client.get_all_bills()
+            result = BexioClient().get_all_bills()
 
-        assert len(result) == _PAGE_SIZE + 1
-        assert mock_get.call_count == 2
+        assert [b["id"] for b in result] == ["a", "b", "c", "d", "e"]
+        pages = [c.kwargs["params"]["page"] for c in mock_get.call_args_list]
+        assert pages == [1, 2, 3]
 
-    def test_get_all_bills_handles_dict_with_data_key(self) -> None:
+    def test_get_all_bills_raises_on_unexpected_format(self) -> None:
         from apps.bexio.services import BexioClient
 
-        fake_bills = [{"id": "abc"}]
-        wrapped = {"data": fake_bills, "paging": {"total": 1}}
         with patch("apps.bexio.services.requests.get") as mock_get:
-            mock_get.return_value = self._make_response(wrapped)  # type: ignore[arg-type]
-            client = BexioClient()
-            result = client.get_all_bills()
-
-        assert result == fake_bills
+            mock_get.return_value = self._make_response([{"id": "abc"}])
+            with self.assertRaisesMessage(RuntimeError, "Unerwartetes Antwortformat"):
+                BexioClient().get_all_bills()
 
 
 # ---------------------------------------------------------------------------
