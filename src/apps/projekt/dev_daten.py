@@ -36,7 +36,7 @@ class DevProjekt:
     auftragsnummer: str
     name: str
     phase: str
-    projektleiter: str | None
+    projektleiter: str
     wv_faktor: Decimal | None
     positionen: dict[str, Decimal]
 
@@ -66,7 +66,7 @@ def _p(
     auftragsnummer: str,
     name: str,
     phase: str,
-    projektleiter: str | None,
+    projektleiter: str,
     wv_faktor: str | None,
     **positionen: int,
 ) -> DevProjekt:
@@ -117,7 +117,7 @@ DEV_PROJEKTE: list[DevProjekt] = [
         "2024.0185",
         "Produktionshalle Keller AG",
         "Fertig",
-        "simon",
+        "kalle",
         "1.02",
         apparate=24000,
         kanaele_rohre=18500,
@@ -164,7 +164,7 @@ DEV_PROJEKTE: list[DevProjekt] = [
         "2025.0091",
         "Turnhalle Gemeinde Wil",
         "In Arbeit",
-        "simon",
+        "kalle",
         "0.96",
         apparate=45000,
         kanaele_rohre=33000,
@@ -180,7 +180,7 @@ DEV_PROJEKTE: list[DevProjekt] = [
         "2025.0133",
         "Laborgebäude Campus Nord",
         "In Arbeit",
-        None,
+        "kalle",
         "0.93",
         apparate=120000,
         kanaele_rohre=74000,
@@ -227,7 +227,7 @@ DEV_PROJEKTE: list[DevProjekt] = [
         "2026.0034",
         "Kita Sonnenschein, Neubau",
         "Offen",
-        None,
+        "kalle",
         None,
         apparate=19800,
         kanaele_rohre=13400,
@@ -258,9 +258,7 @@ def seed_dev_stundensaetze(log: Log) -> None:
             log(f"Stundensatz {jahr}: aktualisiert")
 
 
-def _projektleiter_id(username: str | None) -> str | None:
-    if username is None:
-        return None
+def _projektleiter_id(username: str) -> str:
     return str(User.objects.get(username=username).pk)
 
 

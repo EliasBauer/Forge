@@ -27,11 +27,25 @@ USERS: list[dict[str, Any]] = [
         "group": "Projektleiter",
     },
     {
+        "username": "kalle",
+        "password": "kalle",
+        "is_superuser": False,
+        "is_staff": False,
+        "group": "Projektleiter",
+    },
+    {
         "username": "tina",
         "password": "tina",
         "is_superuser": False,
         "is_staff": False,
         "group": "Betrachter",
+    },
+    {
+        "username": "monte",
+        "password": "monte",
+        "is_superuser": False,
+        "is_staff": False,
+        "group": "Monteur",
     },
 ]
 
