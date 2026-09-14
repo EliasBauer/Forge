@@ -511,6 +511,7 @@ describe("ProjektListePage – fertige Projekte", () => {
     const fertig = within(fertigeZeile as HTMLElement);
     expect(fertig.getByText("T-2026-001").closest("td")).toHaveClass("opacity-50");
     expect(fertig.getByText("Fertigprojekt F").closest("td")).toHaveClass("opacity-50");
+    expect(fertig.getByText("Fertig").closest("td")).toHaveClass("opacity-50");
     // Der Projektstatus bleibt in voller Sättigung lesbar.
     expect(fertig.getByTestId("mini-text").closest("td")).not.toHaveClass("opacity-50");
 

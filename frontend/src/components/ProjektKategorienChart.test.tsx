@@ -55,6 +55,28 @@ describe("ProjektKategorienChart", () => {
     expect(screen.queryByTestId("kat-overrun-planung")).not.toBeInTheDocument();
   });
 
+  it("meldet Ist-Kosten ohne Plan-WV, statt sie als noch offen auszugeben", () => {
+    // getDeviation() liefert bei Basis 0 kein Ergebnis — ohne eigenen Zweig
+    // landeten diese Kategorien im „noch offen"-Fall, obwohl Kosten da sind.
+    render(
+      <ProjektKategorienChart
+        rows={[{ schluessel: "diverses", label: "Diverses", planWV: 0, ist: 5000 }]}
+      />,
+    );
+    expect(screen.getByText("ohne Plan-WV")).toBeInTheDocument();
+    expect(screen.queryByText("noch offen")).not.toBeInTheDocument();
+  });
+
+  it("zeigt weder Abweichung noch noch-offen ohne Plan-WV und ohne Ist", () => {
+    render(
+      <ProjektKategorienChart
+        rows={[{ schluessel: "diverses", label: "Diverses", planWV: 0, ist: null }]}
+      />,
+    );
+    expect(screen.queryByText("noch offen")).not.toBeInTheDocument();
+    expect(screen.queryByText("ohne Plan-WV")).not.toBeInTheDocument();
+  });
+
   it("rendert nichts, wenn keine Kategorie einen Wert hat", () => {
     const { container } = render(
       <ProjektKategorienChart

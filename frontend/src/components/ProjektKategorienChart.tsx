@@ -155,7 +155,15 @@ export default function ProjektKategorienChart({ rows }: { rows: KategorieZeile[
                       {dev.overPct >= 0 ? "+" : "−"}
                       {Math.abs(dev.overPct).toFixed(1)} %
                     </span>
-                  ) : row.planWV != null ? (
+                  ) : row.ist != null ? (
+                    // getDeviation() braucht eine Basis > 0. Ist-Kosten ohne
+                    // Plan-WV haben keine Abweichung, sind aber das Gegenteil
+                    // von „noch offen" — sie brauchen einen eigenen Hinweis.
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-700">
+                      <span className="text-[10px]">⚠</span>
+                      ohne Plan-WV
+                    </span>
+                  ) : row.planWV != null && row.planWV > 0 ? (
                     <span className="text-[11px] italic text-gray-400">noch offen</span>
                   ) : null}
                 </div>
