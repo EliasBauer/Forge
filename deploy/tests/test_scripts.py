@@ -390,16 +390,17 @@ def _run_preflight(
     grafana_uid: str = "472",
     docker_info_status: int = 0,
     pgadmin_email: str = "admin@forge-betrieb.de",
+    secrets_dir: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     deploy = tmp_path / "deploy"
     scripts = deploy / "scripts"
-    secrets = deploy / "secrets"
+    secrets = secrets_dir or deploy / "secrets"
     fake_bin = tmp_path / "bin"
     data_root = tmp_path / "data"
     backup_share = tmp_path / "backup"
     env_file = deploy / ".env"
     (scripts / "lib").mkdir(parents=True)
-    secrets.mkdir()
+    secrets.mkdir(parents=True)
     fake_bin.mkdir()
     shutil.copy2(SCRIPTS / "validate-config.sh", scripts)
     shutil.copy2(SCRIPTS / "validate-teams-workflow.sh", scripts)
@@ -454,6 +455,7 @@ def _run_preflight(
                 "ALERT_SMTP_AUTH_ENABLED=false",
                 "ALERT_SMTP_PASSWORD_FILE=/dev/null",
             )
+            + ((f"SECRETS_DIR={secrets_dir}",) if secrets_dir else ())
         )
         + "\n"
     )
@@ -546,6 +548,14 @@ def test_preflight_accepts_a_complete_configuration_and_warns_about_empty_bexio_
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "preflight ok"
     assert "preflight warning: bexio_access_token.txt is empty" in result.stderr
+
+
+def test_preflight_reads_secrets_from_secrets_dir_outside_the_checkout(
+    tmp_path: Path,
+) -> None:
+    result = _run_preflight(tmp_path, secrets_dir=tmp_path / "etc/forge/secrets")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "preflight ok"
 
 
 def test_preflight_is_silent_about_a_configured_bexio_token(tmp_path: Path) -> None:

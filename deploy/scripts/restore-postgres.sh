@@ -180,8 +180,13 @@ test -r "$BACKUP_DIR/SHA256SUMS" || fail "SHA256SUMS is not readable: $BACKUP_DI
 test -r "$BACKUP_DIR/database.dump" || fail "database.dump is not readable: $BACKUP_DIR/database.dump"
 test -d "$DATA_ROOT/backups" || fail "DATA_ROOT backups directory does not exist: $DATA_ROOT/backups"
 test -d "$BACKUP_SHARE" || fail "BACKUP_SHARE does not exist: $BACKUP_SHARE"
-test -r "$DEPLOY_DIR/secrets/postgres_password.txt" ||
-    fail "PostgreSQL password secret is not readable"
+SECRETS_DIR=${SECRETS_DIR:-./secrets}
+case "$SECRETS_DIR" in
+    /*) ;;
+    *) SECRETS_DIR=$DEPLOY_DIR/$SECRETS_DIR ;;
+esac
+test -r "$SECRETS_DIR/postgres_password.txt" ||
+    fail "PostgreSQL password secret is not readable: $SECRETS_DIR/postgres_password.txt"
 
 BACKUP_REAL=$(real_dir "$BACKUP_DIR")
 LOCAL_BACKUP_ROOT=$(real_dir "$DATA_ROOT/backups")

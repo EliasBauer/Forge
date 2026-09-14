@@ -380,9 +380,9 @@ def test_alertmanager_uses_rendered_config_secrets_and_dedicated_egress() -> Non
     )
     assert set(alertmanager["networks"]) == {"observability", "alerting-egress"}
     assert "--enable-feature=utf8-strict-mode" in alertmanager["command"]
-    assert COMPOSE["secrets"]["smtp_password"] == {
-        "file": "${ALERT_SMTP_PASSWORD_FILE:-./secrets/smtp_password.txt}"
-    }
+    assert COMPOSE["secrets"]["smtp_password"]["file"] == (
+        "${ALERT_SMTP_PASSWORD_FILE:-${SECRETS_DIR:-./secrets}/smtp_password.txt}"
+    )
 
 
 def test_alloy_host_access_is_explicit_and_isolated() -> None:
@@ -457,13 +457,14 @@ def test_backup_and_restore_verification_are_isolated_one_shots() -> None:
     assert COMPOSE["volumes"] == {"restore_postgres_data": None}
 
 
-def test_every_secret_has_an_example_template() -> None:
+def test_every_secret_lives_in_secrets_dir_and_has_an_example_template() -> None:
     for name, secret in COMPOSE["secrets"].items():
-        file = secret["file"]
-        if file.startswith("${"):
-            file = file.split(":-", 1)[1].rstrip("}")
-        assert file.startswith("./secrets/"), name
-        assert (DEPLOY / f"{file[2:]}.example").exists(), name
+        match = re.fullmatch(
+            r"(\$\{ALERT_SMTP_PASSWORD_FILE:-)?\$\{SECRETS_DIR:-\./secrets\}/(\w+\.txt)\}?",
+            secret["file"],
+        )
+        assert match, (name, secret["file"])
+        assert (DEPLOY / "secrets" / f"{match.group(2)}.example").exists(), name
     referenced = {
         secret
         for service in _services().values()

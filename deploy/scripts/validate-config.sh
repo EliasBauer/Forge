@@ -15,7 +15,7 @@ set -eu
 # 2) TLS files exist/readable; the certificate is not expired and matches the key.
 # 3) Required data/share directories exist, have the expected ownership and
 #    modes for each container identity, and have enough free disk space.
-# 4) Secret files in `deploy/secrets/*.txt` are group-private, readable,
+# 4) Secret files in `${SECRETS_DIR}/*.txt` are group-private, readable,
 #    non-empty, and not left at placeholder values.
 # 5) Public domains for app/monitoring/admin are distinct host names.
 # 6) Stateful services (`postgres`, `pgbouncer`, `redis`, `meilisearch`) do
@@ -24,7 +24,7 @@ set -eu
 # Important environment variables:
 # - ENV_FILE (optional): Path to env file; default: <deploy>/.env
 # - MIN_FREE_GB (optional): Minimum free space threshold; default: 5 GiB
-# - TLS_CERT_FILE, TLS_KEY_FILE, DATA_ROOT, BACKUP_SHARE
+# - TLS_CERT_FILE, TLS_KEY_FILE, DATA_ROOT, BACKUP_SHARE, SECRETS_DIR
 # - APP_DOMAIN, MONITORING_DOMAIN, ADMIN_DOMAIN, DEPLOY_GROUP
 # ----------------------------------------------------------------------------
 
@@ -41,10 +41,6 @@ LOKI_UID=${LOKI_UID:-10001}
 LOKI_GID=${LOKI_GID:-10001}
 PGADMIN_UID=${PGADMIN_UID:-5050}
 PGADMIN_GID=${PGADMIN_GID:-5050}
-TEAMS_WORKFLOW_URL_FILE=$DEPLOY_DIR/secrets/teams_workflow_url.txt
-BEXIO_ACCESS_TOKEN_FILE=$DEPLOY_DIR/secrets/bexio_access_token.txt
-SMTP_PASSWORD_SECRET_FILE=$DEPLOY_DIR/secrets/smtp_password.txt
-
 ENV_FILE_IS_REAL=false
 if [ -e "$ENV_FILE" ]; then
     test -r "$ENV_FILE" || {
@@ -64,6 +60,16 @@ elif [ -r "$DEPLOY_DIR/.env.example" ]; then
 fi
 ALERT_TEAMS_ENABLED=${ALERT_TEAMS_ENABLED:-false}
 ALERT_SMTP_AUTH_ENABLED=${ALERT_SMTP_AUTH_ENABLED:-false}
+# Secret files live in SECRETS_DIR (relative to deploy/ or absolute, e.g.
+# /etc/forge/secrets); Compose reads the same variable from ENV_FILE.
+SECRETS_DIR=${SECRETS_DIR:-./secrets}
+case "$SECRETS_DIR" in
+    /*) ;;
+    *) SECRETS_DIR=$DEPLOY_DIR/$SECRETS_DIR ;;
+esac
+TEAMS_WORKFLOW_URL_FILE=$SECRETS_DIR/teams_workflow_url.txt
+BEXIO_ACCESS_TOKEN_FILE=$SECRETS_DIR/bexio_access_token.txt
+SMTP_PASSWORD_SECRET_FILE=$SECRETS_DIR/smtp_password.txt
 
 # Print a standardized preflight error and abort.
 fail() {
@@ -305,9 +311,10 @@ require_identity_writable_directory LOKI_DATA "$DATA_ROOT/loki" "$LOKI_UID" "$LO
 require_identity_writable_directory PGADMIN_DATA "$DATA_ROOT/pgadmin" "$PGADMIN_UID" "$PGADMIN_GID" "pgAdmin container"
 
 # Validate secrets. Optional secrets have explicit rules; every other
-# non-example file in deploy/secrets must be a real, group-private value.
+# non-example file in SECRETS_DIR must be a real, group-private value.
+require_directory SECRETS_DIR "$SECRETS_DIR"
 if [ "$ALERT_SMTP_AUTH_ENABLED" = true ]; then
-    SMTP_PASSWORD_FILE=${ALERT_SMTP_PASSWORD_FILE:-./secrets/smtp_password.txt}
+    SMTP_PASSWORD_FILE=${ALERT_SMTP_PASSWORD_FILE:-$SMTP_PASSWORD_SECRET_FILE}
     test "$SMTP_PASSWORD_FILE" != /dev/null || fail "ALERT_SMTP_PASSWORD_FILE must point to a secret file when SMTP authentication is enabled"
     case "$SMTP_PASSWORD_FILE" in
         /*) ;;
@@ -324,7 +331,7 @@ require_group_readable_private_file "Bexio access token secret" "$BEXIO_ACCESS_T
 if [ -z "$(sed -n '1p' "$BEXIO_ACCESS_TOKEN_FILE")" ]; then
     warn "bexio_access_token.txt is empty; the backend runs in Bexio dev mode with fixture data"
 fi
-for file in "$DEPLOY_DIR"/secrets/*.txt; do
+for file in "$SECRETS_DIR"/*.txt; do
     case "$file" in
         "$TEAMS_WORKFLOW_URL_FILE"|"$BEXIO_ACCESS_TOKEN_FILE"|"$SMTP_PASSWORD_SECRET_FILE"|*.example) continue ;;
     esac

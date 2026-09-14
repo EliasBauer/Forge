@@ -719,20 +719,20 @@ volumes:
 
 secrets:
   django_secret_key:
-    file: ./secrets/django_secret_key.txt
+    file: ${SECRETS_DIR:-./secrets}/django_secret_key.txt
   postgres_password:
-    file: ./secrets/postgres_password.txt
+    file: ${SECRETS_DIR:-./secrets}/postgres_password.txt
   meilisearch_api_key:
-    file: ./secrets/meilisearch_api_key.txt
+    file: ${SECRETS_DIR:-./secrets}/meilisearch_api_key.txt
   bexio_access_token:
-    file: ./secrets/bexio_access_token.txt
+    file: ${SECRETS_DIR:-./secrets}/bexio_access_token.txt
   admin_htpasswd:
-    file: ./secrets/admin_htpasswd.txt
+    file: ${SECRETS_DIR:-./secrets}/admin_htpasswd.txt
   grafana_admin_password:
-    file: ./secrets/grafana_admin_password.txt
+    file: ${SECRETS_DIR:-./secrets}/grafana_admin_password.txt
   pgadmin_password:
-    file: ./secrets/pgadmin_password.txt
+    file: ${SECRETS_DIR:-./secrets}/pgadmin_password.txt
   teams_workflow_url:
-    file: ./secrets/teams_workflow_url.txt
+    file: ${SECRETS_DIR:-./secrets}/teams_workflow_url.txt
   smtp_password:
-    file: ${ALERT_SMTP_PASSWORD_FILE:-./secrets/smtp_password.txt}
+    file: ${ALERT_SMTP_PASSWORD_FILE:-${SECRETS_DIR:-./secrets}/smtp_password.txt}

@@ -19,7 +19,7 @@ Der Operator-Account braucht Docker-Zugriff ohne `sudo` (`docker info`).
 
 ### Deploy-Gruppe
 
-`.env` und `secrets/*.txt` sind gruppenprivat (`0640`). Die Gruppe aus
+`.env` und die Secret-Dateien in `SECRETS_DIR` sind gruppenprivat (`0640`). Die Gruppe aus
 `DEPLOY_GROUP` wird beim Start aufgelöst und als Zusatz-GID in alle Container
 gereicht, die Secrets lesen. Einmalig pro Host, für jeden Operator wiederholen:
 
@@ -102,23 +102,29 @@ Aus `deploy/`:
 
 ```bash
 cp .env.example .env
-for file in secrets/*.txt.example; do cp "$file" "${file%.example}"; done
 ```
 
 `.env`: Domains, Pfade, Ports, Replikate, Alerting. Kein `DEPLOY_GROUP_GID`
 eintragen; die GID wird zur Laufzeit aufgelöst. Bei einem HTTPS-Port ungleich
 443 zusätzlich `CSRF_TRUSTED_ORIGINS=https://<domain>:<port>` setzen.
 
-Secrets erzeugen (nie in Logs oder Chats einfügen):
+`SECRETS_DIR` bestimmt, wo die Secret-Dateien liegen (Vorgabe `./secrets`
+im Checkout). Auf Servern gehören sie außerhalb des Checkouts, damit `git
+clean`, ein neuer Clone oder ein Wechsel des Verzeichnisses sie nicht
+anfassen: `SECRETS_DIR=/etc/forge/secrets` in `.env` setzen und das
+Verzeichnis als root anlegen (`0750`, Gruppe `forge-deploy`).
+
+Secrets erzeugen (nie in Logs oder Chats einfügen), `$SECRETS_DIR` wie in `.env`:
 
 ```bash
 umask 077
+for file in secrets/*.txt.example; do cp -n "$file" "$SECRETS_DIR/$(basename "${file%.example}")"; done
 for name in django_secret_key postgres_password meilisearch_api_key grafana_admin_password pgadmin_password; do
-  openssl rand -base64 48 | tr -d '\n' > "secrets/$name.txt"
+  openssl rand -base64 48 | tr -d '\n' > "$SECRETS_DIR/$name.txt"
 done
-printf 'admin:%s\n' "$(openssl passwd -apr1)" > secrets/admin_htpasswd.txt   # fragt das Passwort ab
-sudo chgrp forge-deploy .env secrets/*.txt
-sudo chmod 0640 .env secrets/*.txt
+printf 'admin:%s\n' "$(openssl passwd -apr1)" > "$SECRETS_DIR/admin_htpasswd.txt"   # fragt das Passwort ab
+sudo chgrp forge-deploy .env "$SECRETS_DIR"/*.txt
+sudo chmod 0640 .env "$SECRETS_DIR"/*.txt
 ```
 
 | Secret | Pflicht | Hinweis |
@@ -255,7 +261,7 @@ CONFIRM_RESET_ALL_LEASES=true ./scripts/maintenance.sh reset-all
 
 Meldet der Precheck `password authentication failed`, wurde
 `${DATA_ROOT}/postgres` mit einem anderen Passwort initialisiert als
-`secrets/postgres_password.txt`. Rolle im laufenden Container reparieren:
+`${SECRETS_DIR}/postgres_password.txt`. Rolle im laufenden Container reparieren:
 
 ```bash
 ./scripts/compose.sh exec -T postgres sh -ec 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v new_password="$(cat /run/secrets/postgres_password)" -c "ALTER USER forge WITH PASSWORD :'\''new_password'\'';"'
@@ -288,7 +294,7 @@ ALERT_SMTP_FROM=forge-alerts@example.local
 ALERT_SMTP_AUTH_ENABLED=true
 ALERT_SMTP_REQUIRE_TLS=true
 ALERT_SMTP_USERNAME=forge-alerts@example.local
-ALERT_SMTP_PASSWORD_FILE=./secrets/smtp_password.txt
+ALERT_SMTP_PASSWORD_FILE=/etc/forge/secrets/smtp_password.txt   # Vorgabe: ${SECRETS_DIR}/smtp_password.txt
 ALERT_EMAIL_TO=forge-ops@example.local
 ```
 
