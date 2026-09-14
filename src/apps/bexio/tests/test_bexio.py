@@ -22,10 +22,10 @@ from apps.bexio.sync import (
 _LieferantenrechnungModel: Any = Lieferantenrechnung.Interface._model  # type: ignore[misc]
 _KontoModel: Any = Konto.Interface._model  # type: ignore[misc]
 
-# Dev-Fixture hat 3 Bills mit 1 + 2 + 1 = 4 Zeilenpositionen
-_EXPECTED_ROW_COUNT = 4
-# Dev-Fixture für Konten hat 4 Einträge
-_EXPECTED_KONTO_COUNT = 4
+# Dev-Fixture hat 29 Bills mit insgesamt 40 Zeilenpositionen
+_EXPECTED_ROW_COUNT = 40
+# Dev-Fixture für Konten hat 7 Einträge
+_EXPECTED_KONTO_COUNT = 7
 
 # ---------------------------------------------------------------------------
 # compute_correct_title — reine Logik, kein DB
@@ -84,9 +84,9 @@ class SyncLieferantenrechnungenTest(TestCase):
 
     def test_correct_title_normal_stored(self) -> None:
         sync_lieferantenrechnungen()
-        # Bill 01558 hat titel="1" → kein 900.-Prefix → richtiger_titel == titel
+        # Bill 01558 hat titel="2026.0008" → kein 900.-Prefix → richtiger_titel == titel
         rechnung = _LieferantenrechnungModel.objects.get(dokument_nr="01558")
-        assert rechnung.richtiger_titel == "1"
+        assert rechnung.richtiger_titel == "2026.0008"
 
     def test_decimal_rechnungsbetrag(self) -> None:
         sync_lieferantenrechnungen()

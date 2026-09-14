@@ -59,7 +59,7 @@ export FORGE_ENV=dev
 # 5. Datenbank migrieren
 uv run python manage.py migrate
 
-# 6. Dev-Daten anlegen (Gruppen, Testuser)
+# 6. Dev-Daten anlegen (Gruppen, Testuser, Stundensätze, Demo-Projekte)
 uv run python manage.py setup_dev_data
 
 # 7. Backend starten
