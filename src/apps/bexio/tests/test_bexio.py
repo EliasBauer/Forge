@@ -124,6 +124,24 @@ class SyncLieferantenrechnungenTest(TestCase):
         assert count == _EXPECTED_ROW_COUNT
         assert _LieferantenrechnungModel.objects.count() == _EXPECTED_ROW_COUNT
 
+    def test_sync_deletes_rows_bexio_no_longer_delivers(self) -> None:
+        sync_lieferantenrechnungen()
+        from apps.bexio.services import BexioClient
+
+        erste_bill = BexioClient().get_all_bills()[:1]
+        erwartete_zeilen = len(erste_bill[0]["line_items"])
+        with patch("apps.bexio.sync.BexioClient") as MockClient:
+            MockClient.return_value.get_all_bills.return_value = erste_bill
+            sync_lieferantenrechnungen()
+        assert _LieferantenrechnungModel.objects.count() == erwartete_zeilen
+
+    def test_sync_keeps_rows_when_bexio_returns_nothing(self) -> None:
+        sync_lieferantenrechnungen()
+        with patch("apps.bexio.sync.BexioClient") as MockClient:
+            MockClient.return_value.get_all_bills.return_value = []
+            sync_lieferantenrechnungen()
+        assert _LieferantenrechnungModel.objects.count() == _EXPECTED_ROW_COUNT
+
 
 # ---------------------------------------------------------------------------
 # BexioClient — Service-Klasse
@@ -288,6 +306,21 @@ class SyncKontenTest(TestCase):
         count = full_sync_konten()
         assert count == _EXPECTED_KONTO_COUNT
         assert _KontoModel.objects.count() == _EXPECTED_KONTO_COUNT
+
+    def test_full_sync_restores_buchungskonto_on_rechnungen(self) -> None:
+        sync_konten()
+        sync_lieferantenrechnungen()
+        mit_konto = _LieferantenrechnungModel.objects.filter(
+            buchungskonto__isnull=False
+        ).count()
+        assert mit_konto > 0
+        full_sync_konten()
+        assert (
+            _LieferantenrechnungModel.objects.filter(
+                buchungskonto__isnull=False
+            ).count()
+            == mit_konto
+        )
 
     def test_upsert_overwrites_changed_name(self) -> None:
         sync_konten()

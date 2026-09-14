@@ -57,14 +57,21 @@ def sync_konten() -> int:
 
 
 def full_sync_konten() -> int:
-    """Löscht alle lokalen Konten und lädt alles neu von Bexio."""
+    """
+    Löscht alle lokalen Konten und lädt alles neu von Bexio.
+    Das Löschen kappt per SET_NULL die Buchungskonto-Verweise aller
+    Lieferantenrechnungen; deshalb wird direkt danach der Rechnungs-Sync
+    ausgeführt, der sie wieder auflöst.
+    """
     from apps.bexio.models import Konto
 
     for konto in Konto.all():
         konto.delete(creator_id=None, ignore_permission=True)
 
     logger.info("bexio full sync: alle Konten gelöscht")
-    return sync_konten()
+    count = sync_konten()
+    sync_lieferantenrechnungen()
+    return count
 
 
 # ------------------------------------------------------------------
@@ -147,7 +154,9 @@ def _bill_to_rows(bill: dict[str, Any]) -> list[dict[str, Any]]:
 def sync_lieferantenrechnungen() -> int:
     """
     Holt alle Lieferantenrechnungen von Bexio und spiegelt sie in der DB.
-    Erstellt neue Einträge, aktualisiert geänderte. Ein Eintrag pro Zeilenposition.
+    Erstellt neue Einträge, aktualisiert geänderte, löscht lokale Zeilen,
+    die Bexio nicht mehr liefert. Ein Eintrag pro Zeilenposition.
+    Liefert Bexio gar nichts, wird nichts gelöscht (Schutz vor API-Aussetzern).
     Gibt die Anzahl verarbeiteter Datensätze zurück.
     """
     from apps.bexio.models import Lieferantenrechnung
@@ -180,7 +189,20 @@ def sync_lieferantenrechnungen() -> int:
         else:
             Lieferantenrechnung.create(creator_id=None, ignore_permission=True, **row)
 
-    logger.info("bexio sync: %d Zeilenpositionen verarbeitet", len(rows))
+    geliefert = {row["bexio_zeilen_id"] for row in rows}
+    verwaist = [
+        eintrag
+        for eintrag in Lieferantenrechnung.all()
+        if eintrag.bexio_zeilen_id not in geliefert
+    ]
+    for eintrag in verwaist:
+        eintrag.delete(creator_id=None, ignore_permission=True)
+
+    logger.info(
+        "bexio sync: %d Zeilenpositionen verarbeitet, %d verwaiste gelöscht",
+        len(rows),
+        len(verwaist),
+    )
     return len(rows)
 
 

@@ -18,6 +18,15 @@ def test_celery_app_exports_task_events_and_default_queue() -> None:
     assert "publish-observability-queue-metrics" not in celery_app.conf.beat_schedule
 
 
+def test_bexio_sync_runs_every_night_at_two() -> None:
+    entry = celery_app.conf.beat_schedule["bexio-sync-nightly"]
+    assert entry["task"] == "bexio.sync_lieferantenrechnungen"
+    schedule = entry["schedule"]
+    assert schedule.hour == {2}
+    assert schedule.minute == {0}
+    assert schedule.day_of_week == set(range(7))
+
+
 def test_queue_metrics_task_is_registered() -> None:
     celery_app.loader.import_default_modules()
     assert QUEUE_METRICS_TASK in celery_app.tasks
