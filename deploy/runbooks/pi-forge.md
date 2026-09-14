@@ -233,7 +233,7 @@ Passwörtern funktioniert also. Im Einzelnen:
 
 ```bash
 cd ~/forge/deploy
-./scripts/compose.sh --profile backup run --rm backup                 # ca. 1 Sekunde bei leerer DB
+./scripts/compose.sh --profile backup run --rm backup                 # ca. 1 Sekunde, 0,5 MB bei 1760 Rechnungen
 ls /srv/forge/data/backups /srv/forge/backup-share                     # gleicher Zeitstempel an beiden Orten
 ```
 
