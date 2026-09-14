@@ -173,10 +173,10 @@ CELERY_TASK_SEND_SENT_EVENT = True
 from celery.schedules import crontab  # noqa: E402
 
 CELERY_BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
-    # Jeden Mittwoch um 02:00 Uhr (Europe/Zurich)
-    "bexio-sync-weekly": {
+    # Jede Nacht um 02:00 Uhr (Europe/Zurich)
+    "bexio-sync-nightly": {
         "task": "bexio.sync_lieferantenrechnungen",
-        "schedule": crontab(hour=2, minute=0, day_of_week=3),
+        "schedule": crontab(hour=2, minute=0),
     },
 }
 if not IS_DEV:

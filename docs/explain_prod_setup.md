@@ -93,7 +93,7 @@ Secrets über `*_FILE`-Variablen (`forge/env.py`). Bietet `/health/live/`
 `/health/maintenance/` und `/metrics` (Prometheus).
 
 **celery-worker** und **celery-beat**. Celery ist das Hintergrund-Job-System:
-Beat ist der Zeitplan (z. B. der Bexio-Sync mittwochs 02:00 und die
+Beat ist der Zeitplan (z. B. der Bexio-Sync jede Nacht um 02:00 und die
 Suchindex-Reconciliation alle 30 s), der Worker führt die Jobs aus. Beide
 nutzen Redis als Nachrichtenkanal. Beat läuft genau einmal (sonst würden Jobs
 doppelt geplant), der Worker kann skaliert werden.
