@@ -50,6 +50,20 @@ Passwörter werden via `set_password()` gesetzt (Hash). Bei bereits existenten
 Usern werden Passwort und Gruppen-Zuweisung neu gesetzt, damit der Stand
 reproduzierbar bleibt.
 
+### Stundensätze und Demo-Projekte
+Nach dem User-Setup legt `apps.projekt.dev_daten` an (beides idempotent):
+- Stundensätze für 2024, 2025 und 2026 (Upsert über `jahr`).
+- Zehn Demo-Projekte mit Auftragsnummern im Schema `JJJJ.NNNN` (Jahr plus
+  fortlaufende Nummer, z. B. `2024.0168`), verteilt über die Phasen Fertig,
+  In Arbeit und Offen. Upsert über `auftragsnummer`.
+- Pro Projekt Kostenpositionen für Apparate, Kanäle/Rohre, Armaturen,
+  Regulierung, Transport/Montage, Isolation, Planung, Stunden und teils
+  Schaltschrank. `offerte_summe` ist die Summe der CHF-Positionen; `wv_summe`
+  ein Faktor davon (`None` bei offenen Projekten). Upsert über (Projekt, Kostenart).
+
+Die Bexio-Dev-Fixtures tragen dieselben Auftragsnummern als Rechnungstitel,
+damit Ist-Kosten und Verbrauchsrate in der Übersicht sichtbar werden.
+
 ### Bexio-Sync
 Nach dem User-Setup werden `sync_konten()` und anschließend
 `sync_lieferantenrechnungen()` aufgerufen. Beide Aufrufe sind in `try/except`
@@ -68,9 +82,10 @@ ohnehin Fixture-Daten — Sync läuft also auch ohne Internet.
 - [ ] `auth_user` enthält die drei User mit IDs 1–3, korrekten Passwörtern, korrekten Flags.
 - [ ] `auth_user_groups` weist die User wie spezifiziert zu.
 - [ ] Bexio-Tabellen sind im Dev-Mode mit Fixture-Daten gefüllt.
+- [ ] Zehn Projekte mit Auftragsnummern `JJJJ.NNNN`, je mit Kostenpositionen; Stundensätze für alle Projektjahre.
 - [ ] Zweiter Lauf des Skripts produziert denselben Endzustand (idempotent).
 
 ## Out of Scope
 - Postgres-Reset (Skript ist nur für SQLite-Dev-Modus).
 - Produktions- oder Test-Container-Datenbank.
-- Anlegen weiterer Domain-Daten (Projekte, KostenPositionen etc.).
+- Lieferantenrechnungen jenseits der Bexio-Dev-Fixtures.

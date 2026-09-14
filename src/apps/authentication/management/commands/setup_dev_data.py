@@ -37,11 +37,15 @@ USERS: list[dict[str, Any]] = [
 
 
 class Command(BaseCommand):
-    help = "Bootstrap der Dev-Daten: Gruppen, User, Bexio-Sync (idempotent)."
+    help = (
+        "Bootstrap der Dev-Daten: Gruppen, User, Stundensätze, Demo-Projekte, "
+        "Bexio-Sync (idempotent)."
+    )
 
     def handle(self, *args: object, **options: object) -> None:
         self._setup_groups()
         self._setup_users()
+        self._setup_projekte()
         self._run_bexio_sync()
 
     def _setup_groups(self) -> None:
@@ -69,6 +73,13 @@ class Command(BaseCommand):
                 self.stdout.write(
                     f"User '{spec['username']}' ({spec['group']}): {marker}"
                 )
+
+    def _setup_projekte(self) -> None:
+        from apps.projekt.dev_daten import seed_dev_projekte, seed_dev_stundensaetze
+
+        with transaction.atomic():
+            seed_dev_stundensaetze(self.stdout.write)
+            seed_dev_projekte(self.stdout.write)
 
     def _run_bexio_sync(self) -> None:
         from apps.bexio.sync import sync_konten, sync_lieferantenrechnungen
