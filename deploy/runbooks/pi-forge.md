@@ -160,12 +160,15 @@ Auf jedem Client, der Grafana oder pgAdmin erreichen soll: mDNS löst keine
 Subdomains auf, darum in `/etc/hosts` (Mac: `sudo nano /etc/hosts`):
 
 ```text
-192.168.1.10 monitoring.forge.local db.forge.local
+<IP des Pi> monitoring.forge.local db.forge.local
 ```
 
-`forge.local` selbst braucht keinen Eintrag, das macht Avahi. Die IP ist
-DHCP; wandert sie, muss nur diese Zeile nachgezogen werden (oder der Router
-gibt dem Pi eine feste Adresse, das ist die bessere Lösung).
+`forge.local` selbst braucht keinen Eintrag, das macht Avahi. Die IP zeigt
+`ip -4 addr show eth0` auf dem Pi. Sie kommt per DHCP; im Router des
+Standorts eine feste Reservierung für die MAC-Adresse des Pi (`ip link show
+eth0`) anlegen, dann bleibt die hosts-Zeile dauerhaft gültig. Die konkreten
+Werte des Standorts gehören nicht in dieses öffentliche Repo, sondern in den
+Passwort-Manager zu den übrigen Zugangsdaten.
 
 ## 6. Backup verstehen und testen
 
